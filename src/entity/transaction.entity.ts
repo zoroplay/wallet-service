@@ -14,7 +14,7 @@ export class Transaction {
     user_id: number;
 
     @Index()
-    @Column({ type: "varchar", length: 50 })
+    @Column({ type: "varchar", length: 150 })
     username: string;
 
     @Index()

@@ -25,7 +25,7 @@ export class PaymentMethod {
     public_key: string;
 
     @Column({ type: "varchar", length: 150, nullable: true })
-    merchange_id: string;
+    merchant_id: string;
 
     @Column({ type: "varchar", length: 150, nullable: true })
     logo_path: string;

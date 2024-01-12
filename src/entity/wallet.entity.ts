@@ -13,6 +13,10 @@ export class Wallet {
     @Column({ type: "bigint"})
     user_id: number;
 
+    @Index()
+    @Column({ type: "varchar", length: 150 })
+    username: string;
+
     @Column({ type: "decimal", precision: 20, scale: 2, default: 0 })
     balance: number;
 
