@@ -17,8 +17,8 @@ export interface ErrorResponse {
 export type SuccessResponseFn = (data: any, message: string) => SuccessResponse;
 export type ErrorResponseFn = (
   message: string,
-  data: any | null,
-  status: number
+  data?: any | null,
+  status?: number
 ) => ErrorResponse;
 
 export const handleResponse: SuccessResponseFn = (data, message) => {

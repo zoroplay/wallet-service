@@ -1,27 +1,23 @@
 import {NestFactory} from '@nestjs/core';
 import {AppModule} from './app.module';
 import {JsonLoggerService} from 'json-logger-service';
-import {MicroserviceOptions, ServerGrpc, Transport} from "@nestjs/microservices";
+import {MicroserviceOptions, Transport} from "@nestjs/microservices";
 import {join} from "path";
+import { protobufPackage } from './proto/wallet.pb';
 
 async function bootstrap() {
 
-  const app = await NestFactory.create(AppModule);
-
-  app.useLogger(new JsonLoggerService('Wallet service'));
-
-// microservice #1
-  const microserviceGrpc = app.connectMicroservice<MicroserviceOptions>({
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
     transport: Transport.GRPC,
     options: {
       url: `${process.env.GRPC_HOST}:${process.env.GRPC_PORT}`,
-      package: 'wallet',
+      package: protobufPackage,
       protoPath: join('node_modules/sbe-service-proto/proto/wallet.proto'),
     }
   });
 
-  await app.startAllMicroservices();
+  app.useLogger(new JsonLoggerService('Wallet service'));
 
-  await app.listen(5005);
+  await app.listen();
 }
 bootstrap();

@@ -17,6 +17,31 @@ export interface PaymentMethodRequest {
   id: number;
 }
 
+export interface VerifyDepositRequest {
+  clientId: number;
+  transactionRef: string;
+  paymentChannel: string;
+}
+
+export interface VerifyDepositResponse {
+  success: boolean;
+  status: number;
+  message: string;
+}
+
+export interface WebhookRequest {
+  clientId: number;
+  transactionRef: string;
+  paymentChannel: string;
+  paymentStatus: string;
+}
+
+export interface WebhookResponse {
+  success: boolean;
+  status: number;
+  message: string;
+}
+
 export interface GetPaymentMethodRequest {
   clientId: number;
   status?: number | undefined;
@@ -103,13 +128,18 @@ export interface InitiateDepositRequest {
   amount: number;
   paymentMethod: string;
   source: string;
+  username: string;
 }
 
-export interface InitiateDepositReponse {
+export interface InitiateDepositResponse {
   success: boolean;
-  url: string;
   message: string;
-  data: Transaction | undefined;
+  data?: InitiateDepositResponse_Data | undefined;
+}
+
+export interface InitiateDepositResponse_Data {
+  link?: string | undefined;
+  transactionRef?: string | undefined;
 }
 
 export interface Transaction {
@@ -123,6 +153,7 @@ export interface Transaction {
   balance: number;
   status: number;
   createdAt: string;
+  link?: string | undefined;
 }
 
 export interface VerifyBankAccountRequest {
@@ -184,7 +215,11 @@ export interface WalletServiceClient {
 
   debitUser(request: DebitUserRequest): Observable<WalletResponse>;
 
-  inititateDeposit(request: InitiateDepositRequest): Observable<InitiateDepositRequest>;
+  inititateDeposit(request: InitiateDepositRequest): Observable<InitiateDepositResponse>;
+
+  verifyDeposit(request: VerifyDepositRequest): Observable<VerifyDepositRequest>;
+
+  paymentWebhook(request: WebhookRequest): Observable<WebhookResponse>;
 
   withdraw(request: WithdrawRequest): Observable<WithdrawResponse>;
 
@@ -208,7 +243,13 @@ export interface WalletServiceController {
 
   inititateDeposit(
     request: InitiateDepositRequest,
-  ): Promise<InitiateDepositRequest> | Observable<InitiateDepositRequest> | InitiateDepositRequest;
+  ): Promise<InitiateDepositResponse> | Observable<InitiateDepositResponse> | InitiateDepositResponse;
+
+  verifyDeposit(
+    request: VerifyDepositRequest,
+  ): Promise<VerifyDepositRequest> | Observable<VerifyDepositRequest> | VerifyDepositRequest;
+
+  paymentWebhook(request: WebhookRequest): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
 
   withdraw(request: WithdrawRequest): Promise<WithdrawResponse> | Observable<WithdrawResponse> | WithdrawResponse;
 
@@ -237,6 +278,8 @@ export function WalletServiceControllerMethods() {
       "creditUser",
       "debitUser",
       "inititateDeposit",
+      "verifyDeposit",
+      "paymentWebhook",
       "withdraw",
       "verifyBankAccount",
       "getTransactions",

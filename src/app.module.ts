@@ -8,7 +8,14 @@ import { Transaction } from './entity/transaction.entity';
 import { Wallet } from './entity/wallet.entity';
 import { WithdrawalAccount } from './entity/withdrawal_account.entity';
 import { Withdrawal } from './entity/withdrawal.entity';
+import { PaymentService } from './payments/payments.service';
 import "dotenv/config";
+import { PaystackService } from './services/paystack.service';
+import { FlutterwaveService } from './services/flutterwave.service';
+import { MomoService } from './services/momo.service';
+import { MgurushService } from './services/mgurush.service';
+import { MonnifyService } from './services/monnify.service';
+import { IdentityModule } from './identity/identity.module';
 
 @Module({
   imports: [
@@ -22,9 +29,10 @@ import "dotenv/config";
       entities: ["dist/**/*.entity.js"],
       synchronize: true,
     }),
-    TypeOrmModule.forFeature([Bank,PaymentMethod,Transaction,Wallet,WithdrawalAccount,Withdrawal])
+    TypeOrmModule.forFeature([Bank,PaymentMethod,Transaction,Wallet,WithdrawalAccount,Withdrawal]),
+    IdentityModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, FlutterwaveService, MonnifyService, MomoService, MgurushService, PaymentService, PaystackService,],
 })
 export class AppModule {}

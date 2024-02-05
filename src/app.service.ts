@@ -1,11 +1,11 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, WalletResponse } from './proto/wallet.pb';
-import { generateTrxNo, handleError, handleResponse } from './common/helpers';
+import { handleError, handleResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
 import { Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
-import { Transaction } from './entity/transaction.entity';
+import { PaymentService } from './payments/payments.service';
 
 @Injectable()
 export class AppService {
@@ -15,8 +15,7 @@ export class AppService {
     private walletRepository: Repository<Wallet>,
     @InjectRepository(PaymentMethod)
     private pMethodRepository: Repository<PaymentMethod>,
-    @InjectRepository(Transaction)
-    private transactionRepository: Repository<Transaction>
+    private paymentService: PaymentService
   ) {}
 
 
@@ -86,8 +85,9 @@ export class AppService {
         paymentMethod = await this.pMethodRepository.findOne({where: {id: data.id}});
       } else {
         paymentMethod = new PaymentMethod();
-      }
+      } 
 
+      paymentMethod.client_id = data.clientId;
       paymentMethod.display_name = data.title;
       paymentMethod.provider = data.provider;
       paymentMethod.base_url = data.baseUrl;
@@ -100,7 +100,17 @@ export class AppService {
 
       await this.pMethodRepository.save(paymentMethod);
       
-      return handleResponse(paymentMethod, 'Saved');
+      return handleResponse({
+        title: paymentMethod.display_name,
+        provider: paymentMethod.provider,
+        secretKey: paymentMethod.secret_key,
+        publicKey: paymentMethod.public_key,
+        merchantId: paymentMethod.merchant_id,
+        baseUrl: paymentMethod.base_url,
+        status: paymentMethod.status,
+        forDisbursemnt: paymentMethod.for_disbursement,
+        id: paymentMethod.id
+      }, 'Saved');
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -131,7 +141,7 @@ export class AppService {
         await this.walletRepository.save(wallet);
       }
       //to-do save transaction log
-      await this.saveTransaction(data);
+      await this.paymentService.saveTransaction(data);
 
       return handleResponse(wallet, 'Wallet credited')
     } catch (e) {
@@ -161,44 +171,5 @@ export class AppService {
     }
   }
 
-  async saveTransaction(data) {
-    const transactionNo = generateTrxNo()
-    // construct data
-    const model = [];
-    
-    const transaction1          = new Transaction();
-    transaction1.client_id      = data.clientId;
-    transaction1.user_id        = data.userId;
-    transaction1.username       = data.username;
-    transaction1.transaction_no = transactionNo;
-    transaction1.tranasaction_type = 'credit'
-    transaction1.subject        = data.subject;
-    transaction1.description    = data.description;
-    transaction1.source         = data.source;
-    transaction1.channel        = data.channel;
-    transaction1.balance        = data.balance;
-    transaction1.status         = data.status || 1;
-
-    model.push(transaction1);
-
-    const transaction2          = new Transaction();
-    transaction2.client_id      = data.clientId;
-    transaction2.user_id        = data.userId;
-    transaction2.username       = data.username;
-    transaction2.transaction_no = transactionNo;
-    transaction2.tranasaction_type = 'debit'
-    transaction2.subject        = data.subject;
-    transaction2.description    = data.description;
-    transaction2.source         = data.source;
-    transaction2.channel        = data.channel;
-    transaction2.balance        = data.balance;
-    transaction2.status         = data.status || 1;
-
-    model.push(transaction2);
-
-    for (const item of model) {
-      await this.transactionRepository.save(item);
-    }
-  }
   
 }
