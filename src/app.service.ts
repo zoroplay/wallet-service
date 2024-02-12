@@ -21,12 +21,14 @@ export class AppService {
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
     try {
-      const {userId, clientId, amount } = data;
+      const {userId, username, clientId, amount, bonus } = data;
       const wallet = new Wallet();
       wallet.user_id = userId;
+      wallet.username = username;
       wallet.client_id = clientId;
       wallet.balance = amount || 0;
       wallet.available_balance = amount || 0;
+      wallet.sport_bonus_balance = bonus || 0;
 
       await this.walletRepository.save(wallet);
 
@@ -34,6 +36,10 @@ export class AppService {
         userId: wallet.user_id,
         balance: wallet.balance,
         availableBalance: wallet.available_balance,
+        trustBalance: wallet.trust_balance,
+        sportBonusBalance: wallet.sport_bonus_balance,
+        virtualBonusBalance: wallet.virtual_bonus_balance,
+        casinoBonusBalance: wallet.casino_bonus_balance
       }, 'Wallet created')
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -73,7 +79,7 @@ export class AppService {
 
       return handleResponse(pMethods, 'Payment methods retrieved successfully');
     } catch (e) {
-      return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
+      return handleError(e.message, {}, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

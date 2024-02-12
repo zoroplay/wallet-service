@@ -51,7 +51,7 @@ export interface GetPaymentMethodResponse {
   success: boolean;
   status: number;
   message: string;
-  data?: PaymentMethod[];
+  data: PaymentMethod[];
 }
 
 export interface PaymentMethodResponse {
@@ -76,7 +76,9 @@ export interface PaymentMethod {
 export interface CreateWalletRequest {
   userId: number;
   clientId: number;
+  username: string;
   amount?: number | undefined;
+  bonus?: number | undefined;
 }
 
 export interface WalletResponse {

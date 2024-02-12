@@ -8,10 +8,20 @@ export const protobufPackage = "identity";
 export interface UserData {
   id: number;
   username: string;
-  balance?: string | undefined;
+  balance?: number | undefined;
   code?: string | undefined;
   firstName?: string | undefined;
   lastName?: string | undefined;
+  email?: string | undefined;
+  phone?: string | undefined;
+  role?: string | undefined;
+  roleId?: number | undefined;
+  availableBalance?: number | undefined;
+  sportBonusBalance?: number | undefined;
+  casinoBonusBalance?: number | undefined;
+  virtualBonusBalance?: number | undefined;
+  trustBalance?: number | undefined;
+  token: string;
 }
 
 export interface CreateUserRequest {
@@ -32,6 +42,7 @@ export interface CreateUserRequest {
   language?: string | undefined;
   currency?: string | undefined;
   parent?: number | undefined;
+  promoCode?: string | undefined;
 }
 
 /** user */
@@ -50,6 +61,7 @@ export interface User {
 
 export interface RegisterResponse {
   status: number;
+  success: boolean;
   data: UserData | undefined;
   error?: string | undefined;
 }
@@ -63,9 +75,21 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   status: number;
-  token: string;
+  success: boolean;
   data: UserData | undefined;
   error?: string | undefined;
+}
+
+export interface GetUserDetailsRequest {
+  clientId: number;
+  userId: number;
+}
+
+export interface GetUserDetailsResponse {
+  status: number;
+  success: boolean;
+  message: string;
+  data: UserData | undefined;
 }
 
 /** Validate */
@@ -195,6 +219,8 @@ export interface IdentityServiceClient {
 
   validate(request: ValidateRequest): Observable<ValidateResponse>;
 
+  getUserDetails(request: GetUserDetailsRequest): Observable<GetUserDetailsResponse>;
+
   createClient(request: ClientRequest): Observable<CommonResponse>;
 
   createPermission(request: PermissionRequest): Observable<CommonResponse>;
@@ -232,6 +258,10 @@ export interface IdentityServiceController {
   login(request: LoginRequest): Promise<LoginResponse> | Observable<LoginResponse> | LoginResponse;
 
   validate(request: ValidateRequest): Promise<ValidateResponse> | Observable<ValidateResponse> | ValidateResponse;
+
+  getUserDetails(
+    request: GetUserDetailsRequest,
+  ): Promise<GetUserDetailsResponse> | Observable<GetUserDetailsResponse> | GetUserDetailsResponse;
 
   createClient(request: ClientRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 
@@ -274,6 +304,7 @@ export function IdentityServiceControllerMethods() {
       "register",
       "login",
       "validate",
+      "getUserDetails",
       "createClient",
       "createPermission",
       "saveRole",

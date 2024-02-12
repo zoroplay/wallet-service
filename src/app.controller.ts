@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { AppService } from './app.service';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetPaymentMethodRequest, InitiateDepositRequest, PaymentMethodRequest, WALLET_SERVICE_NAME } from 'src/proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, InitiateDepositRequest, PaymentMethodRequest, WALLET_SERVICE_NAME } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './payments/payments.service';
 
@@ -14,6 +14,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreateWallet')
   CreateWallet(param: CreateWalletRequest) {
     return this.appService.createWallet(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetBalance')
+  GetBalance(param: GetBalanceRequest) {
+    return this.appService.getBalance(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreditUser')
