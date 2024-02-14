@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, WalletResponse } from './proto/wallet.pb';
-import { handleError, handleResponse } from './common/helpers';
+import { generateTrxNo, handleError, handleResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
 import { Repository } from 'typeorm';
@@ -18,7 +18,6 @@ export class AppService {
     private paymentService: PaymentService
   ) {}
 
-
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
     try {
       const {userId, username, clientId, amount, bonus } = data;
@@ -31,6 +30,26 @@ export class AppService {
       wallet.sport_bonus_balance = bonus || 0;
 
       await this.walletRepository.save(wallet);
+
+      // create transaction
+      if (amount > 0 || bonus  > 0) {
+        await this.paymentService.saveTransaction({
+          transactionNo: generateTrxNo(),
+          amount: data.amount,
+          description: 'Inital Balance',
+          subject: 'Deposit',
+          channel: 'Internal Transfer',
+          source: '',
+          fromUserId: 0,
+          fromUsername: 'System',
+          fromUserBalance: 0,
+          toUserId: userId,
+          toUsername: username,
+          toUserBalance: 0,
+          status: 1
+        });
+
+      }
 
       return handleResponse({
         userId: wallet.user_id,
@@ -126,15 +145,32 @@ export class AppService {
     try {
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
 
+      let balance = 0; 
       if (wallet) {
-        let balance = wallet.available_balance + data.amount;
-        
+        let walletBalance = 'available_balance' 
+        switch(data.wallet) {
+          case 'sport-bonus':
+            walletBalance = 'sport_bonus_balance'
+            balance = wallet.sport_bonus_balance + data.amount;
+            break;
+          case 'virtual':
+            walletBalance = 'virtual_bonus_balance';
+            balance = wallet.virtual_bonus_balance + data.amount;
+            break;
+          case 'casino':
+            walletBalance = 'casino_bonus_balance';
+            balance = wallet.casino_bonus_balance + data.amount;
+            break;
+          default:
+            balance = wallet.available_balance + data.amount;
+            break
+        }
         await this.walletRepository.update({
           user_id: data.userId,
           client_id: data.clientId
         }, {
-          balance,
-          available_balance: balance
+          // balance,
+          [walletBalance]: balance
         });
 
       } else { // create new wallet
@@ -147,7 +183,22 @@ export class AppService {
         await this.walletRepository.save(wallet);
       }
       //to-do save transaction log
-      await this.paymentService.saveTransaction(data);
+      await this.paymentService.saveTransaction({
+        transactionNo: generateTrxNo(),
+        amount: data.amount,
+        description: data.description,
+        // subject: data.subject,
+        // channel: data.channel,
+        source: data.source,
+        fromUserId: 0,
+        fromUsername: 'System',
+        fromUserBalance: 0,
+        toUserId: data.userId,
+        toUsername: data.username,
+        toUserBalance: balance,
+        status: 1
+      });
+
 
       return handleResponse(wallet, 'Wallet credited')
     } catch (e) {
@@ -159,23 +210,53 @@ export class AppService {
     try {
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
       
-      let balance = wallet.available_balance - data.amount;
-
+      let balance = 0; 
+      let walletBalance = 'available_balance' 
+      switch(data.wallet) {
+        case 'sport-bonus':
+          walletBalance = 'sport_bonus_balance'
+          balance = wallet.sport_bonus_balance - data.amount;
+          break;
+        case 'virtual':
+          walletBalance = 'virtual_bonus_balance';
+          balance = wallet.virtual_bonus_balance - data.amount;
+          break;
+        case 'casino':
+          walletBalance = 'casino_bonus_balance';
+          balance = wallet.casino_bonus_balance - data.amount;
+          break;
+        default:
+          balance = wallet.available_balance - data.amount;
+          break
+      }
       await this.walletRepository.update({
         user_id: data.userId,
         client_id: data.clientId
       }, {
-        balance,
-        available_balance: balance
+        // balance,
+        [walletBalance]: balance
       });
 
       // to-do save transaction log
+      await this.paymentService.saveTransaction({
+        transactionNo: generateTrxNo(),
+        amount: data.amount,
+        description: data.description,
+        // subject: data.subject,
+        // channel: data.channel,
+        source: data.source,
+        fromUserId: data.userId,
+        fromUsername: data.username,
+        fromUserBalance: balance,
+        toUserId: 0,
+        toUsername: 'System',
+        toUserBalance: 0,
+        status: 1
+      });
 
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  
 }

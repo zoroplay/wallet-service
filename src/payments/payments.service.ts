@@ -38,7 +38,6 @@ export class PaymentService {
             userId: param.userId
         }).toPromise();
 
-        console.log('user')
         if (user.username === '') return {success: false, message: 'User does not exist'}
         if (user.clientUrl === '') return {success: false, message: 'Client url not set'}
 
@@ -52,10 +51,11 @@ export class PaymentService {
                         callback_url: user.clientUrl
                     }, param.clientId);
 
-                    console.log(resp)
+                    // console.log(resp)
 
                     description = 'Online Deposit (Paystack)'; 
                     if (!resp.success) return resp;
+                    
                     link = resp.link;
 
                     break;
@@ -117,7 +117,7 @@ export class PaymentService {
         transaction1.description    = data.description;
         transaction1.source         = data.source;
         transaction1.channel        = data.channel;
-        transaction1.balance        = data.fromUserbalance;
+        transaction1.balance        = data.fromUserBalance;
         transaction1.status         = data.status || 0;
       
         model.push(transaction1);

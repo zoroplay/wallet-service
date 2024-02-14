@@ -102,6 +102,7 @@ export interface CreditUserRequest {
   source: string;
   description: string;
   username: string;
+  wallet: string;
 }
 
 /** credit user request payload */
@@ -112,6 +113,7 @@ export interface DebitUserRequest {
   source: string;
   description: string;
   username: string;
+  wallet: string;
 }
 
 export interface Wallet {
