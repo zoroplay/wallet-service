@@ -32,31 +32,29 @@ export class PaymentService {
         if (!wallet)
             return {success: false, message: 'Wallet not found'};
         
-            // To-Do: Get user info
+        // To-Do: Get user info
         const user = await this.identityService.getUserData({
             clientId: param.clientId,
-            userId: param.userId
+            userId: param.userId,
+            source: param.source
         }).toPromise();
 
         if (user.username === '') return {success: false, message: 'User does not exist'}
-        if (user.clientUrl === '') return {success: false, message: 'Client url not set'}
 
         try {
             switch (param.paymentMethod) {
                 case 'paystack':
                     const resp: any = await this.paystackService.generatePaymentLink({
-                        amount: param.amount,
+                        amount: param.amount * 100,
                         email: user.email || 'info@sportsbookengine.com',
                         reference: transactionNo,
-                        callback_url: user.clientUrl
+                        callback_url: user.callbackUrl + '/payment-verification/paystack'
                     }, param.clientId);
-
-                    // console.log(resp)
 
                     description = 'Online Deposit (Paystack)'; 
                     if (!resp.success) return resp;
                     
-                    link = resp.link;
+                    link = resp.data.authorization_url;
 
                     break;
                 case 'flutterwave':
@@ -91,13 +89,34 @@ export class PaymentService {
 
             return {success: true, message: 'Success', data: {transactionRef: transactionNo, link}};
         } catch (e) {
-            console.log(e.message);
+            // console.log(e.message);
             return {success: false, message: 'Unable to complete transaction'}
         }
     }
 
+    /**
+     * Function: verifyPayment
+     * Description: function to verify user payment
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     async verifyDeposit(param: VerifyDepositRequest) {
+        try {
 
+            switch (param.paymentChannel) {
+                case 'paystack':
+                    return this.paystackService.verifyTransaction(param)
+                case 'monnify': 
+                    break;
+                case 'flutterwave':
+                    break;
+                default:
+                    break;
+            }
+        } catch (e) {
+            console.log('Error', e.message);
+            return {success: false, message: 'Internal Server error', status: HttpStatus.BAD_REQUEST};
+        }
     }
 
     async handleWebhook() {}
@@ -141,6 +160,6 @@ export class PaymentService {
         for (const item of model) {
           await this.transactionRepository.save(item);
         }
-      }
+    }
 
 }

@@ -80,7 +80,7 @@ export class AppService {
         sportBonusBalance: wallet.sport_bonus_balance,
         virtualBonusBalance: wallet.virtual_bonus_balance,
         casinoBonusBalance: wallet.casino_bonus_balance
-      }, 'Wallet created')
+      }, 'Wallet fetched')
 
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -151,18 +151,18 @@ export class AppService {
         switch(data.wallet) {
           case 'sport-bonus':
             walletBalance = 'sport_bonus_balance'
-            balance = wallet.sport_bonus_balance + data.amount;
+            balance = parseFloat(wallet.sport_bonus_balance.toString()) + parseFloat(data.amount.toString());
             break;
           case 'virtual':
             walletBalance = 'virtual_bonus_balance';
-            balance = wallet.virtual_bonus_balance + data.amount;
+            balance = parseFloat(wallet.virtual_bonus_balance.toString()) + parseFloat(data.amount.toString())
             break;
           case 'casino':
             walletBalance = 'casino_bonus_balance';
-            balance = wallet.casino_bonus_balance + data.amount;
+            balance = parseFloat(wallet.casino_bonus_balance.toString()) + parseFloat(data.amount.toString())
             break;
           default:
-            balance = wallet.available_balance + data.amount;
+            balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount.toString())
             break
         }
         await this.walletRepository.update({
@@ -187,8 +187,8 @@ export class AppService {
         transactionNo: generateTrxNo(),
         amount: data.amount,
         description: data.description,
-        // subject: data.subject,
-        // channel: data.channel,
+        subject: data.subject,
+        channel: data.channel,
         source: data.source,
         fromUserId: 0,
         fromUsername: 'System',
@@ -208,6 +208,7 @@ export class AppService {
 
   async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
     try {
+      console.log(data)
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
       
       let balance = 0; 
@@ -242,8 +243,8 @@ export class AppService {
         transactionNo: generateTrxNo(),
         amount: data.amount,
         description: data.description,
-        // subject: data.subject,
-        // channel: data.channel,
+        subject: data.subject,
+        channel: data.channel,
         source: data.source,
         fromUserId: data.userId,
         fromUsername: data.username,

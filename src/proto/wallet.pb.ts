@@ -103,6 +103,8 @@ export interface CreditUserRequest {
   description: string;
   username: string;
   wallet: string;
+  subject: string;
+  channel: string;
 }
 
 /** credit user request payload */
@@ -114,6 +116,8 @@ export interface DebitUserRequest {
   description: string;
   username: string;
   wallet: string;
+  subject: string;
+  channel: string;
 }
 
 export interface Wallet {
@@ -221,7 +225,7 @@ export interface WalletServiceClient {
 
   inititateDeposit(request: InitiateDepositRequest): Observable<InitiateDepositResponse>;
 
-  verifyDeposit(request: VerifyDepositRequest): Observable<VerifyDepositRequest>;
+  verifyDeposit(request: VerifyDepositRequest): Observable<VerifyDepositResponse>;
 
   paymentWebhook(request: WebhookRequest): Observable<WebhookResponse>;
 
@@ -251,7 +255,7 @@ export interface WalletServiceController {
 
   verifyDeposit(
     request: VerifyDepositRequest,
-  ): Promise<VerifyDepositRequest> | Observable<VerifyDepositRequest> | VerifyDepositRequest;
+  ): Promise<VerifyDepositResponse> | Observable<VerifyDepositResponse> | VerifyDepositResponse;
 
   paymentWebhook(request: WebhookRequest): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
 
