@@ -208,7 +208,6 @@ export class AppService {
 
   async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
     try {
-      console.log(data)
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
       
       let balance = 0; 
