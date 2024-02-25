@@ -103,6 +103,20 @@ export class PaystackService {
         }
     }
 
+    async resolveAccountNumber(client_id, accountNo, banckCode) {
+        try {
+            const paymentSettings = await this.paystackSettings(client_id);
+            // return false if paystack settings is not available
+            if (!paymentSettings) return {success: false, message: 'Paystack has not been configured for client'};
+            const resp = await get(`${paymentSettings.base_url}/bank/resolve?account_number=${accountNo}&bank_code=${banckCode}`, {
+                'Authorization': `Bearer ${paymentSettings.secret_key}`,
+            })
+            return {success: resp.status, data: resp.data, message: resp.message};
+        } catch(e) {
+            return {success: false, message: "Something went wrong " + e.message};
+        }
+    }
+
     async paystackSettings(client_id: number) {
         return await this.paymentMethodRepository.findOne({
             where: {

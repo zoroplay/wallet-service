@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
-import { GetClientRequest, GetPaymentDataRequest, IDENTITY_SERVICE_NAME, IdentityServiceClient, protobufPackage } from 'src/proto/identity.pb';
+import { GetClientRequest, GetPaymentDataRequest, GetUserDetailsRequest, IDENTITY_SERVICE_NAME, IdentityServiceClient, protobufPackage } from 'src/proto/identity.pb';
 
 @Injectable()
 export class IdentityService {
@@ -17,8 +17,12 @@ export class IdentityService {
         return this.svc.getClient(data);
     }
 
-    public getUserData(data: GetPaymentDataRequest) {
+    public getPaymentData(data: GetPaymentDataRequest) {
         return this.svc.getPaymentData(data);
+    }
+
+    public getUserDetails(data: GetUserDetailsRequest) {
+        return this.svc.getUserDetails(data);
     }
 }
 

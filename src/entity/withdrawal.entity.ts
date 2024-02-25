@@ -1,6 +1,6 @@
 import {Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn, UpdateDateColumn,} from "typeorm";
 
-@Entity({name: 'withdrawal'})
+@Entity({name: 'withdrawals'})
 export class Withdrawal {
     @PrimaryGeneratedColumn({ type: "bigint"})
     id: number;
@@ -28,6 +28,12 @@ export class Withdrawal {
 
     @Column({ type: "varchar", length: 150, nullable: true})
     account_name: string;
+
+    @Column({ type: "varchar", length: 150, nullable: true})
+    bank_name: string;
+
+    @Column({ type: "varchar", length: 150, nullable: true})
+    bank_code: string;
 
     @Column({ type: "text", nullable: true})
     comment: string;

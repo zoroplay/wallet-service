@@ -1,10 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { firstValueFrom } from 'rxjs';
 import { generateTrxNo } from 'src/common/helpers';
+import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { IdentityService } from 'src/identity/identity.service';
-import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest } from 'src/proto/wallet.pb';
+import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, VerifyBankAccountRequest, VerifyBankAccountResponse } from 'src/proto/wallet.pb';
 import { PaystackService } from 'src/services/paystack.service';
 import { Repository } from 'typeorm';
 
@@ -15,6 +17,8 @@ export class PaymentService {
         private readonly transactionRepository: Repository<Transaction>,
         @InjectRepository(Wallet)
         private readonly walletRepository: Repository<Wallet>,
+        @InjectRepository(PaymentMethod)
+        private readonly paymentMethodRepository: Repository<PaymentMethod>,
         private paystackService: PaystackService,
         private identityService: IdentityService,
     ){}
@@ -33,7 +37,7 @@ export class PaymentService {
             return {success: false, message: 'Wallet not found'};
         
         // To-Do: Get user info
-        const user = await this.identityService.getUserData({
+        const user = await this.identityService.getPaymentData({
             clientId: param.clientId,
             userId: param.userId,
             source: param.source
@@ -116,6 +120,76 @@ export class PaymentService {
         } catch (e) {
             console.log('Error', e.message);
             return {success: false, message: 'Internal Server error', status: HttpStatus.BAD_REQUEST};
+        }
+    }
+
+    async verifyBankAccount(param: VerifyBankAccountRequest): Promise<VerifyBankAccountResponse> {
+        try {
+            // find payment method for withdrawal
+            const paymentMethod = await this.paymentMethodRepository.findOne({
+                where: {
+                    client_id: 1,
+                    for_disbursement: 1
+                }
+            })
+            if (!paymentMethod) return {
+                success: false, 
+                status: HttpStatus.NOT_FOUND, 
+                message: 'No payment method is active for disbursement'
+            }
+            // To-Do: Get user info
+            const user =  await firstValueFrom(this.identityService.getUserDetails({
+                clientId: param.clientId,
+                userId: param.userId,
+            }))
+
+            if (user.data.firstName === '') return {success: false, message: 'Please update your profile details to proceed', status: HttpStatus.NOT_FOUND}
+
+            const firstname = user.data.firstName.toLocaleLowerCase();
+            const lastname = user.data.lastName.toLocaleLowerCase();
+
+            let resp, name, names;
+            switch (paymentMethod.provider) {
+                case 'paystack':
+                    resp = await this.paystackService.resolveAccountNumber(param.clientId, param.accountNumber, param.bankCode);
+                    if (resp.success) {
+                        names = resp.data.account_name.toLowerCase().split(" ")
+                        name = resp.data.account_name;
+                    }else{
+                        return {
+                            success: false, 
+                            status: HttpStatus.NOT_FOUND, 
+                            message: 'Could not resolve account name. Check parameters or try again'
+                        }
+                    }
+                    
+                case 'flutterwave':
+                    break;
+                case 'monnify':
+                    break;
+                default:
+                    break;
+            }
+            if (names.includes(firstname) || names.includes(lastname)) {
+                return {
+                    success: true,
+                    message: name, 
+                    status: HttpStatus.OK
+                }   
+            } else {
+                return {
+                    success: false,
+                    message: "Your bank account names does not match your name on file", 
+                    status: HttpStatus.NOT_FOUND
+                }   
+            }
+        } catch (err) {
+            console.log(err)
+            return {
+                success: false,
+                message: 'Error verifying account', 
+                status: HttpStatus.INTERNAL_SERVER_ERROR
+            }
         }
     }
 

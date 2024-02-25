@@ -8,9 +8,9 @@ export const protobufPackage = "identity";
 export interface UserData {
   id: number;
   username: string;
-  balance?: number | undefined;
+  balance: number;
   code?: string | undefined;
-  firstName?: string | undefined;
+  firstName: string;
   lastName?: string | undefined;
   email?: string | undefined;
   phone?: string | undefined;
@@ -22,6 +22,14 @@ export interface UserData {
   virtualBonusBalance?: number | undefined;
   trustBalance?: number | undefined;
   token: string;
+  registered: string;
+  authCode: string;
+  country: string;
+  currency: string;
+  city: string;
+  address: string;
+  gender: string;
+  dateOfBirth: string;
 }
 
 export interface CreateUserRequest {
@@ -43,6 +51,30 @@ export interface CreateUserRequest {
   currency?: string | undefined;
   parent?: number | undefined;
   promoCode?: string | undefined;
+  trackingToken?: string | undefined;
+}
+
+export interface UpdateUserRequest {
+  clientId: number;
+  userId: number;
+  username: string;
+  password: string;
+  email?: string | undefined;
+  roleId?: number | undefined;
+  firstName?: string | undefined;
+  lastName?: string | undefined;
+  phoneNumber?: string | undefined;
+  gender?: string | undefined;
+  dateOfBirth?: string | undefined;
+  country?: string | undefined;
+  state?: string | undefined;
+  city?: string | undefined;
+  address?: string | undefined;
+  language?: string | undefined;
+  currency?: string | undefined;
+  parent?: number | undefined;
+  promoCode?: string | undefined;
+  trackingToken?: string | undefined;
 }
 
 /** user */
@@ -90,6 +122,11 @@ export interface GetUserDetailsResponse {
   success: boolean;
   message: string;
   data: UserData | undefined;
+}
+
+export interface UpdateUserResponse {
+  success: boolean;
+  message: string;
 }
 
 /** Validate */
@@ -211,6 +248,56 @@ export interface ClientData {
   contactEmail: string;
 }
 
+export interface SearchPlayerRequest {
+  clientId: number;
+  searchKey: string;
+}
+
+export interface SearchPlayerResponse {
+  success: boolean;
+  message: string;
+  data: Player[];
+}
+
+export interface Player {
+  id: number;
+  code: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  registered: string;
+  country: string;
+  currency: string;
+  status: number;
+  verified: number;
+  balance: number;
+  bonus: number;
+  lifeTimeDeposit: number;
+  lifeTimeWithdrawal: number;
+  openBets: number;
+  role: string;
+}
+
+export interface GetUserByUsernameRequest {
+  clientId: number;
+  username: number;
+}
+
+export interface GetUserByUsernameResponse {
+  responseCode: string;
+  responseMessage: string;
+  data?: GetUserByUsernameResponse_Data | undefined;
+}
+
+export interface GetUserByUsernameResponse_Data {
+  referenceID: string;
+  CustomerName: string;
+  Phoneno: string;
+  Status: string;
+}
+
 export interface EmptyRequest {
 }
 
@@ -254,6 +341,12 @@ export interface IdentityServiceClient {
   getClient(request: GetClientRequest): Observable<GetClientResponse>;
 
   getPaymentData(request: GetPaymentDataRequest): Observable<GetPaymentDataResponse>;
+
+  searchPlayer(request: SearchPlayerRequest): Observable<SearchPlayerResponse>;
+
+  updateUserDetails(request: UpdateUserRequest): Observable<UpdateUserResponse>;
+
+  validateUserByUsername(request: GetUserByUsernameRequest): Observable<UpdateUserResponse>;
 }
 
 export interface IdentityServiceController {
@@ -300,6 +393,18 @@ export interface IdentityServiceController {
   getPaymentData(
     request: GetPaymentDataRequest,
   ): Promise<GetPaymentDataResponse> | Observable<GetPaymentDataResponse> | GetPaymentDataResponse;
+
+  searchPlayer(
+    request: SearchPlayerRequest,
+  ): Promise<SearchPlayerResponse> | Observable<SearchPlayerResponse> | SearchPlayerResponse;
+
+  updateUserDetails(
+    request: UpdateUserRequest,
+  ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
+
+  validateUserByUsername(
+    request: GetUserByUsernameRequest,
+  ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
 }
 
 export function IdentityServiceControllerMethods() {
@@ -324,6 +429,9 @@ export function IdentityServiceControllerMethods() {
       "getAdminUsers",
       "getClient",
       "getPaymentData",
+      "searchPlayer",
+      "updateUserDetails",
+      "validateUserByUsername",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

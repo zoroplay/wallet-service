@@ -1,11 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, WalletResponse } from './proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
 import { generateTrxNo, handleError, handleResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
 import { Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
 import { PaymentService } from './payments/payments.service';
+import { Withdrawal } from './entity/withdrawal.entity';
 
 @Injectable()
 export class AppService {
@@ -15,6 +16,9 @@ export class AppService {
     private walletRepository: Repository<Wallet>,
     @InjectRepository(PaymentMethod)
     private pMethodRepository: Repository<PaymentMethod>,
+    @InjectRepository(Withdrawal)
+    private withdrawalRepository: Repository<Withdrawal>,
+
     private paymentService: PaymentService
   ) {}
 
@@ -34,6 +38,7 @@ export class AppService {
       // create transaction
       if (amount > 0 || bonus  > 0) {
         await this.paymentService.saveTransaction({
+          clientId,
           transactionNo: generateTrxNo(),
           amount: data.amount,
           description: 'Inital Balance',
@@ -184,6 +189,7 @@ export class AppService {
       }
       //to-do save transaction log
       await this.paymentService.saveTransaction({
+        clientId: data.clientId,
         transactionNo: generateTrxNo(),
         amount: data.amount,
         description: data.description,
@@ -239,6 +245,7 @@ export class AppService {
 
       // to-do save transaction log
       await this.paymentService.saveTransaction({
+        clientId: data.clientId,
         transactionNo: generateTrxNo(),
         amount: data.amount,
         description: data.description,
@@ -257,6 +264,100 @@ export class AppService {
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
+    try {
+
+      const wallet = await this.walletRepository.findOne({where: {
+        user_id: data.userId,
+        client_id: data.clientId
+      }});
+
+      if (!wallet)
+        return {success: false, status: HttpStatus.NOT_FOUND, message: "Wallet not found", data: null}
+
+      if (wallet.available_balance < data.amount)
+        return {success: false, status: HttpStatus.BAD_REQUEST, message: "You have insufficient funds to cover the withdrawal request.", data: null}
+
+        //To-Do: other validation minimum and max withdrawal
+
+        const withdrawal = new Withdrawal();
+        withdrawal.account_name = data.accountName;
+        withdrawal.bank_code = data.bankCode;
+        withdrawal.bank_name = data.bankName;
+        withdrawal.account_number = parseInt(data.accountNumber);
+        withdrawal.user_id = data.userId;
+        withdrawal.username = data.username;
+        withdrawal.client_id = data.clientId;
+        withdrawal.amount = data.amount;
+        withdrawal.withdrawal_code = generateTrxNo();
+
+        await this.withdrawalRepository.save(withdrawal);
+
+      const balance = wallet.available_balance - data.amount;
+
+      await this.walletRepository.update({
+        user_id: data.userId,
+        client_id: data.clientId
+      }, {
+        // balance,
+        available_balance: balance
+      });
+
+      //to-do save transaction log
+      await this.paymentService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo: withdrawal.withdrawal_code,
+        amount: data.amount,
+        description: "withdrawal request",
+        subject: "Withdrawal",
+        channel: "internal",
+        source: data.source,
+        fromUserId: data.userId,
+        fromUsername: data.username,
+        fromUserBalance: balance,
+        toUserId: 0,
+        toUsername: 'System',
+        toUserBalance: 0,
+        status: 1
+      });
+      
+      return {success: true, status: HttpStatus.OK, message: "Successful", data: {
+        balance, code: withdrawal.withdrawal_code
+      }}
+    }catch (e) {
+      console.log(e.message)
+      return {success: false, status: HttpStatus.INTERNAL_SERVER_ERROR, message: "Unable to process request", data: null}
+    }
+  }
+
+  async listWithdrawalRequest(data) {
+    try {
+      let requests = [];
+      const res = await this.withdrawalRepository.find({
+        where:{client_id: data.clientId},
+        take: 100
+      })
+      if (res.length) {
+        for (const request of res) {
+          requests.push({
+            id: request.id,
+            username: request.username,
+            userId: request.user_id,
+            amount: request.amount,
+            accountNumber: request.account_number,
+            accountName: request.account_name,
+            bankName: request.bank_name,
+            updatedBy: request.updated_by,
+            status: request.status
+          })
+        }
+      }
+      return {success: true, status: HttpStatus.OK, message: 'Success', data: requests}
+    } catch (e) {
+      return {success: false, status: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Something went wrong', data: null}
     }
   }
 }
