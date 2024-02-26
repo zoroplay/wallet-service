@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, PaymentMethodRequest, PaymentMethodResponse, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
 import { generateTrxNo, handleError, handleResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
@@ -336,8 +336,10 @@ export class AppService {
     }
   }
 
-  async listWithdrawalRequest(data) {
+  async listWithdrawalRequest(data: ListWithdrawalRequests): Promise<ListWithdrawalRequestResponse> {
     try {
+      const {clientId, from, to, userId, status} = data;
+
       let requests = [];
       const res = await this.withdrawalRepository.find({
         where:{client_id: data.clientId},
@@ -354,7 +356,8 @@ export class AppService {
             accountName: request.account_name,
             bankName: request.bank_name,
             updatedBy: request.updated_by,
-            status: request.status
+            status: request.status,
+            created: request.created_at
           })
         }
       }
@@ -367,7 +370,6 @@ export class AppService {
   async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
     try {
       let results = [];
-      console.log(startDate, endDate)
       const transactions = await this.transactionRepository.createQueryBuilder('transaction')
           .where("transaction.client_id = :clientId", {clientId})
           .andWhere("transaction.user_id = :userId", {userId})
