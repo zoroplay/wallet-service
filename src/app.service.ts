@@ -367,30 +367,28 @@ export class AppService {
   async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
     try {
       let results = [];
-
+      console.log(startDate, endDate)
       const transactions = await this.transactionRepository.createQueryBuilder('transaction')
           .where("transaction.client_id = :clientId", {clientId})
           .andWhere("transaction.user_id = :userId", {userId})
-          // .andWhere("DATE(created_at) > :startDate AND DATE(created_at) < :endDate", {startDate, endDate})
+          .andWhere("DATE(created_at) > :startDate AND DATE(created_at) < :endDate", {startDate, endDate})
           .orderBy('transaction.created_at', 'DESC')
           .limit(20)
-          .getMany();
-
-        console.log(transactions)
+          .getRawMany();
 
       if (transactions.length > 0) {
         for (const transaction of transactions) {
           results.push({
-            id: transaction.id, 
-            referenceNo: transaction.transaction_no,
-            amount: transaction.amount,
-            balance: transaction.balance,
-            subject: transaction.subject,
-            type: transaction.tranasaction_type,
-            description: transaction.description,
-            transactionDate: transaction.created_at,
-            channel: transaction.channel,
-            status: transaction.status
+            id: transaction.transaction_id, 
+            referenceNo: transaction.transaction_transaction_no,
+            amount: transaction.transaction_amount,
+            balance: transaction.transaction_balance,
+            subject: transaction.transaction_subject,
+            type: transaction.transaction_tranasaction_type,
+            description: transaction.transaction_description,
+            transactionDate: transaction.transaction_created_at,
+            channel: transaction.transaction_channel,
+            status: transaction.transaction_status
           })
         }
       }
