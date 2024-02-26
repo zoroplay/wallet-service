@@ -32,9 +32,11 @@ export class OPayService {
             if (!transaction) {
                 const ref = generateTrxNo();
                 // find wallet
-                const wallet = await this.walletRepository.findOne({
-                    where: {client_id: param.clientId, username: param.username}
-                })
+                const wallet = await this.walletRepository.createQueryBuilder()
+                        .where("client_id = :clientId", {clientId: param.clientId})
+                        .andWhere("username = :username", {username: param.username})
+                        .getOne();
+
                 const amount = parseFloat(param.amount)/100;
                 const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount.toString())
 
@@ -89,7 +91,6 @@ export class OPayService {
                 data: {}
             }
         }
-
     }
 
     async reQueryLookUp({clientId, orderNo}) {

@@ -29,12 +29,12 @@ export class PaymentService {
         const transactionNo = generateTrxNo()
         let link = '', description;
         // find user wallet
-        const wallet = await this.walletRepository.findOne({
-            where: {
-                user_id: param.userId, 
-                client_id: param.clientId
-            }
-        });
+        // find wallet
+        const wallet = await this.walletRepository.createQueryBuilder()
+            .where("client_id = :clientId", {clientId: param.clientId})
+            .andWhere("username = :username", {username: param.username})
+            .getOne();
+
         if (!wallet)
             return {success: false, message: 'Wallet not found'};
         
