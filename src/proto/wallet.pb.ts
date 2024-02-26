@@ -29,17 +29,16 @@ export interface VerifyDepositResponse {
   message: string;
 }
 
-export interface WebhookRequest {
+export interface PaystackWebhookRequest {
   clientId: number;
-  transactionRef: string;
-  paymentChannel: string;
-  paymentStatus: string;
+  reference: string;
+  event: string;
+  body: string;
+  paystackKey: string;
 }
 
 export interface WebhookResponse {
   success: boolean;
-  status: number;
-  message: string;
 }
 
 export interface GetPaymentMethodRequest {
@@ -225,7 +224,7 @@ export interface GetTransactionResponse {
 export interface OpayWebhookRequest {
   clientId: number;
   username?: string | undefined;
-  transactionNo: string;
+  orderNo: string;
   amount: string;
 }
 
@@ -287,8 +286,6 @@ export interface WalletServiceClient {
 
   verifyDeposit(request: VerifyDepositRequest): Observable<VerifyDepositResponse>;
 
-  paymentWebhook(request: WebhookRequest): Observable<WebhookResponse>;
-
   requestWithdrawal(request: WithdrawRequest): Observable<WithdrawResponse>;
 
   verifyBankAccount(request: VerifyBankAccountRequest): Observable<VerifyBankAccountResponse>;
@@ -298,6 +295,8 @@ export interface WalletServiceClient {
   getPaymentMethods(request: GetPaymentMethodRequest): Observable<GetPaymentMethodResponse>;
 
   savePaymentMethod(request: PaymentMethodRequest): Observable<PaymentMethodResponse>;
+
+  paystackWebhook(request: PaystackWebhookRequest): Observable<WebhookResponse>;
 
   opayDepositWebhook(request: OpayWebhookRequest): Observable<OpayWebhookResponse>;
 
@@ -323,8 +322,6 @@ export interface WalletServiceController {
     request: VerifyDepositRequest,
   ): Promise<VerifyDepositResponse> | Observable<VerifyDepositResponse> | VerifyDepositResponse;
 
-  paymentWebhook(request: WebhookRequest): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
-
   requestWithdrawal(
     request: WithdrawRequest,
   ): Promise<WithdrawResponse> | Observable<WithdrawResponse> | WithdrawResponse;
@@ -344,6 +341,10 @@ export interface WalletServiceController {
   savePaymentMethod(
     request: PaymentMethodRequest,
   ): Promise<PaymentMethodResponse> | Observable<PaymentMethodResponse> | PaymentMethodResponse;
+
+  paystackWebhook(
+    request: PaystackWebhookRequest,
+  ): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
 
   opayDepositWebhook(
     request: OpayWebhookRequest,
@@ -367,12 +368,12 @@ export function WalletServiceControllerMethods() {
       "debitUser",
       "inititateDeposit",
       "verifyDeposit",
-      "paymentWebhook",
       "requestWithdrawal",
       "verifyBankAccount",
       "getTransactions",
       "getPaymentMethods",
       "savePaymentMethod",
+      "paystackWebhook",
       "opayDepositWebhook",
       "opayLookUpWebhook",
       "listWithdrawals",

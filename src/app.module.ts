@@ -16,6 +16,8 @@ import { MomoService } from './services/momo.service';
 import { MgurushService } from './services/mgurush.service';
 import { MonnifyService } from './services/monnify.service';
 import { IdentityModule } from './identity/identity.module';
+import { HelperService } from './services/helper.service';
+import { OPayService } from './services/opay.service';
 
 @Module({
   imports: [
@@ -33,6 +35,6 @@ import { IdentityModule } from './identity/identity.module';
     IdentityModule
   ],
   controllers: [AppController],
-  providers: [AppService, FlutterwaveService, MonnifyService, MomoService, MgurushService, PaymentService, PaystackService,],
+  providers: [AppService, FlutterwaveService, MonnifyService, MomoService, MgurushService, OPayService, PaymentService, PaystackService, HelperService],
 })
 export class AppModule {}

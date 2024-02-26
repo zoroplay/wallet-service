@@ -5,8 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
 import { Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
-import { PaymentService } from './payments/payments.service';
 import { Withdrawal } from './entity/withdrawal.entity';
+import { HelperService } from './services/helper.service';
 
 @Injectable()
 export class AppService {
@@ -18,8 +18,7 @@ export class AppService {
     private pMethodRepository: Repository<PaymentMethod>,
     @InjectRepository(Withdrawal)
     private withdrawalRepository: Repository<Withdrawal>,
-
-    private paymentService: PaymentService
+    private helperService: HelperService
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -37,7 +36,7 @@ export class AppService {
 
       // create transaction
       if (amount > 0 || bonus  > 0) {
-        await this.paymentService.saveTransaction({
+        await this.helperService.saveTransaction({
           clientId,
           transactionNo: generateTrxNo(),
           amount: data.amount,
@@ -188,7 +187,7 @@ export class AppService {
         await this.walletRepository.save(wallet);
       }
       //to-do save transaction log
-      await this.paymentService.saveTransaction({
+      await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo: generateTrxNo(),
         amount: data.amount,
@@ -244,7 +243,7 @@ export class AppService {
       });
 
       // to-do save transaction log
-      await this.paymentService.saveTransaction({
+      await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo: generateTrxNo(),
         amount: data.amount,
@@ -307,7 +306,7 @@ export class AppService {
       });
 
       //to-do save transaction log
-      await this.paymentService.saveTransaction({
+      await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo: withdrawal.withdrawal_code,
         amount: data.amount,

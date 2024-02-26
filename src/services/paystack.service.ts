@@ -6,6 +6,10 @@ import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
+import { Withdrawal } from 'src/entity/withdrawal.entity';
+import { HelperService } from './helper.service';
+import { generateTrxNo } from 'src/common/helpers';
 
 @Injectable()
 export class PaystackService {
@@ -16,7 +20,11 @@ export class PaystackService {
         @InjectRepository(Transaction)
         private readonly transactionRepository: Repository<Transaction>,
         @InjectRepository(Wallet)
-        private readonly walletRepository: Repository<Wallet>
+        private readonly walletRepository: Repository<Wallet>,
+        @InjectRepository(Withdrawal)
+        private readonly withdrawalRepository: Repository<Withdrawal>,
+
+        private helperService: HelperService
     ) {}
     
     async generatePaymentLink(data, client_id) {
@@ -38,17 +46,16 @@ export class PaystackService {
 
     async verifyTransaction(param) {
         try {
-            const paymentSettings = await this.paystackSettings(param.client_id);
+            const paymentSettings = await this.paystackSettings(param.clientId);
 
             const resp = await get(`${paymentSettings.base_url}/transaction/verify/${param.transactionRef}`, {
                 'Authorization': `Bearer ${paymentSettings.secret_key}`,
             });
 
-
             const data = resp.data;
             const transaction = await this.transactionRepository.findOne({
                 where: {
-                    client_id: param.client_id,
+                    client_id: param.clientId,
                     transaction_no: param.transactionRef,
                     tranasaction_type: 'credit'
                 }
@@ -66,14 +73,9 @@ export class PaystackService {
                     // find user wallet
                     const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
 
+                    const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
                     // fund user wallet
-                    await this.walletRepository.update({
-                        user_id: transaction.user_id,
-                        client_id: param.clientId
-                    }, {
-                        // balance,
-                        available_balance: parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
-                    });
+                    await this.fundWallet(balance, transaction.user_id);
 
                     // update transaction status to completed - 1
                     await this.transactionRepository.update({
@@ -123,6 +125,159 @@ export class PaystackService {
                 provider: 'paystack',  
                 client_id
             }
+        });
+    }
+
+    async handleWebhook(data) {
+        try {
+            const paymentSettings = await this.paystackSettings(data.clientId);
+            // validate request with paystack key
+            const hash = crypto.createHmac('sha512', paymentSettings.secret_key).update(data.body).digest('hex');
+            if (hash == data.paystackKey) {
+                switch (data.event) {
+                    case 'charge.success':
+                        const transaction = await this.transactionRepository.findOne({
+                            where: {
+                                client_id: data.clientId, 
+                                transaction_no: data.reference,
+                                tranasaction_type: 'credit'
+                            }
+                        });
+                        if (transaction && transaction.status === 0) {
+                            // find user wallet
+                            const wallet = await this.walletRepository.findOne(
+                                {where: {user_id: transaction.user_id}
+                            });
+                            const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
+                            // update user wallet
+                            await this.fundWallet(balance, transaction.user_id);
+
+                            // update transaction status
+                            await this.transactionRepository.update({
+                                transaction_no: transaction.transaction_no,
+                            }, {
+                                status: 1
+                            })
+                        }
+                        
+                        break;
+                    case 'transfer.success': 
+                        const withdrawalSuccess = await this.withdrawalRepository.findOne({
+                            where: {client_id: data.clientId, withdrawal_code: data.reference}
+                        });
+                        if (withdrawalSuccess && withdrawalSuccess.status === 0) {
+                            // update withdrawal status
+                            await this.withdrawalRepository.update({
+                                id: withdrawalSuccess.id
+                            }, {
+                                status: 1
+                            })
+                        } else {
+                            console.log('transfer.success: withdrawal not found', data.reference)
+                        }
+                        break;
+                    case 'transfer.failed':
+                        const withdrawalFailed = await this.withdrawalRepository.findOne({
+                            where: {client_id: data.clientId, withdrawal_code: data.reference}
+                        });
+                        if (withdrawalFailed) {
+                             // update withdrawal status
+                            await this.withdrawalRepository.update({
+                                id: withdrawalSuccess.id
+                            }, {
+                                status: 2,
+                                comment: 'Transfer failed'
+                            });
+                            // find user wallet
+                            const wallet = await this.walletRepository.findOne(
+                                {where: {user_id: withdrawalFailed.user_id}
+                            });
+
+                            const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(withdrawalFailed.amount.toString())
+                            // update user wallet
+                            await this.fundWallet(balance, withdrawalFailed.user_id);
+
+                            // save transaction
+                            await this.helperService.saveTransaction({
+                                amount: withdrawalFailed.amount,
+                                channel: 'internal',
+                                clientId: data.clientId,
+                                toUserId: withdrawalFailed.user_id,
+                                toUsername: wallet.username,
+                                toUserBalance: balance,
+                                fromUserId: 0,
+                                fromUsername: 'System',
+                                fromUserbalance: 0,
+                                source: 'system',
+                                subject: 'Failed Withdrawal Request',
+                                description: "Transfer failed",
+                                transactionNo: generateTrxNo(),
+                                status: 1
+                            })
+                
+
+                        } else {
+                            console.log('transfer.failed: withdrawal not found', data.reference)
+                        }
+                        break;
+                    case 'transfer.reversed':
+                        const reversed = await this.withdrawalRepository.findOne({
+                            where: {client_id: data.clientId, withdrawal_code: data.reference}
+                        });
+                        if (reversed) {
+                             // update withdrawal status
+                            await this.withdrawalRepository.update({
+                                id: withdrawalSuccess.id
+                            }, {
+                                status: 2,
+                                comment: 'Transfer failed'
+                            });
+                            // find user wallet
+                            const wallet = await this.walletRepository.findOne(
+                                {where: {user_id: reversed.user_id}
+                            });
+
+                            const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(reversed.amount.toString())
+                            // update user wallet
+                            await this.fundWallet(balance, reversed.user_id);
+
+                            // save transaction
+                            await this.helperService.saveTransaction({
+                                amount: reversed.amount,
+                                channel: 'internal',
+                                clientId: data.clientId,
+                                toUserId: reversed.user_id,
+                                toUsername: wallet.username,
+                                toUserBalance: balance,
+                                fromUserId: 0,
+                                fromUsername: 'System',
+                                fromUserbalance: 0,
+                                source: 'system',
+                                subject: 'Reversed Withdrawal Request',
+                                description: "Transfer was reversed",
+                                transactionNo: generateTrxNo(),
+                                status: 1
+                            })
+                
+                        } else {
+                            console.log('transfer.reversed: withdrawal not found', data.reference)
+                        }
+                        break;
+                }
+                return {success: true}
+            }
+        } catch(e) {
+            console.log('Paystack error', e.message);
+            return {success: false, message: "error occured"};
+        }
+    }
+
+    private async fundWallet(amount, user_id) {
+        // update user wallet
+        await this.walletRepository.update({
+            user_id,
+        }, {
+            available_balance: amount
         });
     }
 }
