@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { AppService } from './app.service';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, InitiateDepositRequest, OpayWebhookRequest, PaymentMethodRequest, VerifyBankAccountRequest, VerifyDepositRequest, WALLET_SERVICE_NAME, WithdrawRequest } from 'src/proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, InitiateDepositRequest, OpayWebhookRequest, PaymentMethodRequest, UserTransactionRequest, VerifyBankAccountRequest, VerifyDepositRequest, WALLET_SERVICE_NAME, WithdrawRequest } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './payments/payments.service';
 import { PaystackService } from './services/paystack.service';
@@ -65,9 +65,14 @@ export class AppController {
     return this.appService.requestWithdrawal(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ListWithdrawas')
-  ListWithdrawas(param: WithdrawRequest) {
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ListWithdrawals')
+  ListWithdrawals(param: WithdrawRequest) {
     return this.appService.listWithdrawalRequest(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'UserTransactions')
+  UserTransactions(param: UserTransactionRequest) {
+    return this.appService.getUserTransactions(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'PaystackWebhook')

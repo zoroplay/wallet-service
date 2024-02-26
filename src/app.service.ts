@@ -1,12 +1,14 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, PaymentMethodRequest, PaymentMethodResponse, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
 import { generateTrxNo, handleError, handleResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
 import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
+import { Transaction } from './entity/transaction.entity';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class AppService {
@@ -18,6 +20,8 @@ export class AppService {
     private pMethodRepository: Repository<PaymentMethod>,
     @InjectRepository(Withdrawal)
     private withdrawalRepository: Repository<Withdrawal>,
+    @InjectRepository(Transaction)
+    private transactionRepository: Repository<Transaction>,
     private helperService: HelperService
   ) {}
 
@@ -357,6 +361,44 @@ export class AppService {
       return {success: true, status: HttpStatus.OK, message: 'Success', data: requests}
     } catch (e) {
       return {success: false, status: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Something went wrong', data: null}
+    }
+  }
+
+  async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
+    try {
+      let results = [];
+
+      const transactions = await this.transactionRepository.createQueryBuilder('transaction')
+          .where("transaction.client_id = :clientId", {clientId})
+          .andWhere("transaction.user_id = :userId", {userId})
+          // .andWhere("DATE(created_at) > :startDate AND DATE(created_at) < :endDate", {startDate, endDate})
+          .orderBy('transaction.created_at', 'DESC')
+          .limit(20)
+          .getMany();
+
+        console.log(transactions)
+
+      if (transactions.length > 0) {
+        for (const transaction of transactions) {
+          results.push({
+            id: transaction.id, 
+            referenceNo: transaction.transaction_no,
+            amount: transaction.amount,
+            balance: transaction.balance,
+            subject: transaction.subject,
+            type: transaction.tranasaction_type,
+            description: transaction.description,
+            transactionDate: transaction.created_at,
+            channel: transaction.channel,
+            status: transaction.status
+          })
+        }
+      }
+
+      return {success: true, message: "Successful", data: results};
+    } catch (e) {
+      console.log(e.message)
+      return {success: false, message: 'Unable to fetch transactions', data: null}
     }
   }
 }
