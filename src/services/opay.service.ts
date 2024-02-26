@@ -23,13 +23,12 @@ export class OPayService {
     async updateNotify(param: OpayWebhookRequest) {
         try {
             // find transaction
-            const transaction = await this.transactionRepository.findOne({
-                where: {
-                    client_id: param.clientId,
-                    description: param.orderNo,
-                    tranasaction_type: 'credit'
-                }
-            });
+            const transaction = await this.transactionRepository.createQueryBuilder()
+            .where("client_id = :clientId", {clientId: param.clientId})
+            .andWhere("description = :orderNo", {orderNo: param.orderNo})
+            .andWhere("tranasaction_type = :type", {type: 'credit'})
+            .getOne();
+             
             if (!transaction) {
                 const ref = generateTrxNo();
                 // find wallet
@@ -93,15 +92,14 @@ export class OPayService {
 
     }
 
-    async reQueryLookUp(param) {
+    async reQueryLookUp({clientId, orderNo}) {
         // find transaction
-        const transaction = await this.transactionRepository.findOne({
-            where: {
-                client_id: param.clientId,
-                description: param.orderNo,
-                tranasaction_type: 'credit'
-            }
-        });
+        const transaction = await this.transactionRepository.createQueryBuilder()
+            .where("client_id = :clientId", {clientId})
+            .andWhere("description = :orderNo", {orderNo})
+            .andWhere("tranasaction_type = :type", {type: 'credit'})
+            .getOne()
+            
         if (transaction) {
             const Status = transaction.status === 1 ? "00" : (transaction.status === 0 ? "01" : "02")
             return {
@@ -109,7 +107,7 @@ export class OPayService {
                 responseMessage: "SUCCESSFULL",
                 data: {
                     UserID: transaction.user_id,
-                    OrderNo: param.orderNo,
+                    OrderNo: orderNo,
                     TransDate: dayjs(transaction.created_at).format('YYYY-MM-DD'),
                     TransAmount: transaction.amount,
                     PaymentReference: transaction.transaction_no,
