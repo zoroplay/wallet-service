@@ -23,8 +23,8 @@ export class Withdrawal {
     @Column({ type: "varchar", length: 20, nullable: true})
     withdrawal_code: string;
 
-    @Column({ type: "int" })
-    account_number: number;
+    @Column({ type: "varchar" })
+    account_number: string;
 
     @Column({ type: "varchar", length: 150, nullable: true})
     account_name: string;

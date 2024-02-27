@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
+import * as https from 'https';
 
 @Injectable()
 export class PaystackService {
@@ -111,22 +112,10 @@ export class PaystackService {
             // return false if paystack settings is not available
             if (!paymentSettings) return {success: false, message: 'Paystack has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
     
-            const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, paymentSettings);
+            const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, paymentSettings.secret_key);
             if (initRes.success) {
                 // do transfer with paystack transfer api
-                const resp = await post(`${paymentSettings.base_url}/transfer`, {
-                    source: 'balance',
-                    amount: withdrawal.amount,
-                    reference: withdrawal.withdrawal_code,
-                    recipient: initRes.data.recipient_code,
-                    reason:  'Payout request'
-                }, {
-                    'Authorization': `Bearer ${paymentSettings.secret_key}`,
-                    'Content-Type': 'application/json',
-                });
-
-                console.log('transfer', resp)
-
+                const resp: any = await this.doTransfer(withdrawal.amount, withdrawal.withdrawal_code, initRes.data.recipient_code, paymentSettings.secret_key)
 
                 return {success: resp.status, data: resp.data, message: resp.message};
 
@@ -140,8 +129,7 @@ export class PaystackService {
         }
     }
 
-    private async initiateTransfer(accountNo, accountName, bankCode, paymentSettings) {
-        const https = require('https')
+    private async initiateTransfer(accountNo, accountName, bankCode, key) {
         const params = JSON.stringify({
             "type": "nuban",
             "name": accountName,
@@ -156,7 +144,7 @@ export class PaystackService {
             path: '/transferrecipient',
             method: 'POST',
             headers: {
-                Authorization: 'Bearer ' + paymentSettings.secret_key,
+                Authorization: 'Bearer ' + key,
                 'Content-Type': 'application/json'
             }
         }
@@ -170,7 +158,7 @@ export class PaystackService {
                 });
     
                 res.on('end', () => {
-                    console.log(JSON.parse(data))
+                    // console.log(JSON.parse(data))
                     resolve(JSON.parse(data))
                 })
             }).on('error', error => {
@@ -181,10 +169,54 @@ export class PaystackService {
             req.write(params)
             req.end()
         })
-        
+    
+        return {success: resp.status, data: resp.data, message: resp.message};
+    }
 
-        return {success: resp.staus, data: resp.data, message: resp.message};
+    private async doTransfer(amount, reference, recipient, key) {
+        const params = JSON.stringify({
+            source: 'balance',
+            amount: parseFloat(amount),
+            reference,
+            recipient,
+            reason:  'Payout request'
+        })
 
+        console.log(params)
+
+        const options = {
+            hostname: 'api.paystack.co',
+            port: 443,
+            path: '/transfer',
+            method: 'POST',
+            headers: {
+                Authorization: 'Bearer ' + key,
+                'Content-Type': 'application/json'
+            }
+        }
+
+        const resp: any = await new Promise((resolve, reject) => {
+            const req = https.request(options, res => {
+                let data = ''
+
+                res.on('data', (chunk) => {
+                    data += chunk
+                });
+    
+                res.on('end', () => {
+                    // console.log(JSON.parse(data))
+                    resolve(JSON.parse(data))
+                })
+            }).on('error', error => {
+                console.error(error)
+                reject(error)
+            })
+    
+            req.write(params)
+            req.end()
+        })
+    
+        return {success: resp.status, data: resp.data, message: resp.message};
     }
 
     async resolveAccountNumber(client_id, accountNo, banckCode) {
