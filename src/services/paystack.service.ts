@@ -111,7 +111,7 @@ export class PaystackService {
             // return false if paystack settings is not available
             if (!paymentSettings) return {success: false, message: 'Paystack has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
     
-            const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, client_id);
+            const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, paymentSettings);
             if (initRes.success) {
                 // do transfer with paystack transfer api
                 const resp = await post(`${paymentSettings.base_url}/transfer`, {
@@ -119,10 +119,10 @@ export class PaystackService {
                     amount: withdrawal.amount,
                     reference: withdrawal.withdrawal_code,
                     recipient: initRes.data.recipient_code,
-                    reason: 'Payout request'
+                    reason:  'Payout request'
                 }, {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${paymentSettings.secret_key}`,
+                    'Content-Type': 'application/json',
                 });
 
                 console.log('transfer', resp)
@@ -141,14 +141,17 @@ export class PaystackService {
     }
 
     private async initiateTransfer(accountNo, accountName, bankCode, paymentSettings) {
-        const resp = await post(`${paymentSettings.base_url}/transferrecipient`, {
+        const url = `${paymentSettings.base_url}/transferrecipient`;
+        const data = {
             type: 'nuban',
             name: accountName,
-            account_number: accountNo,
+            account_number: accountNo.toString(),
             bank_code: bankCode,
-        }, {
-            'Content-Type': 'application/json',
+            currency: 'NGN'
+        }
+        const resp = await post(url, data , {
             'Authorization': `Bearer ${paymentSettings.secret_key}`,
+            'Content-Type': 'application/json',
         })
         console.log('initiate', resp)
         return {success: resp.status, data: resp.data, message: resp.message};
