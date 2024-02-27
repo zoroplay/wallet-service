@@ -5,8 +5,9 @@ import { generateTrxNo } from 'src/common/helpers';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
+import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { IdentityService } from 'src/identity/identity.service';
-import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, VerifyBankAccountRequest, VerifyBankAccountResponse } from 'src/proto/wallet.pb';
+import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, VerifyBankAccountRequest, VerifyBankAccountResponse, UpdateWithdrawalResponse } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
 import { Repository } from 'typeorm';
@@ -14,8 +15,8 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class PaymentService {
     constructor(
-        @InjectRepository(Transaction)
-        private readonly transactionRepository: Repository<Transaction>,
+        @InjectRepository(Withdrawal)
+        private readonly withdrawalRepository: Repository<Withdrawal>,
         @InjectRepository(Wallet)
         private readonly walletRepository: Repository<Wallet>,
         @InjectRepository(PaymentMethod)
@@ -97,6 +98,101 @@ export class PaymentService {
         } catch (e) {
             // console.log(e.message);
             return {success: false, message: 'Unable to complete transaction'}
+        }
+    }
+
+    async updateWithdrawalStatus({clientId, withdrawalId, action, comment, updatedBy}): Promise<UpdateWithdrawalResponse> {
+        try {
+            const wRequest = await this.withdrawalRepository.findOne({where: {id: withdrawalId}});
+            if (wRequest) {
+                if (action === 'approve') {
+                    const paymentMethod = await this.paymentMethodRepository.findOne({
+                        where: {for_disbursement: 1}
+                    })
+                    if (paymentMethod) {
+                        let resp: any = {
+                            success: false,
+                            message: 'Unable to disburse funds with '+ paymentMethod.provider,
+                            status: HttpStatus.NOT_IMPLEMENTED
+                        }
+                        switch (paymentMethod.provider) {
+                            case 'paystack':
+                                resp = await this.paystackService.disburseFunds(wRequest, clientId);
+                                break;
+                            case 'mgurush':
+                                break;
+                            case 'monnify':
+                                break;
+                            case 'flutterwave':
+                                break;
+                            default:
+                                break;
+                        }
+                        // update withdrawal request
+                        if (resp.success)
+                            await this.withdrawalRepository.update({
+                                id: withdrawalId
+                            }, {
+                                status: 1,
+                                updated_by: updatedBy
+                            })
+                        // return response
+                        return resp;
+                    } else {
+                        return {
+                            success: false,
+                            message: 'No payment method has been setup for auto disbursement', 
+                            status: HttpStatus.NOT_IMPLEMENTED
+                        };
+                    }
+                } else {
+                    // update withdrawal status
+                    await this.withdrawalRepository.update({
+                        id: withdrawalId
+                    }, {
+                        status: 2,
+                        comment,
+                        updated_by: updatedBy
+                    })
+                    //return funds to user wallet
+                    const wallet = await this.walletRepository.findOne({where: {
+                        client_id: clientId,
+                        user_id: wRequest.user_id
+                    }});
+
+                    const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(wRequest.amount.toString());
+
+                    // update user balance
+                    await this.walletRepository.update({
+                        id: wallet.id
+                    }, {
+                        available_balance: balance
+                    });
+
+                    await this.helperService.saveTransaction({
+                        amount: wRequest.amount,
+                        channel: 'internal',
+                        clientId,
+                        toUserId: wallet.user_id,
+                        toUsername: wallet.username,
+                        toUserBalance: balance,
+                        fromUserId: 0,
+                        fromUsername: 'System',
+                        fromUserbalance: 0,
+                        source: 'internal',
+                        subject: 'Rejected Request',
+                        description: comment || 'Withdrawal request was cancelled',
+                        transactionNo: generateTrxNo(),
+                        status: 1
+                    })
+                    return {success: true, message: 'Withdrawal request updated', status: HttpStatus.CREATED};
+                }
+            } else {
+                return {success: false, message: 'Withdrawal request not found', status: HttpStatus.NOT_FOUND};
+            }
+
+        } catch(e) {
+            return {success: false, message: 'Unable to request status', status: HttpStatus.INTERNAL_SERVER_ERROR};
         }
     }
 
@@ -194,7 +290,4 @@ export class PaymentService {
             }
         }
     }
-
-    
-
 }

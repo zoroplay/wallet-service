@@ -105,6 +105,55 @@ export class PaystackService {
         }
     }
 
+    async disburseFunds(withdrawal: Withdrawal, client_id) {
+        try {
+            const paymentSettings = await this.paystackSettings(client_id);
+            // return false if paystack settings is not available
+            if (!paymentSettings) return {success: false, message: 'Paystack has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
+    
+            const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, client_id);
+            if (initRes.success) {
+                // do transfer with paystack transfer api
+                const resp = await post(`${paymentSettings.base_url}/transfer`, {
+                    source: 'balance',
+                    amount: withdrawal.amount,
+                    reference: withdrawal.withdrawal_code,
+                    recipient: initRes.data.recipient_code,
+                    reason: 'Payout request'
+                }, {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${paymentSettings.secret_key}`,
+                });
+
+                console.log('transfer', resp)
+
+
+                return {success: resp.status, data: resp.data, message: resp.message};
+
+            } else {
+                return initRes;
+            }
+
+        } catch (e) {
+            console.log(e.message);
+            return {success: false, message: 'Paystack Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
+        }
+    }
+
+    private async initiateTransfer(accountNo, accountName, bankCode, paymentSettings) {
+        const resp = await post(`${paymentSettings.base_url}/transferrecipient`, {
+            type: 'nuban',
+            name: accountName,
+            account_number: accountNo,
+            bank_code: bankCode,
+        }, {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${paymentSettings.secret_key}`,
+        })
+        console.log('initiate', resp)
+        return {success: resp.status, data: resp.data, message: resp.message};
+    }
+
     async resolveAccountNumber(client_id, accountNo, banckCode) {
         try {
             const paymentSettings = await this.paystackSettings(client_id);
@@ -119,7 +168,7 @@ export class PaystackService {
         }
     }
 
-    async paystackSettings(client_id: number) {
+    private async paystackSettings(client_id: number) {
         return await this.paymentMethodRepository.findOne({
             where: {
                 provider: 'paystack',  
