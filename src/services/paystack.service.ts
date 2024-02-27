@@ -141,30 +141,50 @@ export class PaystackService {
     }
 
     private async initiateTransfer(accountNo, accountName, bankCode, paymentSettings) {
-        const url = `${paymentSettings.base_url}/transferrecipient`;
-        const data = {
-            type: 'nuban',
-            name: accountName,
-            account_number: accountNo.toString(),
-            bank_code: bankCode,
-            currency: 'NGN'
+        const https = require('https')
+        const params = JSON.stringify({
+            "type": "nuban",
+            "name": accountName,
+            "account_number": accountNo,
+            "bank_code": bankCode,
+            "currency": "NGN"
+        })
+
+        const options = {
+            hostname: 'api.paystack.co',
+            port: 443,
+            path: '/transferrecipient',
+            method: 'POST',
+            headers: {
+                Authorization: 'Bearer ' + paymentSettings.secret_key,
+                'Content-Type': 'application/json'
+            }
         }
 
-        console.log(data)
+        const resp: any = await new Promise((resolve, reject) => {
+            const req = https.request(options, res => {
+                let data = ''
 
-        const resp = await post(url, data , {
-            'Authorization': `Bearer ${paymentSettings.secret_key}`,
-            'Content-Type': 'application/json',
-        }).then(res => {
-            console.log('response',res);
-            return res;
-        }).catch(err => {
-            console.log('error', err)
-            return err
+                res.on('data', (chunk) => {
+                    data += chunk
+                });
+    
+                res.on('end', () => {
+                    console.log(JSON.parse(data))
+                    resolve(JSON.parse(data))
+                })
+            }).on('error', error => {
+                console.error(error)
+                reject(error)
+            })
+    
+            req.write(params)
+            req.end()
         })
         
-        console.log('initiate', resp)
-        return {success: resp.status, data: resp.data, message: resp.message};
+
+        return {success: resp.staus, data: resp.data, message: resp.message};
+
     }
 
     async resolveAccountNumber(client_id, accountNo, banckCode) {
