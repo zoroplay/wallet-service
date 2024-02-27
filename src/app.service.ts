@@ -290,7 +290,7 @@ export class AppService {
         withdrawal.account_name = data.accountName;
         withdrawal.bank_code = data.bankCode;
         withdrawal.bank_name = data.bankName;
-        withdrawal.account_number = parseInt(data.accountNumber);
+        withdrawal.account_number = data.accountNumber;
         withdrawal.user_id = data.userId;
         withdrawal.username = data.username;
         withdrawal.client_id = data.clientId;
