@@ -115,7 +115,7 @@ export class PaystackService {
             const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, paymentSettings.secret_key);
             if (initRes.success) {
                 // do transfer with paystack transfer api
-                const resp: any = await this.doTransfer(withdrawal.amount, initRes.data.recipient_code, paymentSettings.secret_key)
+                const resp: any = await this.doTransfer(withdrawal.amount, withdrawal.withdrawal_code, initRes.data.recipient_code, paymentSettings.secret_key)
                 // console.log(resp);
                 return {success: resp.success, data: resp.data, message: resp.message};
 
@@ -173,16 +173,16 @@ export class PaystackService {
         return {success: resp.status, data: resp.data, message: resp.message};
     }
 
-    private async doTransfer(amount, recipient, key) {
+    private async doTransfer(amount, reference, recipient, key) {
         const params = JSON.stringify({
             source: 'balance',
-            amount: parseFloat(amount),
-            reference: generateTrxNo(),
+            amount: parseFloat(amount) * 100,
+            reference,
             recipient,
             reason:  'Payout request'
         })
 
-        console.log(params)
+        // console.log(params)
 
         const options = {
             hostname: 'api.paystack.co',
