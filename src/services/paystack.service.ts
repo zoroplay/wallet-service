@@ -149,10 +149,20 @@ export class PaystackService {
             bank_code: bankCode,
             currency: 'NGN'
         }
+
+        console.log(data)
+
         const resp = await post(url, data , {
             'Authorization': `Bearer ${paymentSettings.secret_key}`,
             'Content-Type': 'application/json',
+        }).then(res => {
+            console.log('response',res);
+            return res;
+        }).catch(err => {
+            console.log('error', err)
+            return err
         })
+        
         console.log('initiate', resp)
         return {success: resp.status, data: resp.data, message: resp.message};
     }

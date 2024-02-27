@@ -33,7 +33,7 @@ export class PaymentService {
         // find wallet
         const wallet = await this.walletRepository.createQueryBuilder()
             .where("client_id = :clientId", {clientId: param.clientId})
-            .andWhere("username = :username", {username: param.username})
+            .andWhere("user_id = :user_id", {user_id: param.userId})
             .getOne();
 
         if (!wallet)
