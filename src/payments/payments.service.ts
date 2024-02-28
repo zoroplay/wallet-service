@@ -268,9 +268,9 @@ export class PaymentService {
                 default:
                     break;
             }
-            console.log(firstname)
-            console.log(lastname)
-            if (names.includes(firstname) || names.includes(lastname)) {
+            console.log(firstname, lastname)
+            console.log(name.toLowerCase())
+            if (name.toLowerCase().includes(firstname) || name.toLowerCase().includes(lastname)) {
                 return {
                     success: true,
                     message: name, 
