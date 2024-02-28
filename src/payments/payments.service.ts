@@ -249,6 +249,7 @@ export class PaymentService {
             switch (paymentMethod.provider) {
                 case 'paystack':
                     resp = await this.paystackService.resolveAccountNumber(param.clientId, param.accountNumber, param.bankCode);
+                    console.log(resp)
                     if (resp.success) {
                         names = resp.data.account_name.toLowerCase().split(" ")
                         name = resp.data.account_name;
