@@ -268,6 +268,8 @@ export class PaymentService {
                 default:
                     break;
             }
+            console.log(firstname)
+            console.log(lastname)
             if (names.includes(firstname) || names.includes(lastname)) {
                 return {
                     success: true,
