@@ -25,6 +25,11 @@ export class AppController {
     return this.appService.getBalance(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetPlayerWalletData')
+  GetPlayerWalletData(param: GetBalanceRequest) {
+    return this.appService.getWalletSummary(param);
+  }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreditUser')
   CreditUser(param: CreditUserRequest) {
     return this.appService.creditUser(param);

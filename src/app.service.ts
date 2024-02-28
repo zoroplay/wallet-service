@@ -1,14 +1,14 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, PaymentMethodRequest, PaymentMethodResponse, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, PaymentMethodRequest, PaymentMethodResponse, PlayerWalletData, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
 import { generateTrxNo, handleError, handleResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
-import { LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
 import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 
 @Injectable()
 export class AppService {
@@ -405,6 +405,121 @@ export class AppService {
     } catch (e) {
       console.log(e.message)
       return {success: false, message: 'Unable to fetch transactions', data: null}
+    }
+  }
+
+  async getWalletSummary ({clientId, userId}): Promise<PlayerWalletData> {
+    try {
+      const wallet = await this.walletRepository.findOne({where: {
+        user_id: userId,
+        client_id: clientId
+      }});
+
+      // sum deposit transactions
+      const deposits = await this.transactionRepository.sum('amount', {
+        subject: 'Deposit',
+        user_id: userId,
+        status: 1
+      });
+
+      // sum withdrawals transactions
+      const withdrawals = await this.transactionRepository.sum('amount', {
+        subject: 'Withdrawal',
+        user_id: userId,
+        status: 1
+      });
+
+      // sum pending withdrawals transactions
+      const pendingWithdrawals = await this.transactionRepository.sum('amount', {
+        subject: 'Withdrawal',
+        user_id: userId,
+        status: 0
+      });
+      // get last deposit
+      const lastDeposit = await this.transactionRepository.findOne({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          subject: 'Deposit',
+          status: 1
+        },
+        order: {created_at: 'DESC'}
+      })
+
+      // get last deposit
+      const lastWithdrawal = await this.transactionRepository.findOne({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          subject: 'Withdrawal',
+          status: 1,
+        },
+        order: {created_at: 'DESC'}
+      })
+
+      // get first activity
+      const firstActivity = await this.transactionRepository.findOne({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          status: 1
+        },
+      })
+
+      // get last activity
+      const lastActivity = await this.transactionRepository.findOne({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          status: 1,
+        },
+        order: {created_at: 'DESC'}
+      })
+
+      const averageWithdrawals = await this.transactionRepository.average('amount', {
+        user_id: userId, 
+        client_id: clientId,
+        status: 1
+      })
+
+      const noOfDeposits = await this.transactionRepository.count({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          status: 1,
+          subject: 'Deposit'
+        }
+      })
+
+      const noOfWithdrawals = await this.transactionRepository.count({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          status: 1,
+          subject: 'Withdrawal'
+        }
+      })
+
+      const data = {
+        noOfDeposits,
+        noOfWithdrawals,
+        totalDeposits: deposits || 0,
+        totalWithdrawals: withdrawals || 0,
+        pendingWithdrawals: pendingWithdrawals || 0,
+        avgWithdrawals: averageWithdrawals || 0,
+        sportBalance: wallet.available_balance || 0,
+        sportBonusBalance: wallet.sport_bonus_balance || 0,
+        lastDepositDate: dayjs(lastDeposit.created_at).format('YYYY-MM-DD HH:mm:ss'),
+        lastDepositAmount: lastDeposit.amount || 0,
+        lastWithdrawalDate: dayjs(lastWithdrawal.created_at).format('YYYY-MM-DD HH:mm:ss'),
+        lastWithdrawalAmount: lastWithdrawal.amount || 0,
+        firstActivityDate: dayjs(firstActivity.created_at).format('YYYY-MM-DD HH:mm:ss'),
+        lastActivityDate: dayjs(lastActivity.created_at).format('YYYY-MM-DD HH:mm:ss')
+      }
+
+      return data;
+    } catch (e) {
+      return null;
     }
   }
 }

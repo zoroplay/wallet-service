@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { generateTrxNo } from 'src/common/helpers';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
-import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { IdentityService } from 'src/identity/identity.service';
