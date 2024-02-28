@@ -242,8 +242,8 @@ export class PaymentService {
 
             if (user.data.firstName === '') return {success: false, message: 'Please update your profile details to proceed', status: HttpStatus.NOT_FOUND}
 
-            const firstname = user.data.firstName.toLocaleLowerCase();
-            const lastname = user.data.lastName.toLocaleLowerCase();
+            const firstname = user.data.firstName.toLowerCase();
+            const lastname = user.data.lastName.toLowerCase();
 
             let resp, name, names;
             switch (paymentMethod.provider) {
