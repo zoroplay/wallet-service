@@ -84,7 +84,7 @@ export class PaymentService {
                 clientId: param.clientId,
                 toUserId: param.userId,
                 toUsername: wallet.username,
-                toUserBalance: wallet.balance,
+                toUserBalance: wallet.available_balance,
                 fromUserId: 0,
                 fromUsername: 'System',
                 fromUserbalance: 0,

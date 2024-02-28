@@ -367,16 +367,22 @@ export class AppService {
     }
   }
 
+  listDeposits () {}
+
   async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
     try {
       let results = [];
-      const transactions = await this.transactionRepository.createQueryBuilder('transaction')
+      const query = this.transactionRepository.createQueryBuilder('transaction')
           .where("transaction.client_id = :clientId", {clientId})
-          .andWhere("transaction.user_id = :userId", {userId})
-          .andWhere("DATE(created_at) > :startDate AND DATE(created_at) < :endDate", {startDate, endDate})
-          .orderBy('transaction.created_at', 'DESC')
-          .limit(20)
-          .getRawMany();
+          .andWhere("transaction.user_id = :userId", {userId});
+
+      if(startDate && startDate != '')
+        query.andWhere("DATE(created_at) >= :startDate", {startDate})
+
+      if(endDate && endDate != '')
+        query.andWhere("DATE(created_at) <= :startDate", {startDate})
+          
+      const transactions = await query.orderBy('transaction.created_at', 'DESC').limit(20).getRawMany();
 
       if (transactions.length > 0) {
         for (const transaction of transactions) {
