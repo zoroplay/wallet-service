@@ -517,6 +517,8 @@ export class AppService {
         lastActivityDate: dayjs(lastActivity.created_at).format('YYYY-MM-DD HH:mm:ss')
       }
 
+      console.log(data);
+
       return data;
     } catch (e) {
       return null;
