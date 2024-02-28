@@ -509,15 +509,13 @@ export class AppService {
         avgWithdrawals: averageWithdrawals || 0,
         sportBalance: wallet.available_balance || 0,
         sportBonusBalance: wallet.sport_bonus_balance || 0,
-        lastDepositDate: dayjs(lastDeposit.created_at).format('YYYY-MM-DD HH:mm:ss'),
+        lastDepositDate: lastDeposit ? dayjs(lastDeposit.created_at).format('YYYY-MM-DD HH:mm:ss'): '-',
         lastDepositAmount: lastDeposit.amount || 0,
-        lastWithdrawalDate: dayjs(lastWithdrawal.created_at).format('YYYY-MM-DD HH:mm:ss'),
+        lastWithdrawalDate: lastWithdrawal ? dayjs(lastWithdrawal.created_at).format('YYYY-MM-DD HH:mm:ss'): '-',
         lastWithdrawalAmount: lastWithdrawal.amount || 0,
-        firstActivityDate: dayjs(firstActivity.created_at).format('YYYY-MM-DD HH:mm:ss'),
-        lastActivityDate: dayjs(lastActivity.created_at).format('YYYY-MM-DD HH:mm:ss')
+        firstActivityDate: firstActivity ? dayjs(firstActivity.created_at).format('YYYY-MM-DD HH:mm:ss'): '-',
+        lastActivityDate: lastActivity ? dayjs(lastActivity.created_at).format('YYYY-MM-DD HH:mm:ss') : '-'
       }
-
-      console.log(data);
 
       return data;
     } catch (e) {
