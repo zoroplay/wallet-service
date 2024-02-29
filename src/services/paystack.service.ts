@@ -244,6 +244,7 @@ export class PaystackService {
 
     async handleWebhook(data) {
         try {
+            console.log(data)
             const paymentSettings = await this.paystackSettings(data.clientId);
             // validate request with paystack key
             const hash = crypto.createHmac('sha512', paymentSettings.secret_key).update(data.body).digest('hex');
