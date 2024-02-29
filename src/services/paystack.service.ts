@@ -244,10 +244,10 @@ export class PaystackService {
 
     async handleWebhook(data) {
         try {
-            console.log(data)
             const paymentSettings = await this.paystackSettings(data.clientId);
             // validate request with paystack key
             const hash = crypto.createHmac('sha512', paymentSettings.secret_key).update(data.body).digest('hex');
+
             if (hash == data.paystackKey) {
                 switch (data.event) {
                     case 'charge.success':
@@ -380,6 +380,8 @@ export class PaystackService {
                         break;
                 }
                 return {success: true}
+            } else {
+                return {success: false, message: 'Invalid signature'}
             }
         } catch(e) {
             console.log('Paystack error', e.message);
