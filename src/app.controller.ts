@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { AppService } from './app.service';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, InitiateDepositRequest, ListWithdrawalRequests, OpayWebhookRequest, PaymentMethodRequest, UpdateWithdrawalRequest, UserTransactionRequest, VerifyBankAccountRequest, VerifyDepositRequest, WALLET_SERVICE_NAME, WithdrawRequest } from 'src/proto/wallet.pb';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, InitiateDepositRequest, ListDepositRequests, ListWithdrawalRequests, OpayWebhookRequest, PaymentMethodRequest, UpdateWithdrawalRequest, UserTransactionRequest, VerifyBankAccountRequest, VerifyDepositRequest, WALLET_SERVICE_NAME, WithdrawRequest } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './payments/payments.service';
 import { PaystackService } from './services/paystack.service';
@@ -78,6 +78,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'ListWithdrawals')
   ListWithdrawals(param: ListWithdrawalRequests) {
     return this.appService.listWithdrawalRequest(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ListDeposits')
+  ListDeposits(param: ListDepositRequests) {
+    return this.appService.listDeposits(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'UserTransactions')

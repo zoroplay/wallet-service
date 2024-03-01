@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, PaymentMethodRequest, PaymentMethodResponse, PlayerWalletData, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
-import { generateTrxNo, handleError, handleResponse } from './common/helpers';
+import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, GetPaymentMethodResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, PaginationResponse, PaymentMethodRequest, PaymentMethodResponse, PlayerWalletData, UserTransactionResponse, WalletResponse, WithdrawRequest, WithdrawResponse } from './proto/wallet.pb';
+import { generateTrxNo, handleError, handleResponse, paginateResponse } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
 import { Repository } from 'typeorm';
@@ -367,7 +367,47 @@ export class AppService {
     }
   }
 
-  listDeposits () {}
+  async listDeposits (data): Promise<PaginationResponse> {
+    try {
+      // console.log(data);
+      const {clientId, startDate, endDate, paymentMethod, status, username, transactionId, page } = data;
+      const limit=100;
+      const skip= (page-1) * limit ;
+
+      let query = this.transactionRepository.createQueryBuilder('transaction')
+          .where('client_id = :clientId', {clientId})
+          .andWhere('user_id != 0')
+          .andWhere('subject = :type', {type: 'Deposit'})
+          .andWhere("created_at >= :startDate", {startDate})
+          .andWhere("created_at <= :endDate", {endDate})
+
+      if (paymentMethod !== '')
+        query = query.andWhere("channel = :paymentMethod", {paymentMethod});
+
+      if (username !== '')
+        query = query.andWhere("username = :username", {username});
+
+      // if (status !== '')
+      //   query = query.andWhere("status = :status", {status});
+
+      if (transactionId !== '')
+        query = query.andWhere("transaction_no = :transactionId", {transactionId});
+
+      // console.log(skip, limit)
+      const result = await Promise.all([
+        query.orderBy('created_at', 'DESC')
+            .take(limit)
+            .skip(skip)
+            .getMany(),
+        query.getCount()
+      ])
+
+      return paginateResponse(result, page, limit);
+    } catch (e) {
+      console.log(e.message)
+      return paginateResponse([[], 0], 1, 100, 'failed');
+    }
+  }
 
   async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
     try {
