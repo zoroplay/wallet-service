@@ -37,15 +37,22 @@ export class AppService {
       wallet.sport_bonus_balance = bonus || 0;
 
       await this.walletRepository.save(wallet);
-
+      let amt = amount;
+      let desc = 'Initial Balance'
+      let subject = 'Deposit'
+      if (bonus > 0) {
+        amt = bonus;
+        desc = 'Registration bonus'
+        subject = 'Bonus'
+      }
       // create transaction
       if (amount > 0 || bonus  > 0) {
         await this.helperService.saveTransaction({
           clientId,
           transactionNo: generateTrxNo(),
           amount: data.amount,
-          description: 'Inital Balance',
-          subject: 'Deposit',
+          description: desc,
+          subject,
           channel: 'Internal Transfer',
           source: '',
           fromUserId: 0,
@@ -342,7 +349,7 @@ export class AppService {
 
       let requests = [];
       const res = await this.withdrawalRepository.find({
-        where:{client_id: data.clientId},
+        where:{client_id: data.clientId, status: 1},
         take: 100
       })
       if (res.length) {
