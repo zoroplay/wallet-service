@@ -349,7 +349,7 @@ export class AppService {
 
       let requests = [];
       const res = await this.withdrawalRepository.find({
-        where:{client_id: data.clientId, status: 1},
+        where:{client_id: data.clientId},
         take: 100
       })
       if (res.length) {
@@ -470,15 +470,13 @@ export class AppService {
       });
 
       // sum withdrawals transactions
-      const withdrawals = await this.transactionRepository.sum('amount', {
-        subject: 'Withdrawal',
+      const withdrawals = await this.withdrawalRepository.sum('amount', {
         user_id: userId,
         status: 1
       });
 
       // sum pending withdrawals transactions
-      const pendingWithdrawals = await this.transactionRepository.sum('amount', {
-        subject: 'Withdrawal',
+      const pendingWithdrawals = await this.withdrawalRepository.sum('amount', {
         user_id: userId,
         status: 0
       });
@@ -493,12 +491,11 @@ export class AppService {
         order: {created_at: 'DESC'}
       })
 
-      // get last deposit
-      const lastWithdrawal = await this.transactionRepository.findOne({
+      // get last withdrawal
+      const lastWithdrawal = await this.withdrawalRepository.findOne({
         where: {
           user_id: userId, 
           client_id: clientId,
-          subject: 'Withdrawal',
           status: 1,
         },
         order: {created_at: 'DESC'}
@@ -538,12 +535,11 @@ export class AppService {
         }
       })
 
-      const noOfWithdrawals = await this.transactionRepository.count({
+      const noOfWithdrawals = await this.withdrawalRepository.count({
         where: {
           user_id: userId, 
           client_id: clientId,
           status: 1,
-          subject: 'Withdrawal'
         }
       })
 
