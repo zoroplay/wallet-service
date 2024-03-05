@@ -52,7 +52,7 @@ export class PaymentService {
                 case 'paystack':
                     const resp: any = await this.paystackService.generatePaymentLink({
                         amount: param.amount * 100,
-                        email: user.email || 'info@sportsbookengine.com',
+                        email: user.email || `${user.username}@sportsbookengine.com`,
                         reference: transactionNo,
                         callback_url: user.callbackUrl + '/payment-verification/paystack'
                     }, param.clientId);
@@ -95,7 +95,7 @@ export class PaymentService {
 
             return {success: true, message: 'Success', data: {transactionRef: transactionNo, link}};
         } catch (e) {
-            // console.log(e.message);
+            console.log(e.message);
             return {success: false, message: 'Unable to complete transaction'}
         }
     }
