@@ -81,7 +81,6 @@ export class AppService {
   }
 
   async getBalance(data: GetBalanceRequest): Promise<WalletResponse> {
-    console.log('getting user balance', data);
     try {
       const wallet = await this.walletRepository.findOne({where: {
         user_id: data.userId,
@@ -345,7 +344,6 @@ export class AppService {
   }
 
   async listWithdrawalRequest(data: ListWithdrawalRequests): Promise<ListWithdrawalRequestResponse> {
-    console.log('fetching withdrawals ', data)
     try {
       const {clientId, from, to, userId, status} = data;
 
@@ -377,6 +375,7 @@ export class AppService {
   }
 
   async listDeposits (data): Promise<PaginationResponse> {
+    console.log('fetch deposits')
     try {
       // console.log(data);
       const {clientId, startDate, endDate, paymentMethod, status, username, transactionId, page } = data;
