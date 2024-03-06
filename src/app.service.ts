@@ -401,7 +401,7 @@ export class AppService {
       if (transactionId !== '')
         query = query.andWhere("transaction_no = :transactionId", {transactionId});
 
-      // console.log(skip, limit)
+      console.log(skip, limit)
       const result = await Promise.all([
         query.orderBy('created_at', 'DESC')
             .take(limit)
@@ -409,6 +409,8 @@ export class AppService {
             .getMany(),
         query.getCount()
       ])
+
+      console.log(result)
 
       const resp = paginateResponse(result, page, limit);
       console.log(resp);
