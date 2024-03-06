@@ -410,7 +410,9 @@ export class AppService {
         query.getCount()
       ])
 
-      return paginateResponse(result, page, limit);
+      const resp = paginateResponse(result, page, limit);
+      console.log(resp);
+      return resp;
     } catch (e) {
       console.log(e.message)
       return paginateResponse([[], 0], 1, 100, 'failed');
