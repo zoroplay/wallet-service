@@ -81,6 +81,7 @@ export class AppService {
   }
 
   async getBalance(data: GetBalanceRequest): Promise<WalletResponse> {
+    console.log('getting user balance', data);
     try {
       const wallet = await this.walletRepository.findOne({where: {
         user_id: data.userId,
