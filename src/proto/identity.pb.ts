@@ -137,7 +137,18 @@ export interface ValidateRequest {
 export interface ValidateResponse {
   status: number;
   error: string;
-  userId: number;
+  user?: ValidateResponse_User | undefined;
+}
+
+export interface ValidateResponse_User {
+  id: number;
+  username: string;
+}
+
+export interface ValidateClientResponse {
+  status: number;
+  error: string;
+  clientId: number;
 }
 
 export interface ClientRequest {
@@ -278,24 +289,119 @@ export interface Player {
   lifeTimeWithdrawal: number;
   openBets: number;
   role: string;
+  lastLogin: string;
 }
 
 export interface GetUserByUsernameRequest {
   clientId: number;
-  username: number;
+  username: string;
 }
 
 export interface GetUserByUsernameResponse {
   responseCode: string;
   responseMessage: string;
-  data?: GetUserByUsernameResponse_Data | undefined;
+  data: GetUserByUsernameResponse_Data | undefined;
 }
 
 export interface GetUserByUsernameResponse_Data {
-  referenceID: string;
-  CustomerName: string;
-  Phoneno: string;
-  Status: string;
+  referenceID?: string | undefined;
+  CustomerName?: string | undefined;
+  Phoneno?: string | undefined;
+  Status?: string | undefined;
+}
+
+export interface OnlinePlayersRequest {
+  clientId: number;
+  username: string;
+  country: string;
+  state: string;
+  source: string;
+  page?: number | undefined;
+  limit?: number | undefined;
+}
+
+export interface RegistrationReportRequest {
+  clientId: number;
+  from: string;
+  to: string;
+  source: string;
+  page?: number | undefined;
+  limit?: number | undefined;
+}
+
+export interface PlayersListResponse {
+  from: number;
+  to: number;
+  total: number;
+  currentPage: number;
+  perPage: number;
+  data: Player[];
+}
+
+export interface GetPlayerDataRequest {
+  clientId: number;
+  userId: number;
+}
+
+export interface GetPlayerDataResponse {
+  success: boolean;
+  message: string;
+  data?: GetPlayerDataResponse_PlayerData | undefined;
+}
+
+export interface GetPlayerDataResponse_PlayerData {
+  user: Player | undefined;
+  wallet: PlayerWalletData | undefined;
+  bonus: PlayerBonusData | undefined;
+}
+
+export interface UpdatePlayerDataRequest {
+  clientId: number;
+  userId: number;
+  username: string;
+  country: string;
+  state: string;
+  address: string;
+  email: string;
+  dateOfBirth: string;
+  phoneNumber: string;
+  currency: string;
+  language: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface PlayerWalletData {
+  sportBalance: number;
+  totalDeposits: number;
+  sportBonusBalance: number;
+  totalWithdrawals: number;
+  pendingWithdrawals: number;
+  avgWithdrawals: number;
+  lastDepositDate: string;
+  lastWithdrawalDate: string;
+  lastDepositAmount: number;
+  lastWithdrawalAmount: number;
+  firstActivityDate: string;
+  lastActivityDate: string;
+  noOfDeposits: number;
+  noOfWithdrawals: number;
+}
+
+export interface PlayerBonusData {
+}
+
+export interface ChangePasswordRequest {
+  clientId: number;
+  userId: number;
+  oldPassword: string;
+  password: string;
+}
+
+export interface ResetPasswordRequest {
+  clientId: number;
+  username: string;
+  password: string;
 }
 
 export interface EmptyRequest {
@@ -309,6 +415,8 @@ export interface IdentityServiceClient {
   login(request: LoginRequest): Observable<LoginResponse>;
 
   validate(request: ValidateRequest): Observable<ValidateResponse>;
+
+  validateClient(request: ValidateRequest): Observable<ValidateClientResponse>;
 
   getUserDetails(request: GetUserDetailsRequest): Observable<GetUserDetailsResponse>;
 
@@ -342,11 +450,23 @@ export interface IdentityServiceClient {
 
   getPaymentData(request: GetPaymentDataRequest): Observable<GetPaymentDataResponse>;
 
-  searchPlayer(request: SearchPlayerRequest): Observable<SearchPlayerResponse>;
+  searchPlayers(request: SearchPlayerRequest): Observable<SearchPlayerResponse>;
 
   updateUserDetails(request: UpdateUserRequest): Observable<UpdateUserResponse>;
 
-  validateUserByUsername(request: GetUserByUsernameRequest): Observable<UpdateUserResponse>;
+  getUserByUsername(request: GetUserByUsernameRequest): Observable<GetUserByUsernameResponse>;
+
+  onlinePlayersReport(request: OnlinePlayersRequest): Observable<PlayersListResponse>;
+
+  registrationReport(request: RegistrationReportRequest): Observable<PlayersListResponse>;
+
+  getPlayerData(request: GetPlayerDataRequest): Observable<GetPlayerDataResponse>;
+
+  updatePlayerData(request: UpdatePlayerDataRequest): Observable<UpdateUserResponse>;
+
+  changePassword(request: ChangePasswordRequest): Observable<UpdateUserResponse>;
+
+  resetPassword(request: ResetPasswordRequest): Observable<UpdateUserResponse>;
 }
 
 export interface IdentityServiceController {
@@ -355,6 +475,10 @@ export interface IdentityServiceController {
   login(request: LoginRequest): Promise<LoginResponse> | Observable<LoginResponse> | LoginResponse;
 
   validate(request: ValidateRequest): Promise<ValidateResponse> | Observable<ValidateResponse> | ValidateResponse;
+
+  validateClient(
+    request: ValidateRequest,
+  ): Promise<ValidateClientResponse> | Observable<ValidateClientResponse> | ValidateClientResponse;
 
   getUserDetails(
     request: GetUserDetailsRequest,
@@ -394,7 +518,7 @@ export interface IdentityServiceController {
     request: GetPaymentDataRequest,
   ): Promise<GetPaymentDataResponse> | Observable<GetPaymentDataResponse> | GetPaymentDataResponse;
 
-  searchPlayer(
+  searchPlayers(
     request: SearchPlayerRequest,
   ): Promise<SearchPlayerResponse> | Observable<SearchPlayerResponse> | SearchPlayerResponse;
 
@@ -402,8 +526,32 @@ export interface IdentityServiceController {
     request: UpdateUserRequest,
   ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
 
-  validateUserByUsername(
+  getUserByUsername(
     request: GetUserByUsernameRequest,
+  ): Promise<GetUserByUsernameResponse> | Observable<GetUserByUsernameResponse> | GetUserByUsernameResponse;
+
+  onlinePlayersReport(
+    request: OnlinePlayersRequest,
+  ): Promise<PlayersListResponse> | Observable<PlayersListResponse> | PlayersListResponse;
+
+  registrationReport(
+    request: RegistrationReportRequest,
+  ): Promise<PlayersListResponse> | Observable<PlayersListResponse> | PlayersListResponse;
+
+  getPlayerData(
+    request: GetPlayerDataRequest,
+  ): Promise<GetPlayerDataResponse> | Observable<GetPlayerDataResponse> | GetPlayerDataResponse;
+
+  updatePlayerData(
+    request: UpdatePlayerDataRequest,
+  ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
+
+  changePassword(
+    request: ChangePasswordRequest,
+  ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
+
+  resetPassword(
+    request: ResetPasswordRequest,
   ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
 }
 
@@ -413,6 +561,7 @@ export function IdentityServiceControllerMethods() {
       "register",
       "login",
       "validate",
+      "validateClient",
       "getUserDetails",
       "createClient",
       "createPermission",
@@ -429,9 +578,15 @@ export function IdentityServiceControllerMethods() {
       "getAdminUsers",
       "getClient",
       "getPaymentData",
-      "searchPlayer",
+      "searchPlayers",
       "updateUserDetails",
-      "validateUserByUsername",
+      "getUserByUsername",
+      "onlinePlayersReport",
+      "registrationReport",
+      "getPlayerData",
+      "updatePlayerData",
+      "changePassword",
+      "resetPassword",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

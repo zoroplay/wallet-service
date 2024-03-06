@@ -345,6 +345,7 @@ export class AppService {
   }
 
   async listWithdrawalRequest(data: ListWithdrawalRequests): Promise<ListWithdrawalRequestResponse> {
+    console.log('fetching withdrawals ', data)
     try {
       const {clientId, from, to, userId, status} = data;
 
