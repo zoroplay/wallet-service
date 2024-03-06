@@ -375,7 +375,7 @@ export class AppService {
   }
 
   async listDeposits (data): Promise<PaginationResponse> {
-    console.log('fetch deposits')
+    console.log('fetch deposits', data)
     try {
       // console.log(data);
       const {clientId, startDate, endDate, paymentMethod, status, username, transactionId, page } = data;

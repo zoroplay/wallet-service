@@ -55,8 +55,8 @@ export function generateTrxNo() {
 export const paginateResponse = (data: any,page: number,limit: number, message = 'success') => {
   const [result, total]=data;
   const lastPage=Math.ceil(total/limit);
-  const nextPage=page+1 >lastPage ? null :page+1;
-  const prevPage=page-1 < 1 ? null :page-1;
+  const nextPage=page+1 >lastPage ? 0 :page+1;
+  const prevPage=page-1 < 1 ? 0 :page-1;
   return {
     message,
     data: JSON.stringify([...result]),
