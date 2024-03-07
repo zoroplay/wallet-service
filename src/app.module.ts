@@ -18,9 +18,11 @@ import { MonnifyService } from './services/monnify.service';
 import { IdentityModule } from './identity/identity.module';
 import { HelperService } from './services/helper.service';
 import { OPayService } from './services/opay.service';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: process.env.DB_TYPE as any,
       host: process.env.DB_HOST,
