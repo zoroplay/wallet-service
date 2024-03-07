@@ -375,7 +375,7 @@ export class AppService {
   }
 
   async listDeposits (data): Promise<PaginationResponse> {
-    console.log('fetch deposits', data)
+    // console.log('fetch deposits', data)
     try {
       // console.log(data);
       const {clientId, startDate, endDate, paymentMethod, status, username, transactionId, page } = data;
@@ -408,9 +408,9 @@ export class AppService {
             .skip(skip)
             .getMany();
 
-      const total = query.getCount()
+      const total = await query.getCount()
 
-      console.log(result)
+      // console.log(result)
 
       const resp = paginateResponse([result, total], page, limit);
       console.log(resp);
