@@ -462,6 +462,7 @@ export class AppService {
   }
 
   async getWalletSummary ({clientId, userId}): Promise<PlayerWalletData> {
+    console.log('getting wallet summary')
     try {
       const wallet = await this.walletRepository.findOne({where: {
         user_id: userId,
