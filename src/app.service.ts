@@ -423,7 +423,6 @@ export class AppService {
   }
 
   async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
-    console.log('fetch user transactions')
     try {
       let results = [];
       const query = this.transactionRepository.createQueryBuilder('transaction')
@@ -438,7 +437,6 @@ export class AppService {
           
       const transactions = await query.orderBy('transaction.created_at', 'DESC').limit(20).getRawMany();
 
-      console.log(transactions.length, ' found total')
       if (transactions.length > 0) {
         for (const transaction of transactions) {
           results.push({
@@ -464,14 +462,11 @@ export class AppService {
   }
 
   async getWalletSummary ({clientId, userId}): Promise<PlayerWalletData> {
-    console.log('getting wallet summary')
     try {
       const wallet = await this.walletRepository.findOne({where: {
         user_id: userId,
         client_id: clientId
       }});
-
-      // console.log('wallet', wallet)
 
       // sum deposit transactions
       const deposits = await this.transactionRepository.sum('amount', {
@@ -480,26 +475,17 @@ export class AppService {
         status: 1
       });
 
-      console.log('deposits', deposits)
-
-
-      //sum withdrawals transactions
+      // sum withdrawals transactions
       const withdrawals = await this.withdrawalRepository.sum('amount', {
         user_id: userId,
         status: 1
       });
-
-      console.log('withdrawals', withdrawals)
-
 
       // sum pending withdrawals transactions
       const pendingWithdrawals = await this.withdrawalRepository.sum('amount', {
         user_id: userId,
         status: 0
       });
-
-      console.log('pendingWithdrawals', pendingWithdrawals)
-
       // get last deposit
       const lastDeposit = await this.transactionRepository.findOne({
         where: {
@@ -511,9 +497,6 @@ export class AppService {
         order: {created_at: 'DESC'}
       })
 
-      console.log('lastDeposit', lastDeposit)
-
-
       // get last withdrawal
       const lastWithdrawal = await this.withdrawalRepository.findOne({
         where: {
@@ -524,8 +507,6 @@ export class AppService {
         order: {created_at: 'DESC'}
       })
 
-      console.log('last withdrawal', lastWithdrawal)
-
       // get first activity
       const firstActivity = await this.transactionRepository.findOne({
         where: {
@@ -533,10 +514,7 @@ export class AppService {
           client_id: clientId,
           status: 1
         },
-      });
-
-      console.log('first activity', firstActivity)
-
+      })
 
       // get last activity
       const lastActivity = await this.transactionRepository.findOne({
@@ -546,19 +524,13 @@ export class AppService {
           status: 1,
         },
         order: {created_at: 'DESC'}
-      });
-
-      console.log('last activity', lastActivity)
-
+      })
 
       const averageWithdrawals = await this.transactionRepository.average('amount', {
         user_id: userId, 
         client_id: clientId,
         status: 1
       })
-
-      console.log('average withdrawals', averageWithdrawals)
-
 
       const noOfDeposits = await this.transactionRepository.count({
         where: {
@@ -569,25 +541,19 @@ export class AppService {
         }
       })
 
-      console.log('noOfDeposits', noOfDeposits)
-
-
-      // const noOfWithdrawals = await this.withdrawalRepository.count({
-      //   where: {
-      //     user_id: userId, 
-      //     client_id: clientId,
-      //     status: 1,
-      //   }
-      // })
-
-      // console.log('noOfWithdrawals', noOfWithdrawals);
-
+      const noOfWithdrawals = await this.withdrawalRepository.count({
+        where: {
+          user_id: userId, 
+          client_id: clientId,
+          status: 1,
+        }
+      })
 
       const data = {
         noOfDeposits,
-        noOfWithdrawals: 0,
+        noOfWithdrawals,
         totalDeposits: deposits || 0,
-        totalWithdrawals: 0,
+        totalWithdrawals: withdrawals || 0,
         pendingWithdrawals: pendingWithdrawals || 0,
         avgWithdrawals: averageWithdrawals || 0,
         sportBalance: wallet.available_balance || 0,
