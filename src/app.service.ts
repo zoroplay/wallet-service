@@ -482,12 +482,12 @@ export class AppService {
 
 
       // sum withdrawals transactions
-      const withdrawals = await this.withdrawalRepository.sum('amount', {
-        user_id: userId,
-        status: 1
-      });
+      // const withdrawals = await this.withdrawalRepository.sum('amount', {
+      //   user_id: userId,
+      //   status: 1
+      // });
 
-      console.log('withdrawals', withdrawals)
+      // console.log('withdrawals', withdrawals)
 
 
       // sum pending withdrawals transactions
@@ -570,22 +570,22 @@ export class AppService {
       console.log('noOfDeposits', noOfDeposits)
 
 
-      const noOfWithdrawals = await this.withdrawalRepository.count({
-        where: {
-          user_id: userId, 
-          client_id: clientId,
-          status: 1,
-        }
-      })
+      // const noOfWithdrawals = await this.withdrawalRepository.count({
+      //   where: {
+      //     user_id: userId, 
+      //     client_id: clientId,
+      //     status: 1,
+      //   }
+      // })
 
-      console.log('noOfWithdrawals', noOfWithdrawals);
+      // console.log('noOfWithdrawals', noOfWithdrawals);
 
 
       const data = {
         noOfDeposits,
-        noOfWithdrawals,
+        noOfWithdrawals: 0,
         totalDeposits: deposits || 0,
-        totalWithdrawals: withdrawals || 0,
+        totalWithdrawals: 0,
         pendingWithdrawals: pendingWithdrawals || 0,
         avgWithdrawals: averageWithdrawals || 0,
         sportBalance: wallet.available_balance || 0,
