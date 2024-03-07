@@ -350,7 +350,8 @@ export class AppService {
       let requests = [];
       const res = await this.withdrawalRepository.find({
         where:{client_id: data.clientId},
-        take: 100
+        take: 100,
+        order: {created_at: 'DESC'}
       })
       if (res.length) {
         for (const request of res) {
