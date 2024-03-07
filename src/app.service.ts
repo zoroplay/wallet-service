@@ -469,6 +469,8 @@ export class AppService {
         client_id: clientId
       }});
 
+      console.log('wallet', wallet)
+
       // sum deposit transactions
       const deposits = await this.transactionRepository.sum('amount', {
         subject: 'Deposit',
@@ -476,17 +478,26 @@ export class AppService {
         status: 1
       });
 
+      console.log('deposits', deposits)
+
+
       // sum withdrawals transactions
       const withdrawals = await this.withdrawalRepository.sum('amount', {
         user_id: userId,
         status: 1
       });
 
+      console.log('withdrawals', withdrawals)
+
+
       // sum pending withdrawals transactions
       const pendingWithdrawals = await this.withdrawalRepository.sum('amount', {
         user_id: userId,
         status: 0
       });
+
+      console.log('pendingWithdrawals', pendingWithdrawals)
+
       // get last deposit
       const lastDeposit = await this.transactionRepository.findOne({
         where: {
@@ -498,6 +509,9 @@ export class AppService {
         order: {created_at: 'DESC'}
       })
 
+      console.log('lastDeposit', lastDeposit)
+
+
       // get last withdrawal
       const lastWithdrawal = await this.withdrawalRepository.findOne({
         where: {
@@ -508,6 +522,8 @@ export class AppService {
         order: {created_at: 'DESC'}
       })
 
+      console.log('last withdrawal', lastWithdrawal)
+
       // get first activity
       const firstActivity = await this.transactionRepository.findOne({
         where: {
@@ -515,7 +531,10 @@ export class AppService {
           client_id: clientId,
           status: 1
         },
-      })
+      });
+
+      console.log('first activity', firstActivity)
+
 
       // get last activity
       const lastActivity = await this.transactionRepository.findOne({
@@ -525,13 +544,19 @@ export class AppService {
           status: 1,
         },
         order: {created_at: 'DESC'}
-      })
+      });
+
+      console.log('last activity', lastActivity)
+
 
       const averageWithdrawals = await this.transactionRepository.average('amount', {
         user_id: userId, 
         client_id: clientId,
         status: 1
       })
+
+      console.log('average withdrawals', averageWithdrawals)
+
 
       const noOfDeposits = await this.transactionRepository.count({
         where: {
@@ -542,6 +567,9 @@ export class AppService {
         }
       })
 
+      console.log('noOfDeposits', noOfDeposits)
+
+
       const noOfWithdrawals = await this.withdrawalRepository.count({
         where: {
           user_id: userId, 
@@ -549,6 +577,9 @@ export class AppService {
           status: 1,
         }
       })
+
+      console.log('noOfWithdrawals', noOfWithdrawals);
+
 
       const data = {
         noOfDeposits,
