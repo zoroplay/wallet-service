@@ -53,8 +53,6 @@ export class HelperService {
         for (const item of model) {
           await this.transactionRepository.save(item);
         }
-
-        this.saveTransaction(data);
     }
 
     async sendActivity(data) {
