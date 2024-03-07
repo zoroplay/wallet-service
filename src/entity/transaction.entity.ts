@@ -24,22 +24,18 @@ export class Transaction {
     @Column({ type: "decimal", precision: 20, scale: 2, default: 0 })
     amount: number;
 
-    @Index()
     @Column({ type: "varchar", length: 20, nullable: false })
     tranasaction_type: string;
 
-    @Index()
     @Column({ type: "varchar", length: 50 })
     subject: string;
 
     @Column({ type: "varchar", length: 200 })
     description: string;
 
-    @Index()
     @Column({ type: "varchar", length: 20 })
     source: string;
 
-    @Index()
     @Column({ type: "varchar", length: 20 })
     channel: string;
 
