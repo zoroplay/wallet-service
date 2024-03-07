@@ -122,15 +122,14 @@ export class HelperService {
         const sql1 = `DELETE t1 FROM transactions t1 INNER JOIN transactions t2 WHERE t1.id < t2.id AND 
         t1.transaction_no = t2.transaction_no AND t1.user_id != 0;`
 
-        const sql2 = `DELETE t1 FROM transactions t1 INNER JOIN transactions t2 WHERE t1.id < t2.id AND 
-        t1.transaction_no = t2.transaction_no AND t1.user_id = 0;`
+        const sql2 = `DELETE FROM transactions user_id = 0;`
         
         const result = await this.transactionRepository.query(sql1);
 
         const result2 = await this.transactionRepository.query(sql2);
 
         console.log(JSON.stringify(result))
-        
+    
         console.log(JSON.stringify(result2))
         
 
