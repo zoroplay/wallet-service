@@ -423,6 +423,7 @@ export class AppService {
   }
 
   async getUserTransactions({clientId, userId, startDate, endDate}): Promise<UserTransactionResponse> {
+    console.log('fetch user transactions')
     try {
       let results = [];
       const query = this.transactionRepository.createQueryBuilder('transaction')
@@ -437,6 +438,7 @@ export class AppService {
           
       const transactions = await query.orderBy('transaction.created_at', 'DESC').limit(20).getRawMany();
 
+      console.log(transactions.length, ' found total')
       if (transactions.length > 0) {
         for (const transaction of transactions) {
           results.push({
@@ -469,7 +471,7 @@ export class AppService {
         client_id: clientId
       }});
 
-      console.log('wallet', wallet)
+      // console.log('wallet', wallet)
 
       // sum deposit transactions
       const deposits = await this.transactionRepository.sum('amount', {
@@ -481,13 +483,13 @@ export class AppService {
       console.log('deposits', deposits)
 
 
-      // sum withdrawals transactions
-      // const withdrawals = await this.withdrawalRepository.sum('amount', {
-      //   user_id: userId,
-      //   status: 1
-      // });
+      //sum withdrawals transactions
+      const withdrawals = await this.withdrawalRepository.sum('amount', {
+        user_id: userId,
+        status: 1
+      });
 
-      // console.log('withdrawals', withdrawals)
+      console.log('withdrawals', withdrawals)
 
 
       // sum pending withdrawals transactions
