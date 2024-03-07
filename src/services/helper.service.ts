@@ -131,7 +131,6 @@ export class HelperService {
         console.log(JSON.stringify(result))
     
         console.log(JSON.stringify(result2))
-        
 
     }
 }
