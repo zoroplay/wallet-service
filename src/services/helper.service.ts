@@ -67,7 +67,7 @@ export class HelperService {
             bonuses: 0,
             currency: "ngn",
             deposits: 0,
-            productId: "",
+            productId: "1",
             customerId: data.username,
             withdrawls: 0,
             adjustments: 0,
