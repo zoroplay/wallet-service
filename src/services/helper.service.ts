@@ -99,16 +99,23 @@ export class HelperService {
         if (!authres.success) {
             console.log('Unable to get trackier auth token')
             return;
-        }
+        } else {
 
-        await axios.post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
-            headers: {
-                'x-api-key': process.env.TRACKIER_API_KEY,
-                authorization: `BEARER ${authres.data.accessToken}`,
-            },
-        }).then(res => {
-            console.log('trackier activity', res.data);
-        }).catch(err => console.log('trackier error', err.message));
+            console.log('key', process.env.TRACKIER_API_KEY)
+            console.log('token', authres.data.accessToken)
+
+            await axios.post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
+                headers: {
+                    'x-api-key': process.env.TRACKIER_API_KEY,
+                    authorization: `BEARER ${authres.data.accessToken}`,
+                },
+            }).then(res => {
+                console.log('trackier activity', res.data);
+            }).catch(err => {
+                console.log('trackier error', err.message);
+                console.log('trackier error', err.response.data);
+            });
+        }
         
     }
 
