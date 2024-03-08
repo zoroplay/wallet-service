@@ -197,10 +197,11 @@ export class AppService {
   
         await this.walletRepository.save(wallet);
       }
+      const transactionNo = generateTrxNo();
       //to-do save transaction log
       await this.helperService.saveTransaction({
         clientId: data.clientId,
-        transactionNo: generateTrxNo(),
+        transactionNo,
         amount: data.amount,
         description: data.description,
         subject: data.subject,
@@ -214,6 +215,14 @@ export class AppService {
         toUserBalance: balance,
         status: 1
       });
+
+      // send deposit to trackier
+      await this.helperService.sendActivity({
+        subject: data.subject,
+        username: data.username,
+        amount: data.amount,
+        transactionId: transactionNo
+      })
 
 
       return handleResponse(wallet, 'Wallet credited')
@@ -253,6 +262,8 @@ export class AppService {
         [walletBalance]: balance
       });
 
+      const transactionNo = generateTrxNo();
+
       // to-do save transaction log
       await this.helperService.saveTransaction({
         clientId: data.clientId,
@@ -270,6 +281,15 @@ export class AppService {
         toUserBalance: 0,
         status: 1
       });
+
+      // send deposit to trackier
+      await this.helperService.sendActivity({
+        subject: data.subject,
+        username: data.username,
+        amount: data.amount,
+        transactionId: transactionNo
+      })
+
 
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {

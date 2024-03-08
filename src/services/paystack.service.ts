@@ -84,6 +84,14 @@ export class PaystackService {
                     }, {
                         status: 1
                     });
+
+                    // send deposit to trackier
+                    await this.helperService.sendActivity({
+                        subject: 'Deposit',
+                        username: transaction.username,
+                        amount: transaction.amount,
+                        transactionId: transaction.transaction_no
+                    })
                     
                     return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
                 }
@@ -274,6 +282,14 @@ export class PaystackService {
                                 status: 1
                             })
                         }
+
+                        // send deposit to trackier
+                        await this.helperService.sendActivity({
+                            subject: 'Deposit',
+                            username: transaction.username,
+                            amount: transaction.amount,
+                            transactionId: transaction.transaction_no
+                        })
                         
                         break;
                     case 'transfer.success': 
