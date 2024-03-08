@@ -433,9 +433,7 @@ export class AppService {
 
       // console.log(result)
 
-      const resp = paginateResponse([result, total], page, limit);
-      console.log(resp);
-      return resp;
+      return paginateResponse([result, total], page, limit);
     } catch (e) {
       console.log(e.message)
       return paginateResponse([[], 0], 1, 100, 'failed');
