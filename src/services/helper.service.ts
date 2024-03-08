@@ -85,7 +85,7 @@ export class HelperService {
             case 'Sport Win':
                 payload.wins = parseFloat(data.amount);
                 break;
-            case 'Bet Deposit':
+            case 'Bet Deposit (Sport)':
                 payload.bets = parseFloat(data.amount);
                 break;
             default:
