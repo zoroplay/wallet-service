@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Timeout } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as dayjs from 'dayjs';
 import { post } from 'src/common/axios';
@@ -114,24 +113,6 @@ export class HelperService {
           },
           {}
         );
-      }
-
-    @Timeout(10000)
-    async deleteMultipleRecord() {
-        console.log('deleting records')
-        const sql1 = `DELETE t1 FROM transactions t1 INNER JOIN transactions t2 WHERE t1.id < t2.id AND 
-        t1.transaction_no = t2.transaction_no AND t1.user_id != 0;`
-
-        const sql2 = `DELETE FROM transactions WHERE user_id = 0;`
-        
-        const result = await this.transactionRepository.query(sql1);
-
-        const result2 = await this.transactionRepository.query(sql2);
-
-        console.log(JSON.stringify(result))
-    
-        console.log(JSON.stringify(result2))
-
     }
 }
 
