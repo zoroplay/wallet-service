@@ -101,9 +101,6 @@ export class HelperService {
             return;
         } else {
 
-            console.log('key', process.env.TRACKIER_API_KEY)
-            console.log('token', authres.data.accessToken)
-
             await axios.post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
                 headers: {
                     'x-api-key': process.env.TRACKIER_API_KEY,
@@ -112,7 +109,6 @@ export class HelperService {
             }).then(res => {
                 console.log('trackier activity', res.data);
             }).catch(err => {
-                console.log('trackier error', err.message);
                 console.log('trackier error', err.response.data);
             });
         }
