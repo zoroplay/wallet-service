@@ -92,7 +92,7 @@ export class HelperService {
                 break;
         }
 
-        console.log(payload)
+        // console.log(payload)
         
         const authres: any = await this.getAccessToken();
 
