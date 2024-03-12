@@ -1,10 +1,32 @@
 import { Controller } from '@nestjs/common';
 import { AppService } from './app.service';
-import { CreateWalletRequest, CreditUserRequest, DebitUserRequest, GetBalanceRequest, GetPaymentMethodRequest, InitiateDepositRequest, ListDepositRequests, ListWithdrawalRequests, OpayWebhookRequest, PaymentMethodRequest, UpdateWithdrawalRequest, UserTransactionRequest, VerifyBankAccountRequest, VerifyDepositRequest, WALLET_SERVICE_NAME, WithdrawRequest } from 'src/proto/wallet.pb';
+import {
+  CreateWalletRequest,
+  CreditUserRequest,
+  DebitUserRequest,
+  FetchBetRangeRequest,
+  FetchDepositCountRequest,
+  FetchDepositRangeRequest,
+  FetchPlayerDepositRequest,
+  GetBalanceRequest,
+  GetPaymentMethodRequest,
+  InitiateDepositRequest,
+  ListDepositRequests,
+  ListWithdrawalRequests,
+  OpayWebhookRequest,
+  PaymentMethodRequest,
+  UpdateWithdrawalRequest,
+  UserTransactionRequest,
+  VerifyBankAccountRequest,
+  VerifyDepositRequest,
+  WALLET_SERVICE_NAME,
+  WithdrawRequest,
+} from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './payments/payments.service';
 import { PaystackService } from './services/paystack.service';
 import { OPayService } from './services/opay.service';
+import { DepositService } from './services/deposit.service';
 
 @Controller()
 export class AppController {
@@ -13,7 +35,27 @@ export class AppController {
     private paymentService: PaymentService,
     private paystackService: PaystackService,
     private opayService: OPayService,
+    private depositService: DepositService,
   ) {}
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
+  FetchBetRange(payload: FetchBetRangeRequest) {
+    return this.depositService.fetchBetRange(payload);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
+  FetchDepositCount(payload: FetchDepositCountRequest) {
+    return this.depositService.fetchDepositCount(payload);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
+  FetchPlayerDeposit(payload: FetchPlayerDepositRequest) {
+    return this.depositService.fetchPlayerDeposit(payload);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositRange')
+  FetchDepositRange(payload: FetchDepositRangeRequest) {
+    return this.depositService.fetchDepositRange(payload);
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreateWallet')
   CreateWallet(param: CreateWalletRequest) {
