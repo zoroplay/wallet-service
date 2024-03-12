@@ -26,7 +26,7 @@ export interface FetchDepositRangeRequest {
 }
 
 export interface FetchDepositCountRequest {
-  depositCount: number;
+  clientId: number;
   startDate: string;
   endDate: string;
 }
@@ -34,7 +34,7 @@ export interface FetchDepositCountRequest {
 export interface FetchDepositCountResponse {
   status: number;
   success: boolean;
-  data: number[];
+  data: TransactionEntity[];
   error?: string | undefined;
 }
 

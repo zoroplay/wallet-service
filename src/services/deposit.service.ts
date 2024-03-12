@@ -19,14 +19,24 @@ export class DepositService {
 
   async fetchDepositCount(payload: FetchDepositCountRequest) {
     try {
-      const deposits = await this.transactionRepository.count({
+      let deposits = await this.transactionRepository.find({
         where: {
           subject: 'Deposit',
+          client_id: payload.clientId,
           created_at: Between(payload.startDate, payload.endDate),
         },
       });
-
-      console.log(deposits, 'count');
+      deposits = deposits.map((deposit) => {
+        return {
+          ...deposit,
+          userId: deposit.user_id,
+          clientId: deposit.client_id,
+          transactionNo: deposit.transaction_no,
+          transactionType: deposit.transaction_type,
+          createdAt: deposit.created_at,
+          updatedAt: deposit.updated_at,
+        };
+      });
       return { success: true, status: HttpStatus.OK, data: deposits };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
@@ -91,6 +101,7 @@ export class DepositService {
           updatedAt: deposit.updated_at,
         };
       });
+      console.log(378594378, deposits);
       return { success: true, status: HttpStatus.OK, data: deposits };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
