@@ -6,15 +6,18 @@ import {
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
   FetchPlayerDepositRequest,
-  TransactionEntity,
 } from 'src/proto/wallet.pb';
 import { Transaction } from 'src/entity/transaction.entity';
+import { Wallet } from 'src/entity/wallet.entity';
 
 @Injectable()
 export class DepositService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+
+    @InjectRepository(Wallet)
+    private readonly walletRepository: Repository<Wallet>,
   ) {}
 
   async fetchDepositCount(payload: FetchDepositCountRequest) {
@@ -32,7 +35,7 @@ export class DepositService {
           userId: deposit.user_id,
           clientId: deposit.client_id,
           transactionNo: deposit.transaction_no,
-          transactionType: deposit.transaction_type,
+          transactionType: deposit.tranasaction_type,
           createdAt: deposit.created_at,
           updatedAt: deposit.updated_at,
         };
@@ -62,6 +65,7 @@ export class DepositService {
       return { success: true, status: HttpStatus.OK, error: error.message };
     }
   }
+
   async fetchDepositRange(payload: FetchDepositRangeRequest) {
     try {
       const deposits = await this.transactionRepository.find({
@@ -81,28 +85,42 @@ export class DepositService {
       return { success: true, status: HttpStatus.OK, error: error.message };
     }
   }
+
   async fetchPlayerDeposit(payload: FetchPlayerDepositRequest) {
     try {
-      let deposits = await this.transactionRepository.find({
+      const deposits = await this.transactionRepository.count({
         where: {
           subject: 'Deposit',
-          client_id: payload.clientId,
+          user_id: payload.userId,
           created_at: Between(payload.startDate, payload.endDate),
         },
       });
-      deposits = deposits.map((deposit) => {
-        return {
-          ...deposit,
-          userId: deposit.user_id,
-          clientId: deposit.client_id,
-          transactionNo: deposit.transaction_no,
-          transactionType: deposit.transaction_type,
-          createdAt: deposit.created_at,
-          updatedAt: deposit.updated_at,
+      
+      if (deposits > 0) {
+        // console.log(deposits, payload.userId)
+
+        const wallet = await this.walletRepository.findOne({
+          where: {
+            user_id: payload.userId,
+          },
+        });
+
+        const data = {
+          userId: wallet.user_id,
+          balance: wallet.balance,
+          availableBalance: wallet.available_balance,
+          trustBalance: wallet.trust_balance,
+          sportBonusBalance: wallet.sport_bonus_balance,
+          virtualBonusBalance: wallet.virtual_bonus_balance,
+          casinoBonusBalance: wallet.casino_bonus_balance,
         };
-      });
-      console.log(378594378, deposits);
-      return { success: true, status: HttpStatus.OK, data: deposits };
+
+        return { success: true, status: HttpStatus.OK, data: data };
+
+      } else {
+        return { success: false, status: HttpStatus.NOT_FOUND, data: null };
+      }
+      
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
     }

@@ -5,7 +5,6 @@ import {
   DebitUserRequest,
   GetBalanceRequest,
   GetPaymentMethodRequest,
-  GetPaymentMethodResponse,
   ListWithdrawalRequestResponse,
   ListWithdrawalRequests,
   PaginationResponse,
