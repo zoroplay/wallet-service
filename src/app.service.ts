@@ -243,10 +243,11 @@ export class AppService {
 
         await this.walletRepository.save(wallet);
       }
+      const transactionNo = generateTrxNo();
       //to-do save transaction log
       await this.helperService.saveTransaction({
         clientId: data.clientId,
-        transactionNo: generateTrxNo(),
+        transactionNo,
         amount: data.amount,
         description: data.description,
         subject: data.subject,
@@ -261,7 +262,15 @@ export class AppService {
         status: 1,
       });
 
-      return handleResponse(wallet, 'Wallet credited');
+      // send deposit to trackier
+      await this.helperService.sendActivity({
+        subject: data.subject,
+        username: data.username,
+        amount: data.amount,
+        transactionId: transactionNo
+      })
+
+      return handleResponse(wallet, 'Wallet credited')
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -303,6 +312,8 @@ export class AppService {
         },
       );
 
+      const transactionNo = generateTrxNo();
+
       // to-do save transaction log
       await this.helperService.saveTransaction({
         clientId: data.clientId,
@@ -320,6 +331,15 @@ export class AppService {
         toUserBalance: 0,
         status: 1,
       });
+
+      // send deposit to trackier
+      await this.helperService.sendActivity({
+        subject: data.subject,
+        username: data.username,
+        amount: data.amount,
+        transactionId: transactionNo
+      })
+
 
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
@@ -514,9 +534,7 @@ export class AppService {
 
       // console.log(result)
 
-      const resp = paginateResponse([result, total], page, limit);
-      console.log(resp);
-      return resp;
+      return paginateResponse([result, total], page, limit);
     } catch (e) {
       console.log(e.message);
       return paginateResponse([[], 0], 1, 100, 'failed');
