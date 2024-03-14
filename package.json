@@ -42,7 +42,7 @@
     "mysql2": "^3.6.1",
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.1",
-    "sbe-service-proto": "git+https://github.com/zoroplay/sbe-service-proto.git",
+    "sbe-service-proto": "github:zoroplay/sbe-service-proto",
     "typeorm": "^0.3.17"
   },
   "devDependencies": {
