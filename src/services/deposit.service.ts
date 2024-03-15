@@ -27,6 +27,7 @@ export class DepositService {
         .where("client_id = :clientId", {clientId: payload.clientId})
         .andWhere("subject = :deposit", {deposit: "Deposit"})
         .andWhere("user_id != 0")
+        .andWhere("status = 1")
         .andWhere("created_at >= :startDate", {startDate: payload.startDate})
         .andWhere("created_at <= :endDate", {endDate: payload.endDate})
         .groupBy("user_id")
@@ -51,7 +52,8 @@ export class DepositService {
           subject: 'Bet Deposit (Sport)',
           amount: Between(payload.minAmount, payload.maxAmount),
           created_at: Between(payload.startDate, payload.endDate),
-          client_id: payload.clientId
+          client_id: payload.clientId,
+          status: 1
         },
       });
 
@@ -73,6 +75,7 @@ export class DepositService {
         .where("client_id = :clientId", {clientId: payload.clientId})
         .andWhere("subject = :deposit", {deposit: "Deposit"})
         .andWhere("user_id != 0")
+        .andWhere("status = 1")
         .andWhere("amount >= :minAmount", {minAmount: payload.minAmount})
         .andWhere("amount <= :maxAmount", {maxAmount: payload.maxAmount})
         .andWhere("created_at >= :startDate", {startDate: payload.startDate})
@@ -97,6 +100,7 @@ export class DepositService {
           subject: 'Deposit',
           user_id: payload.userId,
           created_at: Between(payload.startDate, payload.endDate),
+          status: 1
         },
       });
       
