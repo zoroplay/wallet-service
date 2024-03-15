@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Between, Not, Repository } from 'typeorm';
 import {
   FetchBetRangeRequest,
   FetchDepositCountRequest,
@@ -22,25 +22,23 @@ export class DepositService {
 
   async fetchDepositCount(payload: FetchDepositCountRequest) {
     try {
-      let deposits = await this.transactionRepository.find({
-        where: {
-          subject: 'Deposit',
-          client_id: payload.clientId,
-          created_at: Between(payload.startDate, payload.endDate),
-        },
+      const deposits = await this.transactionRepository.createQueryBuilder('transaction')
+        .select("user_id, COUNT(*) as deposits")
+        .where("client_id = :clientId", {clientId: payload.clientId})
+        .andWhere("subject = :deposit", {deposit: "Deposit"})
+        .andWhere("user_id != 0")
+        .andWhere("created_at >= :startDate", {startDate: payload.startDate})
+        .andWhere("created_at <= :endDate", {endDate: payload.endDate})
+        .groupBy("user_id")
+        .having("COUNT(*) >= :count", {count: payload.count})
+        .getRawMany();
+
+      const userIds = deposits.map((deposit) => {
+        return Number(deposit.user_id);
       });
-      deposits = deposits.map((deposit) => {
-        return {
-          ...deposit,
-          userId: deposit.user_id,
-          clientId: deposit.client_id,
-          transactionNo: deposit.transaction_no,
-          transactionType: deposit.tranasaction_type,
-          createdAt: deposit.created_at,
-          updatedAt: deposit.updated_at,
-        };
-      });
-      return { success: true, status: HttpStatus.OK, data: deposits };
+
+
+      return { success: true, status: HttpStatus.OK, data: userIds };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
     }
@@ -50,16 +48,17 @@ export class DepositService {
     try {
       const deposits = await this.transactionRepository.find({
         where: {
-          subject: 'Bet Deposit',
+          subject: 'Bet Deposit (Sport)',
           amount: Between(payload.minAmount, payload.maxAmount),
           created_at: Between(payload.startDate, payload.endDate),
+          client_id: payload.clientId
         },
       });
 
       const userIds = deposits.map((deposit) => {
         return Number(deposit.user_id);
       });
-      console.log(userIds);
+      // console.log(userIds);
       return { success: true, status: HttpStatus.OK, data: userIds };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
@@ -68,21 +67,26 @@ export class DepositService {
 
   async fetchDepositRange(payload: FetchDepositRangeRequest) {
     try {
-      const deposits = await this.transactionRepository.find({
-        where: {
-          subject: 'Deposit',
-          amount: Between(payload.minAmount, payload.maxAmount),
-          created_at: Between(payload.startDate, payload.endDate),
-        },
-      });
+
+      const deposits = await this.transactionRepository.createQueryBuilder('transaction')
+        .select("user_id")
+        .where("client_id = :clientId", {clientId: payload.clientId})
+        .andWhere("subject = :deposit", {deposit: "Deposit"})
+        .andWhere("user_id != 0")
+        .andWhere("amount >= :minAmount", {minAmount: payload.minAmount})
+        .andWhere("amount <= :maxAmount", {maxAmount: payload.maxAmount})
+        .andWhere("created_at >= :startDate", {startDate: payload.startDate})
+        .andWhere("created_at <= :endDate", {endDate: payload.endDate})
+        .groupBy("user_id")
+        .getRawMany();
 
       const userIds = deposits.map((deposit) => {
         return Number(deposit.user_id);
       });
-      console.log(userIds);
+
       return { success: true, status: HttpStatus.OK, data: userIds };
     } catch (error) {
-      return { success: true, status: HttpStatus.OK, error: error.message };
+      return { success: false, status: HttpStatus.INTERNAL_SERVER_ERROR, error: error.message };
     }
   }
 
