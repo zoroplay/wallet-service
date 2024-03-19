@@ -37,15 +37,27 @@ export interface FetchDepositCountRequest {
 export interface FetchDepositCountResponse {
   status: number;
   success: boolean;
-  data: number[];
+  data: FetchDepositCountResponse_Data[];
   error?: string | undefined;
+}
+
+export interface FetchDepositCountResponse_Data {
+  userId: number;
+  total: number;
+  balance: number;
 }
 
 export interface FetchDepositRangeResponse {
   status: number;
   success: boolean;
-  data: number[];
+  data: FetchDepositRangeResponse_Data[];
   error?: string | undefined;
+}
+
+export interface FetchDepositRangeResponse_Data {
+  userId: number;
+  total: number;
+  balance: number;
 }
 
 export interface FetchPlayerDepositRequest {

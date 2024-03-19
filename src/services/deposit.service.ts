@@ -22,24 +22,25 @@ export class DepositService {
 
   async fetchDepositCount(payload: FetchDepositCountRequest) {
     try {
-      const deposits = await this.transactionRepository.createQueryBuilder('transaction')
-        .select("user_id, COUNT(*) as deposits")
-        .where("client_id = :clientId", {clientId: payload.clientId})
+      const deposits = await this.transactionRepository.createQueryBuilder('t')
+        .select("t.user_id, COUNT(*) as total, w.available_balance")
+        .innerJoin("wallets", "w", "w.user_id = t.user_id")
+        .where("t.client_id = :clientId", {clientId: payload.clientId})
         .andWhere("subject = :deposit", {deposit: "Deposit"})
-        .andWhere("user_id != 0")
-        .andWhere("status = 1")
-        .andWhere("created_at >= :startDate", {startDate: payload.startDate})
-        .andWhere("created_at <= :endDate", {endDate: payload.endDate})
-        .groupBy("user_id")
+        .andWhere("t.user_id != 0")
+        .andWhere("t.status = 1")
+        .andWhere("t.created_at >= :startDate", {startDate: payload.startDate})
+        .andWhere("t.created_at <= :endDate", {endDate: payload.endDate})
+        .groupBy("t.user_id")
         .having("COUNT(*) >= :count", {count: payload.count})
         .getRawMany();
 
-      const userIds = deposits.map((deposit) => {
-        return Number(deposit.user_id);
-      });
+        const data = deposits.map((deposit) => {
+          return {userId: deposit.user_id, total: deposit.total, balance: deposit.available_balance}
+        });
 
 
-      return { success: true, status: HttpStatus.OK, data: userIds };
+      return { success: true, status: HttpStatus.OK, data };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
     }
@@ -70,25 +71,29 @@ export class DepositService {
   async fetchDepositRange(payload: FetchDepositRangeRequest) {
     try {
 
-      const deposits = await this.transactionRepository.createQueryBuilder('transaction')
-        .select("user_id")
-        .where("client_id = :clientId", {clientId: payload.clientId})
+      const deposits = await this.transactionRepository.createQueryBuilder('t')
+        .select("t.user_id, SUM(amount) as total, w.available_balance")
+        .innerJoin("wallets", "w", "w.user_id = t.user_id")
+        .where("t.client_id = :clientId", {clientId: payload.clientId})
         .andWhere("subject = :deposit", {deposit: "Deposit"})
-        .andWhere("user_id != 0")
-        .andWhere("status = 1")
+        .andWhere("t.user_id != 0")
+        .andWhere("t.status = 1")
         .andWhere("amount >= :minAmount", {minAmount: payload.minAmount})
         .andWhere("amount <= :maxAmount", {maxAmount: payload.maxAmount})
-        .andWhere("created_at >= :startDate", {startDate: payload.startDate})
-        .andWhere("created_at <= :endDate", {endDate: payload.endDate})
-        .groupBy("user_id")
+        .andWhere("t.created_at >= :startDate", {startDate: payload.startDate})
+        .andWhere("t.created_at <= :endDate", {endDate: payload.endDate})
+        .groupBy("t.user_id")
+        .addGroupBy("w.available_balance")
         .getRawMany();
 
-      const userIds = deposits.map((deposit) => {
-        return Number(deposit.user_id);
+
+      const data = deposits.map((deposit) => {
+        return {userId: deposit.user_id, total: deposit.total, balance: deposit.available_balance}
       });
 
-      return { success: true, status: HttpStatus.OK, data: userIds };
+      return { success: true, status: HttpStatus.OK, data };
     } catch (error) {
+      console.log(error)
       return { success: false, status: HttpStatus.INTERNAL_SERVER_ERROR, error: error.message };
     }
   }
