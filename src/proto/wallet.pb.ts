@@ -19,6 +19,13 @@ export interface FetchBetRangeResponse {
   error?: string | undefined;
 }
 
+export interface FetchBetRangeResponse_Data {
+  userId: number;
+  total: number;
+  count: number;
+  balance: number;
+}
+
 export interface FetchDepositRangeRequest {
   minAmount: number;
   maxAmount: number;

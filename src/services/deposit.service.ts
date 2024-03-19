@@ -48,21 +48,26 @@ export class DepositService {
 
   async fetchBetRange(payload: FetchBetRangeRequest) {
     try {
-      const deposits = await this.transactionRepository.find({
-        where: {
-          subject: 'Bet Deposit (Sport)',
-          amount: Between(payload.minAmount, payload.maxAmount),
-          created_at: Between(payload.startDate, payload.endDate),
-          client_id: payload.clientId,
-          status: 1
-        },
-      });
+      const bets = await this.transactionRepository.createQueryBuilder('t')
+        .select("t.user_id, SUM(amount) as total, COUNT(*) as count, w.available_balance")
+        .innerJoin("wallets", "w", "w.user_id = t.user_id")
+        .where("t.client_id = :clientId", {clientId: payload.clientId})
+        .andWhere("subject = :deposit", {deposit: "Bet Deposit (Sport)"})
+        .andWhere("t.user_id != 0")
+        .andWhere("t.status = 1")
+        .andWhere("amount >= :minAmount", {minAmount: payload.minAmount})
+        .andWhere("amount <= :maxAmount", {maxAmount: payload.maxAmount})
+        .andWhere("t.created_at >= :startDate", {startDate: payload.startDate})
+        .andWhere("t.created_at <= :endDate", {endDate: payload.endDate})
+        .groupBy("t.user_id")
+        .addGroupBy("w.available_balance")
+        .getRawMany();
 
-      const userIds = deposits.map((deposit) => {
-        return Number(deposit.user_id);
+      const data = bets.map((deposit) => {
+        return {userId: deposit.user_id, total: deposit.total, count: deposit.count, balance: deposit.available_balance}
       });
-      // console.log(userIds);
-      return { success: true, status: HttpStatus.OK, data: userIds };
+      console.log(data);
+      return { success: true, status: HttpStatus.OK, data };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
     }
