@@ -15,7 +15,7 @@ export interface FetchBetRangeRequest {
 export interface FetchBetRangeResponse {
   status: number;
   success: boolean;
-  data: number[];
+  data: FetchBetRangeResponse_Data[];
   error?: string | undefined;
 }
 
