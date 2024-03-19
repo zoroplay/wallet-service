@@ -66,7 +66,7 @@ export class DepositService {
       const data = bets.map((deposit) => {
         return {userId: deposit.user_id, total: deposit.total, count: deposit.count, balance: deposit.available_balance}
       });
-      console.log(data);
+
       return { success: true, status: HttpStatus.OK, data };
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
