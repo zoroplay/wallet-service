@@ -547,6 +547,7 @@ export class AppService {
     endDate,
   }): Promise<UserTransactionResponse> {
     try {
+      console.log(clientId, userId, startDate, endDate)
       let results = [];
       const query = this.transactionRepository
         .createQueryBuilder('transaction')
@@ -563,6 +564,8 @@ export class AppService {
         .orderBy('transaction.created_at', 'DESC')
         .limit(20)
         .getRawMany();
+
+      console.log(transactions);
 
       if (transactions.length > 0) {
         for (const transaction of transactions) {
