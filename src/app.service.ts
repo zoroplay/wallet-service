@@ -547,25 +547,22 @@ export class AppService {
     endDate,
   }): Promise<UserTransactionResponse> {
     try {
-      console.log(clientId, userId, startDate, endDate)
       let results = [];
-      const query = this.transactionRepository
+      let query = this.transactionRepository
         .createQueryBuilder('transaction')
         .where('transaction.client_id = :clientId', { clientId })
         .andWhere('transaction.user_id = :userId', { userId });
 
       if (startDate && startDate != '')
-        query.andWhere('DATE(created_at) >= :startDate', { startDate });
+        query = query.andWhere('DATE(created_at) >= :startDate', { startDate });
 
       if (endDate && endDate != '')
-        query.andWhere('DATE(created_at) <= :startDate', { startDate });
+        query = query.andWhere('DATE(created_at) <= :startDate', { startDate });
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
         .limit(20)
         .getRawMany();
-
-      console.log(transactions);
 
       if (transactions.length > 0) {
         for (const transaction of transactions) {
