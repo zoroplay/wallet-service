@@ -554,10 +554,10 @@ export class AppService {
         .andWhere('transaction.user_id = :userId', { userId });
 
       if (startDate && startDate != '')
-        query = query.andWhere('DATE(created_at) >= :startDate', { startDate });
+        query.andWhere('DATE(created_at) >= :startDate', { startDate });
 
       if (endDate && endDate != '')
-        query = query.andWhere('DATE(created_at) <= :startDate', { startDate });
+        query.andWhere('DATE(created_at) <= :endDate', { endDate });
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
