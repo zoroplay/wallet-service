@@ -8,7 +8,7 @@ import { Transaction } from './entity/transaction.entity';
 import { Wallet } from './entity/wallet.entity';
 import { WithdrawalAccount } from './entity/withdrawal_account.entity';
 import { Withdrawal } from './entity/withdrawal.entity';
-import { PaymentService } from './payments/payments.service';
+import { PaymentService } from './services/payments.service';
 import 'dotenv/config';
 import { PaystackService } from './services/paystack.service';
 import { FlutterwaveService } from './services/flutterwave.service';

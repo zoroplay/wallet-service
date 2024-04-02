@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import * as dayjs from 'dayjs';
-import { post } from 'src/common/axios';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Repository } from 'typeorm';
 

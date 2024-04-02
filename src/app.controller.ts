@@ -23,7 +23,7 @@ import {
   WithdrawRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
-import { PaymentService } from './payments/payments.service';
+import { PaymentService } from './services/payments.service';
 import { PaystackService } from './services/paystack.service';
 import { OPayService } from './services/opay.service';
 import { DepositService } from './services/deposit.service';
