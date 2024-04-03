@@ -26,7 +26,7 @@ export class OPayService {
         .createQueryBuilder()
         .where('client_id = :clientId', { clientId: param.clientId })
         .andWhere('description = :orderNo', { orderNo: param.orderNo })
-        .andWhere('transaction_type = :type', { type: 'credit' })
+        .andWhere('tranasaction_type = :type', { type: 'credit' })
         .getOne();
 
       if (!transaction) {
@@ -105,7 +105,7 @@ export class OPayService {
       .createQueryBuilder()
       .where('client_id = :clientId', { clientId })
       .andWhere('description = :orderNo', { orderNo })
-      .andWhere('transaction_type = :type', { type: 'credit' })
+      .andWhere('tranasaction_type = :type', { type: 'credit' })
       .getOne();
 
     if (transaction) {
