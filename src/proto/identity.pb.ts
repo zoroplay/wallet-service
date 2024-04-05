@@ -4,6 +4,47 @@ import { Observable } from "rxjs";
 
 export const protobufPackage = "identity";
 
+export interface SaveSegmentRequest {
+  clientId: number;
+  userId: number;
+  title: string;
+  minOdd: number;
+  minSelection: number;
+  message: string;
+  id?: number | undefined;
+}
+
+export interface GrantBonusRequest {
+  clientId: number;
+  segmentId: number;
+  bonusId: number;
+  amount: number;
+}
+
+export interface FetchPlayerSegmentRequest {
+  clientId: number;
+}
+
+export interface GetSegmentPlayerRequest {
+  segmentId: number;
+}
+
+export interface DeleteItemRequest {
+  id: number;
+}
+
+export interface AddToSegmentRequest {
+  clientId: number;
+  playerId: number;
+  segmentId: number;
+}
+
+export interface UploadPlayersToSegment {
+  clientId: number;
+  segmentId: number;
+  players: string[];
+}
+
 export interface FetchPlayerFilterRequest {
   clientId: number;
   startDate: string;
@@ -12,6 +53,7 @@ export interface FetchPlayerFilterRequest {
   maxAmount: number;
   depositCount: number;
   filterType: number;
+  page: number;
 }
 
 export interface FetchPlayerFilterResponse {
@@ -272,6 +314,7 @@ export interface GetPaymentDataResponse {
   username: string;
   email: string;
   callbackUrl: string;
+  siteUrl: string;
 }
 
 export interface GetClientRequest {
@@ -286,9 +329,10 @@ export interface GetClientResponse {
 }
 
 export interface CommonResponse {
-  status: boolean;
+  status?: number | undefined;
+  success?: boolean | undefined;
   message: string;
-  data: string[];
+  data?: string | undefined;
   errors?: string | undefined;
 }
 
@@ -456,14 +500,49 @@ export interface ResetPasswordRequest {
   password: string;
 }
 
+export interface PaginationResponse {
+  message: string;
+  count: number;
+  currentPage: number;
+  nextPage: number;
+  prevPage: number;
+  lastPage: number;
+  data: string;
+}
+
+export interface Country {
+  id: number;
+  name: string;
+  countryCodeLong: string;
+  countryCode: string;
+  dialCode: string;
+  currencyName: string;
+  currencySymbol: string;
+}
+
+export interface GetStatesRequest {
+  countryId: number;
+}
+
+export interface State {
+  id: number;
+  name: string;
+}
+
+export interface GetCountryResponse {
+  countries: Country[];
+}
+
+export interface StateResponse {
+  states: State[];
+}
+
 export interface EmptyRequest {
 }
 
 export const IDENTITY_PACKAGE_NAME = "identity";
 
 export interface IdentityServiceClient {
-  fetchPlayerFilters(request: FetchPlayerFilterRequest): Observable<FetchPlayerFilterResponse>;
-
   register(request: CreateUserRequest): Observable<RegisterResponse>;
 
   login(request: LoginRequest): Observable<LoginResponse>;
@@ -481,6 +560,8 @@ export interface IdentityServiceClient {
   saveRole(request: RoleRequest): Observable<SaveRoleResponse>;
 
   getRoles(request: EmptyRequest): Observable<GetRolesResponse>;
+
+  getAgencyRoles(request: EmptyRequest): Observable<GetRolesResponse>;
 
   removeRole(request: RemoveRoleRequest): Observable<DeleteResponse>;
 
@@ -514,6 +595,8 @@ export interface IdentityServiceClient {
 
   registrationReport(request: RegistrationReportRequest): Observable<PlayersListResponse>;
 
+  fetchPlayerFilters(request: FetchPlayerFilterRequest): Observable<PaginationResponse>;
+
   getPlayerData(request: GetPlayerDataRequest): Observable<GetPlayerDataResponse>;
 
   updatePlayerData(request: UpdatePlayerDataRequest): Observable<UpdateUserResponse>;
@@ -521,13 +604,29 @@ export interface IdentityServiceClient {
   changePassword(request: ChangePasswordRequest): Observable<UpdateUserResponse>;
 
   resetPassword(request: ResetPasswordRequest): Observable<UpdateUserResponse>;
+
+  savePlayerSegment(request: SaveSegmentRequest): Observable<CommonResponse>;
+
+  fetchPlayerSegment(request: FetchPlayerSegmentRequest): Observable<CommonResponse>;
+
+  addToSegment(request: AddToSegmentRequest): Observable<CommonResponse>;
+
+  uploadToSegment(request: UploadPlayersToSegment): Observable<CommonResponse>;
+
+  deletePlayerSegment(request: DeleteItemRequest): Observable<CommonResponse>;
+
+  removePlayerFromSegment(request: DeleteItemRequest): Observable<CommonResponse>;
+
+  getSegmentPlayers(request: GetSegmentPlayerRequest): Observable<CommonResponse>;
+
+  grantBonusToSegment(request: GrantBonusRequest): Observable<CommonResponse>;
+
+  getCountries(request: EmptyRequest): Observable<CommonResponse>;
+
+  getStatesByCoutnry(request: GetStatesRequest): Observable<CommonResponse>;
 }
 
 export interface IdentityServiceController {
-  fetchPlayerFilters(
-    request: FetchPlayerFilterRequest,
-  ): Promise<FetchPlayerFilterResponse> | Observable<FetchPlayerFilterResponse> | FetchPlayerFilterResponse;
-
   register(request: CreateUserRequest): Promise<RegisterResponse> | Observable<RegisterResponse> | RegisterResponse;
 
   login(request: LoginRequest): Promise<LoginResponse> | Observable<LoginResponse> | LoginResponse;
@@ -549,6 +648,8 @@ export interface IdentityServiceController {
   saveRole(request: RoleRequest): Promise<SaveRoleResponse> | Observable<SaveRoleResponse> | SaveRoleResponse;
 
   getRoles(request: EmptyRequest): Promise<GetRolesResponse> | Observable<GetRolesResponse> | GetRolesResponse;
+
+  getAgencyRoles(request: EmptyRequest): Promise<GetRolesResponse> | Observable<GetRolesResponse> | GetRolesResponse;
 
   removeRole(request: RemoveRoleRequest): Promise<DeleteResponse> | Observable<DeleteResponse> | DeleteResponse;
 
@@ -596,6 +697,10 @@ export interface IdentityServiceController {
     request: RegistrationReportRequest,
   ): Promise<PlayersListResponse> | Observable<PlayersListResponse> | PlayersListResponse;
 
+  fetchPlayerFilters(
+    request: FetchPlayerFilterRequest,
+  ): Promise<PaginationResponse> | Observable<PaginationResponse> | PaginationResponse;
+
   getPlayerData(
     request: GetPlayerDataRequest,
   ): Promise<GetPlayerDataResponse> | Observable<GetPlayerDataResponse> | GetPlayerDataResponse;
@@ -611,12 +716,43 @@ export interface IdentityServiceController {
   resetPassword(
     request: ResetPasswordRequest,
   ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
+
+  savePlayerSegment(request: SaveSegmentRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  fetchPlayerSegment(
+    request: FetchPlayerSegmentRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  addToSegment(request: AddToSegmentRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  uploadToSegment(
+    request: UploadPlayersToSegment,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  deletePlayerSegment(
+    request: DeleteItemRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  removePlayerFromSegment(
+    request: DeleteItemRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getSegmentPlayers(
+    request: GetSegmentPlayerRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  grantBonusToSegment(
+    request: GrantBonusRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getCountries(request: EmptyRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getStatesByCoutnry(request: GetStatesRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 }
 
 export function IdentityServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "fetchPlayerFilters",
       "register",
       "login",
       "validate",
@@ -626,6 +762,7 @@ export function IdentityServiceControllerMethods() {
       "createPermission",
       "saveRole",
       "getRoles",
+      "getAgencyRoles",
       "removeRole",
       "findAllPermissions",
       "findAllClients",
@@ -642,10 +779,21 @@ export function IdentityServiceControllerMethods() {
       "getUserByUsername",
       "onlinePlayersReport",
       "registrationReport",
+      "fetchPlayerFilters",
       "getPlayerData",
       "updatePlayerData",
       "changePassword",
       "resetPassword",
+      "savePlayerSegment",
+      "fetchPlayerSegment",
+      "addToSegment",
+      "uploadToSegment",
+      "deletePlayerSegment",
+      "removePlayerFromSegment",
+      "getSegmentPlayers",
+      "grantBonusToSegment",
+      "getCountries",
+      "getStatesByCoutnry",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

@@ -10,6 +10,7 @@ import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, 
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
 import { Repository } from 'typeorm';
+import { MonnifyService } from './monnify.service';
 
 @Injectable()
 export class PaymentService {
@@ -21,6 +22,7 @@ export class PaymentService {
         @InjectRepository(PaymentMethod)
         private readonly paymentMethodRepository: Repository<PaymentMethod>,
         private paystackService: PaystackService,
+        private monnifyService: MonnifyService,
         private identityService: IdentityService,
         private helperService: HelperService,
     ){}
@@ -50,27 +52,39 @@ export class PaymentService {
         try {
             switch (param.paymentMethod) {
                 case 'paystack':
-                    const resp: any = await this.paystackService.generatePaymentLink({
+                    const pRes: any = await this.paystackService.generatePaymentLink({
                         amount: param.amount * 100,
-                        email: user.email || `${user.username}@sportsbookengine.com`,
+                        email: user.email || `${user.username}@${user.siteUrl}`,
                         reference: transactionNo,
-                        callback_url: user.callbackUrl + '/payment-verification/paystack'
+                        callback_url: user.callbackUrl + '/payment-verification/paystack',
                     }, param.clientId);
 
                     description = 'Online Deposit (Paystack)'; 
-                    if (!resp.success) return resp;
+                    if (!pRes.success) return pRes;
                     
-                    link = resp.data.authorization_url;
+                    link = pRes.data.authorization_url;
 
                     break;
                 case 'flutterwave':
                     description = 'Online Deposit (Flutterwave)';
                     break;
                 case 'monnify':
+                    const mRes: any = await this.monnifyService.generatePaymentLink({
+                        amount: param.amount,
+                        name: user.username,
+                        email: user.email || `${user.username}@${user.siteUrl}`,
+                        reference: transactionNo,
+                        callback_url: user.callbackUrl + '/payment-verification/monnify'
+                    }, param.clientId);
+
                     description = 'Online Deposit (Monnify)';
+                    if (!mRes.success) return mRes;
+                    
+                    link = mRes.data;
                     break;
                 case 'mgurush':
                     description = 'Online Deposit (mGurush)';
+                    
                     break;
                 default:
                     description = 'Shop Deposit';
@@ -205,15 +219,17 @@ export class PaymentService {
     async verifyDeposit(param: VerifyDepositRequest) {
         try {
 
-            switch (param.paymentChannel) {
-                case 'paystack':
-                    return this.paystackService.verifyTransaction(param)
-                case 'monnify': 
-                    break;
-                case 'flutterwave':
-                    break;
-                default:
-                    break;
+            if (param.transactionRef !== 'undefined') {
+                switch (param.paymentChannel) {
+                    case 'paystack':
+                        return this.paystackService.verifyTransaction(param)
+                    case 'monnify': 
+                        return this.monnifyService.verifyTransaction(param)
+                    case 'flutterwave':
+                        break;
+                    default:
+                        break;
+                }
             }
         } catch (e) {
             console.log('Error', e.message);

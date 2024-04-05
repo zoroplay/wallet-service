@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import * as dayjs from 'dayjs';
 import { Transaction } from 'src/entity/transaction.entity';
+import { Wallet } from 'src/entity/wallet.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -11,7 +12,9 @@ export class HelperService {
 
     constructor(
         @InjectRepository(Transaction)
-        private transactionRepository: Repository<Transaction>
+        private transactionRepository: Repository<Transaction>,
+        @InjectRepository(Wallet)
+        private walletRepository: Repository<Wallet>
     ) {}
 
     async saveTransaction (data) {
@@ -123,6 +126,15 @@ export class HelperService {
         );
 
         return resp.data;
+    }
+
+    async fundWallet(amount, user_id) {
+        // update user wallet
+        await this.walletRepository.update({
+            user_id,
+        }, {
+            available_balance: amount
+        });
     }
 }
 
