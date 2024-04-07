@@ -217,9 +217,11 @@ export class MonnifyService {
     }
 
     async handleWebhook(data) {
+        console.log(data);
         try {
             switch (data.eventType) {
                 case 'SUCCESSFUL_TRANSACTION':
+                    console.log('complete transaction')
                     const transaction = await this.transactionRepository.findOne({
                         where: {
                             client_id: data.clientId, 
@@ -242,15 +244,17 @@ export class MonnifyService {
                         }, {
                             status: 1
                         })
+
+                        // send deposit to trackier
+                        await this.helperService.sendActivity({
+                            subject: 'Deposit',
+                            username: transaction.username,
+                            amount: transaction.amount,
+                            transactionId: transaction.transaction_no
+                        })
                     }
 
-                    // send deposit to trackier
-                    await this.helperService.sendActivity({
-                        subject: 'Deposit',
-                        username: transaction.username,
-                        amount: transaction.amount,
-                        transactionId: transaction.transaction_no
-                    })
+                    
                     
                     break;
                 case 'SUCCESSFUL_DISBURSEMENT': 
