@@ -47,8 +47,6 @@ export class PaymentService {
             source: param.source
         }).toPromise();
 
-        console.log(param.source, user.callbackUrl)
-
         if (user.username === '') return {success: false, message: 'User does not exist'}
 
         try {
