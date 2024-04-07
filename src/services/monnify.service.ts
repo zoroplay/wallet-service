@@ -217,9 +217,8 @@ export class MonnifyService {
     }
 
     async handleWebhook(data) {
+        console.log(data);
         try {
-            const paymentSettings = await this.monnifySettings(data.clientId);
-
             switch (data.eventType) {
                 case 'SUCCESSFUL_TRANSACTION':
                     const transaction = await this.transactionRepository.findOne({
