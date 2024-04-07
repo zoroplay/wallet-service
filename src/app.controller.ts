@@ -27,6 +27,7 @@ import { PaymentService } from './services/payments.service';
 import { PaystackService } from './services/paystack.service';
 import { OPayService } from './services/opay.service';
 import { DepositService } from './services/deposit.service';
+import { MonnifyService } from './services/monnify.service';
 
 @Controller()
 export class AppController {
@@ -34,6 +35,7 @@ export class AppController {
     private readonly appService: AppService,
     private paymentService: PaymentService,
     private paystackService: PaystackService,
+    private monnifyService: MonnifyService,
     private opayService: OPayService,
     private depositService: DepositService,
   ) {}
@@ -136,6 +138,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'PaystackWebhook')
   PaystackWebhook(param: WithdrawRequest) {
     return this.paystackService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'MonnifyWebhook')
+  MonnifyWebhook(param: WithdrawRequest) {
+    return this.monnifyService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'OpayDepositWebhook')
