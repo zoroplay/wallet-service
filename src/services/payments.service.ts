@@ -77,8 +77,6 @@ export class PaymentService {
                         callback_url: user.callbackUrl + '/payment-verification/monnify'
                     }, param.clientId);
 
-                    console.log('monnify resp', mRes);
-
                     description = 'Online Deposit (Monnify)';
                     if (!mRes.success) return mRes;
                     
