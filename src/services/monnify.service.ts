@@ -217,9 +217,8 @@ export class MonnifyService {
     }
 
     async handleWebhook(data) {
-        console.log(data);
         try {
-            switch (data.eventType) {
+            switch (data.event) {
                 case 'SUCCESSFUL_TRANSACTION':
                     console.log('complete transaction')
                     const transaction = await this.transactionRepository.findOne({
