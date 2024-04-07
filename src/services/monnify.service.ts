@@ -184,6 +184,7 @@ export class MonnifyService {
     }
 
     async generatePaymentLink(data, client_id) {
+        console.log('monnify data', data);
         try {
             const paymentSettings = await this.monnifySettings(client_id);
             // return false if paystack settings is not available
