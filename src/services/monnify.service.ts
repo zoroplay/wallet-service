@@ -217,6 +217,7 @@ export class MonnifyService {
     }
 
     async handleWebhook(data) {
+        console.log(data);
         try {
             switch (data.event) {
                 case 'SUCCESSFUL_TRANSACTION':
