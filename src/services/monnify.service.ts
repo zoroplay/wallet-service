@@ -229,6 +229,7 @@ export class MonnifyService {
                             tranasaction_type: 'credit'
                         }
                     });
+                    console.log('found transaction', transaction)
                     if (transaction && transaction.status === 0) {
                         // find user wallet
                         const wallet = await this.walletRepository.findOne(
