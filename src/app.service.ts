@@ -24,7 +24,7 @@ import {
 } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
 import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
@@ -339,7 +339,8 @@ export class AppService {
         transactionId: transactionNo
       })
 
-
+      wallet.balance = balance;
+      wallet.available_balance = balance;
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -444,9 +445,15 @@ export class AppService {
     try {
       const { clientId, from, to, userId, status } = data;
 
+      const start = dayjs(from).format('YYYY-MM-DD HH:mm:ss')
+      const end = dayjs(to).format('YYYY-MM-DD HH:mm:ss');
+
       let requests = [];
       const res = await this.withdrawalRepository.find({
-        where: { client_id: data.clientId },
+        where: { 
+          client_id: clientId,
+          created_at: Between(start, end),
+        },
         take: 100,
         order: { created_at: 'DESC' },
       });
