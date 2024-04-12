@@ -30,6 +30,9 @@ import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
+var customParseFormat = require('dayjs/plugin/customParseFormat')
+
+dayjs.extend(customParseFormat)
 
 @Injectable()
 export class AppService {
@@ -445,14 +448,16 @@ export class AppService {
     try {
       const { clientId, from, to, userId, status } = data;
 
-      const start = dayjs(from).format('YYYY-MM-DD HH:mm:ss')
-      const end = dayjs(to).format('YYYY-MM-DD HH:mm:ss');
+      const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss')
+      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
+
+      // console.log(start, end);
 
       let requests = [];
       const res = await this.withdrawalRepository.find({
         where: { 
           client_id: clientId,
-          // created_at: Between(start, end),
+          created_at: Between(start, end),
         },
         take: 100,
         order: { created_at: 'DESC' },
