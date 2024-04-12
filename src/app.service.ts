@@ -452,7 +452,7 @@ export class AppService {
       const res = await this.withdrawalRepository.find({
         where: { 
           client_id: clientId,
-          created_at: Between(start, end),
+          // created_at: Between(start, end),
         },
         take: 100,
         order: { created_at: 'DESC' },
