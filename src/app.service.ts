@@ -240,6 +240,7 @@ export class AppService {
         const wallet = new Wallet();
         wallet.user_id = data.userId;
         wallet.client_id = data.clientId;
+        wallet.username = data.username;
         wallet.balance = data.amount || 0;
         wallet.available_balance = data.amount || 0;
 
