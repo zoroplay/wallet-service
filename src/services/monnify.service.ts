@@ -51,26 +51,56 @@ export class MonnifyService {
                 if (!transaction) return {success: false, message: 'Transaction not found', status: HttpStatus.NOT_FOUND};
 
                 if (data.requestSuccessful === true && data.responseMessage === 'success') {
-                    if (transaction.status === 1) // if transaction is already successful, return success message
-                        return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
-                    if (transaction.status === 2)
-                        return {success: false, message: 'Transaction failed. Try again', status: HttpStatus.NOT_ACCEPTABLE};
+                    let status = 0;
+                    const paymentStatus = data.responseBody.paymentStatus;
+                    switch (paymentStatus) {
+                        case 'PAID':
+                            status = 1
+                            break;
+                        case 'FAILED':
+                            status = 2;
+                            break;
+                        case 'OVERPAID':
+                            status = 1
+                            break;
+                        case 'PARTIALLY_PAID':
+                            status = 1
+                            break;
+                        case 'ABANDONED':
+                            status = 2
+                        
+                            break;
+                        case 'CANCELLED':
+                            status = 2
+                            break;
+                        case 'REVERSED': 
+                            status = 2
+                            break;
+                        case 'EXPIRED':
+                            status = 2
+                            break;
+                        default: 
+                            break;
+                    }
+                    // update transaction status to completed - 1
+                    await this.transactionRepository.update({
+                        transaction_no: transaction.transaction_no,
+                    }, {
+                        status
+                    });
 
-                    if (transaction.status === 0) {
+                    if (status === 1 && transaction.status === 1) // if transaction is already successful, return success message
+                        return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
+                    if (status === 2)
+                        return {success: false, message: 'Transaction ' + paymentStatus, status: HttpStatus.NOT_ACCEPTABLE};
+
+                    if (transaction.status === 0 && status === 1) {
                         // find user wallet
                         const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
 
                         const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
                         // fund user wallet
-                        await this.helperService.fundWallet(balance, transaction.user_id);
-
-                        // update transaction status to completed - 1
-                        await this.transactionRepository.update({
-                            transaction_no: transaction.transaction_no,
-                        }, {
-                            status: 1
-                        });
-
+                        await this.helperService.updateWallet(balance, transaction.user_id);
                         // send deposit to trackier
                         await this.helperService.sendActivity({
                             subject: 'Deposit',
@@ -80,6 +110,23 @@ export class MonnifyService {
                         })
                         
                         return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
+
+                    } else if (paymentStatus === "REVERSED" && transaction.status === 1) {
+                        // find user wallet
+                        const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
+
+                        const balance = parseFloat(wallet.available_balance.toString()) - parseFloat(transaction.amount.toString())
+                        // fund user wallet
+                        await this.helperService.updateWallet(balance, transaction.user_id);
+                        // send reversal request to trackier
+                        await this.helperService.sendActivity({
+                            subject: 'Withdrawal Request',
+                            username: transaction.username,
+                            amount: transaction.amount,
+                            transactionId: transaction.transaction_no
+                        })
+
+                        return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
                     }
                 } else {
                     // update transaction status to failed - 2
@@ -218,9 +265,43 @@ export class MonnifyService {
 
     async handleWebhook(data) {
         try {
+            const body = JSON.parse(data.body);
+
             switch (data.event) {
                 case 'SUCCESSFUL_TRANSACTION':
                     console.log('complete transaction')
+                    let status = 0;
+                    const paymentStatus = data.eventData.paymentStatus;
+                    switch (paymentStatus) {
+                        case 'PAID':
+                            status = 1
+                            break;
+                        case 'FAILED':
+                            status = 2;
+                            break;
+                        case 'OVERPAID':
+                            status = 1
+                            break;
+                        case 'PARTIALLY_PAID':
+                            status = 1
+                            break;
+                        case 'ABANDONED':
+                            status = 2
+                        
+                            break;
+                        case 'CANCELLED':
+                            status = 2
+                            break;
+                        case 'REVERSED': 
+                            status = 2
+                            break;
+                        case 'EXPIRED':
+                            status = 2
+                            break;
+                        default: 
+                            break;
+                    }
+
                     const transaction = await this.transactionRepository.findOne({
                         where: {
                             client_id: data.clientId, 
@@ -228,21 +309,22 @@ export class MonnifyService {
                             tranasaction_type: 'credit'
                         }
                     });
-                    if (transaction && transaction.status === 0) {
+
+                    // update transaction status
+                    await this.transactionRepository.update({
+                        transaction_no: transaction.transaction_no,
+                    }, {
+                        status
+                    });
+
+                    if (status === 1 && transaction && transaction.status === 0) {
                         // find user wallet
                         const wallet = await this.walletRepository.findOne(
                             {where: {user_id: transaction.user_id}
                         });
                         const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
                         // update user wallet
-                        await this.helperService.fundWallet(balance, transaction.user_id);
-
-                        // update transaction status
-                        await this.transactionRepository.update({
-                            transaction_no: transaction.transaction_no,
-                        }, {
-                            status: 1
-                        })
+                        await this.helperService.updateWallet(balance, transaction.user_id);
 
                         // send deposit to trackier
                         await this.helperService.sendActivity({
@@ -251,9 +333,23 @@ export class MonnifyService {
                             amount: transaction.amount,
                             transactionId: transaction.transaction_no
                         })
-                    }
+                    } else if (paymentStatus === "REVERSED" && transaction.status === 1) {
+                        // find user wallet
+                        const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
 
-                    
+                        const balance = parseFloat(wallet.available_balance.toString()) - parseFloat(transaction.amount.toString())
+                        // fund user wallet
+                        await this.helperService.updateWallet(balance, transaction.user_id);
+                        // send reversal request to trackier
+                        await this.helperService.sendActivity({
+                            subject: 'Withdrawal Request',
+                            username: transaction.username,
+                            amount: transaction.amount,
+                            transactionId: transaction.transaction_no
+                        })
+
+                        return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
+                    }
                     
                     break;
                 case 'SUCCESSFUL_DISBURSEMENT': 
@@ -296,7 +392,7 @@ export class MonnifyService {
 
                         const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(withdrawalFailed.amount.toString())
                         // update user wallet
-                        await this.helperService.fundWallet(balance, withdrawalFailed.user_id);
+                        await this.helperService.updateWallet(balance, withdrawalFailed.user_id);
 
                         // save transaction
                         await this.helperService.saveTransaction({
@@ -342,7 +438,7 @@ export class MonnifyService {
 
                         const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(reversed.amount.toString())
                         // update user wallet
-                        await this.helperService.fundWallet(balance, reversed.user_id);
+                        await this.helperService.updateWallet(balance, reversed.user_id);
 
                         // save transaction
                         await this.helperService.saveTransaction({

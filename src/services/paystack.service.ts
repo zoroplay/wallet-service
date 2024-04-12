@@ -76,7 +76,7 @@ export class PaystackService {
 
                     const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
                     // fund user wallet
-                    await this.helperService.fundWallet(balance, transaction.user_id);
+                    await this.helperService.updateWallet(balance, transaction.user_id);
 
                     // update transaction status to completed - 1
                     await this.transactionRepository.update({
@@ -273,7 +273,7 @@ export class PaystackService {
                             });
                             const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
                             // update user wallet
-                            await this.helperService.fundWallet(balance, transaction.user_id);
+                            await this.helperService.updateWallet(balance, transaction.user_id);
 
                             // update transaction status
                             await this.transactionRepository.update({
@@ -326,7 +326,7 @@ export class PaystackService {
 
                             const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(withdrawalFailed.amount.toString())
                             // update user wallet
-                            await this.helperService.fundWallet(balance, withdrawalFailed.user_id);
+                            await this.helperService.updateWallet(balance, withdrawalFailed.user_id);
 
                             // save transaction
                             await this.helperService.saveTransaction({
@@ -370,7 +370,7 @@ export class PaystackService {
 
                             const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(reversed.amount.toString())
                             // update user wallet
-                            await this.helperService.fundWallet(balance, reversed.user_id);
+                            await this.helperService.updateWallet(balance, reversed.user_id);
 
                             // save transaction
                             await this.helperService.saveTransaction({

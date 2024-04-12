@@ -128,7 +128,7 @@ export class HelperService {
         return resp.data;
     }
 
-    async fundWallet(amount, user_id) {
+    async updateWallet(amount, user_id) {
         // update user wallet
         await this.walletRepository.update({
             user_id,
