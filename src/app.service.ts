@@ -272,7 +272,7 @@ export class AppService {
         amount: data.amount,
         transactionId: transactionNo
       })
-
+      wallet.balance = balance;
       return handleResponse(wallet, 'Wallet credited')
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -344,7 +344,6 @@ export class AppService {
       })
 
       wallet.balance = balance;
-      wallet.available_balance = balance;
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
