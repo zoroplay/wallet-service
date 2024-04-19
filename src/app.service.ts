@@ -192,7 +192,7 @@ export class AppService {
   }
 
   async creditUser(data: CreditUserRequest): Promise<WalletResponse> {
-    console.log('credit data', data);
+    // console.log('credit data', data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
