@@ -4,6 +4,80 @@ import { Observable } from "rxjs";
 
 export const protobufPackage = "identity";
 
+export interface AutoDisbursementRequest {
+  clientId: number;
+}
+
+export interface AutoDisbursementResponse {
+  autoDisbursement: number;
+  autoDisbursementMin: number;
+  autoDisbursementMax: number;
+  autoDisbursementCount: number;
+}
+
+export interface PlaceBetRequest {
+  selections: BetSelection[];
+  clientId: number;
+  userId?: number | undefined;
+  stake: number;
+  source: string;
+  ipAddress: string;
+  betType: string;
+  username?: string | undefined;
+  minBonus: number;
+  maxBonus: number;
+  minOdds: number;
+  totalOdds: number;
+  type: string;
+  isBooking: number;
+  bonusId?: number | undefined;
+  useBonus?: boolean | undefined;
+}
+
+export interface BetSelection {
+  eventName: string;
+  eventType: string;
+  eventId: number;
+  producerId: number;
+  marketId: number;
+  marketName: string;
+  specifier: string;
+  outcomeId: string;
+  outcomeName: string;
+  odds: number;
+  sportId: number;
+  sport: string;
+  tournament: string;
+  category: string;
+  matchId: number;
+  awayTeam: string;
+  homeTeam: string;
+  type: string;
+  fixed: boolean;
+  selectionId: string;
+  eventDate: string;
+  eventPrefix: string;
+  isBonus?: boolean | undefined;
+}
+
+export interface GetSettingsRequest {
+  clientId: number;
+  category: string;
+}
+
+export interface SettingsRequest {
+  clientId: number;
+  inputs: string;
+  category?: string | undefined;
+  period?: string | undefined;
+}
+
+export interface UserRiskSettingsRequest {
+  userId: number;
+  inputs: string;
+  period: string;
+}
+
 export interface SaveSegmentRequest {
   clientId: number;
   userId: number;
@@ -124,6 +198,8 @@ export interface UserData {
   address: string;
   gender: string;
   dateOfBirth: string;
+  status: number;
+  group: string;
 }
 
 export interface CreateUserRequest {
@@ -524,6 +600,11 @@ export interface GetStatesRequest {
   countryId: number;
 }
 
+export interface SessionRequest {
+  clientId: number;
+  sessionId: string;
+}
+
 export interface State {
   id: number;
   name: string;
@@ -537,6 +618,27 @@ export interface StateResponse {
   states: State[];
 }
 
+export interface XpressLoginRequest {
+  clientId: number;
+  token: string;
+}
+
+export interface XpressLoginResponse {
+  status: boolean;
+  code: number;
+  message: string;
+  data?: XpressLoginResponse_XpressData | undefined;
+}
+
+export interface XpressLoginResponse_XpressData {
+  playerId: string;
+  playerNickname: string;
+  balance: number;
+  sessionId: string;
+  group: string;
+  currency: string;
+}
+
 export interface EmptyRequest {
 }
 
@@ -546,6 +648,10 @@ export interface IdentityServiceClient {
   register(request: CreateUserRequest): Observable<RegisterResponse>;
 
   login(request: LoginRequest): Observable<LoginResponse>;
+
+  xpressGameLogin(request: XpressLoginRequest): Observable<XpressLoginResponse>;
+
+  xpressGameLogout(request: SessionRequest): Observable<XpressLoginResponse>;
 
   validate(request: ValidateRequest): Observable<ValidateResponse>;
 
@@ -624,12 +730,34 @@ export interface IdentityServiceClient {
   getCountries(request: EmptyRequest): Observable<CommonResponse>;
 
   getStatesByCoutnry(request: GetStatesRequest): Observable<CommonResponse>;
+
+  validateXpressSession(request: SessionRequest): Observable<CommonResponse>;
+
+  saveSettings(request: SettingsRequest): Observable<CommonResponse>;
+
+  saveRiskSettings(request: SettingsRequest): Observable<CommonResponse>;
+
+  saveUserRiskSettings(request: UserRiskSettingsRequest): Observable<CommonResponse>;
+
+  getSettings(request: GetSettingsRequest): Observable<CommonResponse>;
+
+  validateBet(request: PlaceBetRequest): Observable<CommonResponse>;
+
+  getAutoDisbursementSettings(request: AutoDisbursementRequest): Observable<AutoDisbursementResponse>;
 }
 
 export interface IdentityServiceController {
   register(request: CreateUserRequest): Promise<RegisterResponse> | Observable<RegisterResponse> | RegisterResponse;
 
   login(request: LoginRequest): Promise<LoginResponse> | Observable<LoginResponse> | LoginResponse;
+
+  xpressGameLogin(
+    request: XpressLoginRequest,
+  ): Promise<XpressLoginResponse> | Observable<XpressLoginResponse> | XpressLoginResponse;
+
+  xpressGameLogout(
+    request: SessionRequest,
+  ): Promise<XpressLoginResponse> | Observable<XpressLoginResponse> | XpressLoginResponse;
 
   validate(request: ValidateRequest): Promise<ValidateResponse> | Observable<ValidateResponse> | ValidateResponse;
 
@@ -748,6 +876,24 @@ export interface IdentityServiceController {
   getCountries(request: EmptyRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 
   getStatesByCoutnry(request: GetStatesRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  validateXpressSession(request: SessionRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  saveSettings(request: SettingsRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  saveRiskSettings(request: SettingsRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  saveUserRiskSettings(
+    request: UserRiskSettingsRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getSettings(request: GetSettingsRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  validateBet(request: PlaceBetRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getAutoDisbursementSettings(
+    request: AutoDisbursementRequest,
+  ): Promise<AutoDisbursementResponse> | Observable<AutoDisbursementResponse> | AutoDisbursementResponse;
 }
 
 export function IdentityServiceControllerMethods() {
@@ -755,6 +901,8 @@ export function IdentityServiceControllerMethods() {
     const grpcMethods: string[] = [
       "register",
       "login",
+      "xpressGameLogin",
+      "xpressGameLogout",
       "validate",
       "validateClient",
       "getUserDetails",
@@ -794,6 +942,13 @@ export function IdentityServiceControllerMethods() {
       "grantBonusToSegment",
       "getCountries",
       "getStatesByCoutnry",
+      "validateXpressSession",
+      "saveSettings",
+      "saveRiskSettings",
+      "saveUserRiskSettings",
+      "getSettings",
+      "validateBet",
+      "getAutoDisbursementSettings",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

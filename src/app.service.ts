@@ -30,6 +30,8 @@ import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
+import { PaymentService } from './services/payments.service';
+import { IdentityService } from './identity/identity.service';
 var customParseFormat = require('dayjs/plugin/customParseFormat')
 
 dayjs.extend(customParseFormat)
@@ -46,6 +48,8 @@ export class AppService {
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
     private helperService: HelperService,
+    private paymentService: PaymentService,
+    private identityService: IdentityService
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -423,6 +427,30 @@ export class AppService {
         toUserBalance: 0,
         status: 1,
       });
+
+      // get auto disbursement settings
+      const autoDisbursement = await this.identityService.getAutoDisbursementSettings({clientId: data.clientId});
+
+      // if auto disbursement is enabled and 
+      if (autoDisbursement.autoDisbursement === 1 ) {
+        // check if withdrawal request has exceeded limit
+        const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(data.userId);
+
+        if (
+          (withdrawalCount) <= autoDisbursement.autoDisbursementCount && 
+          withdrawal.amount >= autoDisbursement.autoDisbursementMin && 
+          withdrawal.amount <= autoDisbursement.autoDisbursementMax
+        ) {
+          // console.log('initiate transfer')
+            await this.paymentService.updateWithdrawalStatus({
+              clientId: data.clientId,
+              action: 'approve',
+              withdrawalId: withdrawal.id,
+              comment: 'automated withdrawal',
+              updatedBy: 'System'
+            })
+          }
+      }
 
       return {
         success: true,

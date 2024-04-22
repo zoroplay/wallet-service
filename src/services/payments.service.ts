@@ -11,6 +11,7 @@ import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
 import { Repository } from 'typeorm';
 import { MonnifyService } from './monnify.service';
+import * as dayjs from 'dayjs';
 
 @Injectable()
 export class PaymentService {
@@ -306,5 +307,15 @@ export class PaymentService {
                 status: HttpStatus.INTERNAL_SERVER_ERROR
             }
         }
+    }
+
+    async checkNoOfWithdrawals(userId) {
+        const today = dayjs().format('YYYY-MM-DD');
+
+        return await this.withdrawalRepository.createQueryBuilder('withdrawals')
+            .where('user_id = :userId', {userId})
+            .where('status = :status', {status: 1})
+            .andWhere('DATE(created_at) >= :today', {today})
+            .getCount();
     }
 }
