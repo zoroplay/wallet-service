@@ -323,9 +323,9 @@ export class PaymentService {
             .getCount();
     }
 
-    @Cron(CronExpression.EVERY_30_MINUTES)
+    @Cron(CronExpression.EVERY_10_MINUTES)
     async cancelPendingDepit() {
-        const now = dayjs().subtract(15, 'minutes').format('YYYY-MM-DD HH:mm:ss');
+        const now = dayjs().subtract(7, 'minutes').format('YYYY-MM-DD HH:mm:ss');
         //delete pending transactions after 15mins
         await this.transactionRepository.update(
             {
