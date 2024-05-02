@@ -9,9 +9,11 @@ import { IdentityService } from 'src/identity/identity.service';
 import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, VerifyBankAccountRequest, VerifyBankAccountResponse, UpdateWithdrawalResponse } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, Repository } from 'typeorm';
 import { MonnifyService } from './monnify.service';
 import * as dayjs from 'dayjs';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { Transaction } from 'src/entity/transaction.entity';
 
 @Injectable()
 export class PaymentService {
@@ -22,6 +24,8 @@ export class PaymentService {
         private readonly walletRepository: Repository<Wallet>,
         @InjectRepository(PaymentMethod)
         private readonly paymentMethodRepository: Repository<PaymentMethod>,
+        @InjectRepository(Transaction)
+        private transactionRepository: Repository<Transaction>,
         private paystackService: PaystackService,
         private monnifyService: MonnifyService,
         private identityService: IdentityService,
@@ -318,4 +322,20 @@ export class PaymentService {
             .andWhere('DATE(created_at) >= :today', {today})
             .getCount();
     }
+
+    @Cron(CronExpression.EVERY_30_MINUTES)
+    async cancelPendingDepit() {
+        const now = dayjs().subtract(15, 'minutes').format('YYYY-MM-DD HH:mm:ss');
+        //delete pending transactions after 15mins
+        await this.transactionRepository.update(
+            {
+                created_at: LessThanOrEqual(now),
+                status: 0
+            },{
+                status: 2
+            }
+        );
+        // console.log('transactions', transactions);
+    }
+
 }
