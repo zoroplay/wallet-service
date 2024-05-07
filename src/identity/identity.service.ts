@@ -26,8 +26,8 @@ export class IdentityService {
         return this.svc.getUserDetails(data);
     }
 
-    async getAutoDisbursementSettings(clientId) {
-        return firstValueFrom(this.svc.getAutoDisbursementSettings(clientId));
+    async getWithdrawalSettings(clientId) {
+        return firstValueFrom(this.svc.getWithdrawalSettings(clientId));
     }   
 }
 

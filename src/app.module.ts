@@ -20,6 +20,8 @@ import { HelperService } from './services/helper.service';
 import { OPayService } from './services/opay.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DepositService } from './services/deposit.service';
+import { RetailModule } from './retail/retail.module';
+import { WithdrawalService } from './services/withdrawal.service';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { DepositService } from './services/deposit.service';
       Withdrawal,
     ]),
     IdentityModule,
+    RetailModule,
   ],
   controllers: [AppController],
   providers: [
@@ -56,6 +59,7 @@ import { DepositService } from './services/deposit.service';
     PaystackService,
     HelperService,
     DepositService,
+    WithdrawalService
   ],
 })
 export class AppModule {}

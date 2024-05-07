@@ -28,6 +28,7 @@ import { PaystackService } from './services/paystack.service';
 import { OPayService } from './services/opay.service';
 import { DepositService } from './services/deposit.service';
 import { MonnifyService } from './services/monnify.service';
+import { WithdrawalService } from './services/withdrawal.service';
 
 @Controller()
 export class AppController {
@@ -38,6 +39,7 @@ export class AppController {
     private monnifyService: MonnifyService,
     private opayService: OPayService,
     private depositService: DepositService,
+    private withdrawalService: WithdrawalService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -112,7 +114,7 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'RequestWithdrawal')
   RequestWithdrawal(param: WithdrawRequest) {
-    return this.appService.requestWithdrawal(param);
+    return this.withdrawalService.requestWithdrawal(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'UpdateWithdrawal')
@@ -122,7 +124,7 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ListWithdrawals')
   ListWithdrawals(param: ListWithdrawalRequests) {
-    return this.appService.listWithdrawalRequest(param);
+    return this.withdrawalService.listWithdrawalRequest(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ListDeposits')
@@ -153,5 +155,10 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'OpayLookUpWebhook')
   OpayLookUpWebhook(param: OpayWebhookRequest) {
     return this.opayService.reQueryLookUp(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')
+  GetUserAccounts(param: GetBalanceRequest) {
+    return this.withdrawalService.getUserBankAccounts(param);
   }
 }
