@@ -7,6 +7,7 @@ import {
   GetPaymentMethodRequest,
   ListWithdrawalRequestResponse,
   ListWithdrawalRequests,
+  MetaData,
   PaginationResponse,
   PaymentMethodRequest,
   PaymentMethodResponse,
@@ -419,6 +420,7 @@ export class AppService {
     userId,
     startDate,
     endDate,
+    page = 1,
   }): Promise<UserTransactionResponse> {
     try {
       let results = [];
@@ -433,10 +435,29 @@ export class AppService {
       if (endDate && endDate != '')
         query.andWhere('DATE(created_at) <= :endDate', { endDate });
 
+      const total = await query.clone().getCount();
+
+      let offset = (page - 1) * 20
+       offset = offset + 1;
+
+       console.log(offset);
+
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
         .limit(20)
+        .offset(offset)
         .getRawMany();
+
+      const pager = paginateResponse([transactions, total], page, 20);
+
+      const meta: MetaData = {
+        page,
+        perPage: 20,
+        total,
+        lastPage: pager.lastPage,
+        nextPage: pager.nextPage,
+        prevPage: pager.prevPage
+      }
 
       if (transactions.length > 0) {
         for (const transaction of transactions) {
@@ -455,7 +476,9 @@ export class AppService {
         }
       }
 
-      return { success: true, message: 'Successful', data: results };
+      console.log(meta);
+
+      return { success: true, message: 'Successful', data: results, meta };
     } catch (e) {
       console.log(e.message);
       return {

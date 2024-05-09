@@ -381,12 +381,14 @@ export interface UserTransactionRequest {
   userId: number;
   startDate: string;
   endDate: string;
+  page?: number | undefined;
 }
 
 export interface UserTransactionResponse {
   success: boolean;
   message: string;
   data: TransactionData[];
+  meta?: MetaData | undefined;
 }
 
 export interface TransactionData {
@@ -452,6 +454,15 @@ export interface PaginationResponse {
   prevPage: number;
   lastPage: number;
   data: string;
+}
+
+export interface MetaData {
+  page: number;
+  perPage: number;
+  total: number;
+  lastPage: number;
+  nextPage: number;
+  prevPage: number;
 }
 
 export const WALLET_PACKAGE_NAME = "wallet";

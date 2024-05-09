@@ -245,7 +245,7 @@ export class WithdrawalService {
                 .where("account.user_id = :userId", {userId: data.userId})
                 .getMany();
 
-            console.log(accounts);
+            // console.log(accounts);
 
             let response = [];
             if (accounts.length) {
