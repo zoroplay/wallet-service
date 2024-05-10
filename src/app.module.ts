@@ -22,9 +22,32 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DepositService } from './services/deposit.service';
 import { RetailModule } from './retail/retail.module';
 import { WithdrawalService } from './services/withdrawal.service';
+import { BullModule } from '@nestjs/bull';
+import { ConsumersService } from './consumers/consumers.service';
 
 @Module({
   imports: [
+    BullModule.forRoot({
+      limiter: {
+        max: 10,
+        duration: 1000
+      },
+      redis: {
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT),
+      },
+      prefix: 'wallet',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000
+        }
+      }
+    }),
+    BullModule.registerQueue({
+      name: 'withdrawal',
+    }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: process.env.DB_TYPE as any,
@@ -50,6 +73,7 @@ import { WithdrawalService } from './services/withdrawal.service';
   controllers: [AppController],
   providers: [
     AppService,
+    ConsumersService,
     FlutterwaveService,
     MonnifyService,
     MomoService,

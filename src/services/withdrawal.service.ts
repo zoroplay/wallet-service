@@ -11,6 +11,8 @@ import { IdentityService } from 'src/identity/identity.service';
 import { PaymentService } from './payments.service';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class WithdrawalService {
@@ -21,10 +23,9 @@ export class WithdrawalService {
         private withdrawalRepository: Repository<Withdrawal>,
         @InjectRepository(WithdrawalAccount)
         private withdrawalAccountRepository: Repository<WithdrawalAccount>,
-
-        private readonly helperService: HelperService,
+        @InjectQueue('withdrawal')
+        private withdrawalQueue: Queue,
         private readonly identityService: IdentityService,
-        private readonly paymentService: PaymentService,
     ) {}
 
     async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
@@ -54,102 +55,41 @@ export class WithdrawalService {
             };
     
           //To-Do: other validation minimum and max withdrawal
-    
-          const withdrawal = new Withdrawal();
-          withdrawal.account_name = data.accountName;
-          withdrawal.bank_code = data.bankCode;
-          withdrawal.bank_name = data.bankName;
-          withdrawal.account_number = data.accountNumber;
-          withdrawal.user_id = data.userId;
-          withdrawal.username = data.username;
-          withdrawal.client_id = data.clientId;
-          withdrawal.amount = data.amount;
-          withdrawal.withdrawal_code = generateTrxNo();
-    
-          await this.withdrawalRepository.save(withdrawal);
-    
-          const balance = wallet.available_balance - data.amount;
-    
-          await this.walletRepository.update(
-            {
-              user_id: data.userId,
-              client_id: data.clientId,
-            },
-            {
-              // balance,
-              available_balance: balance,
-            },
-          );
-    
-          // save bank account
-          this.saveUserBankAccount(data);      
-    
-          //to-do save transaction log
-          await this.helperService.saveTransaction({
-            clientId: data.clientId,
-            transactionNo: withdrawal.withdrawal_code,
-            amount: data.amount,
-            description: 'withdrawal request',
-            subject: 'Withdrawal',
-            channel: 'internal',
-            source: data.source,
-            fromUserId: data.userId,
-            fromUsername: data.username,
-            fromUserBalance: balance,
-            toUserId: 0,
-            toUsername: 'System',
-            toUserBalance: 0,
-            status: 1,
-          });
-    
           // get auto disbursement settings
           const autoDisbursement = await this.identityService.getWithdrawalSettings({clientId: data.clientId, userId: data.userId});
     
-          if (autoDisbursement.minimumWithdrawal > withdrawal.amount) 
+          if (autoDisbursement.minimumWithdrawal > data.amount) 
             return {
-                success: false,
-                status: HttpStatus.BAD_REQUEST,
-                message:
-                  'Minimum withdrawable amount is ' + autoDisbursement.minimumWithdrawal,
-                data: null,
-              };
-
-        if (autoDisbursement.maximumWithdrawal < withdrawal.amount) 
-            return {
-                success: false,
-                status: HttpStatus.BAD_REQUEST,
-                message:
-                    'Maximum withdrawable amount is ' + autoDisbursement.maximumWithdrawal,
-                data: null,
+              success: false,
+              status: HttpStatus.BAD_REQUEST,
+              message:
+                'Minimum withdrawable amount is ' + autoDisbursement.minimumWithdrawal,
+              data: null,
             };
-          // if auto disbursement is enabled and 
-          if (autoDisbursement.autoDisbursement === 1 ) {
-            // check if withdrawal request has exceeded limit
-            const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(data.userId);
-    
-            if (
-              (withdrawalCount) <= autoDisbursement.autoDisbursementCount && 
-              withdrawal.amount >= autoDisbursement.autoDisbursementMin && 
-              withdrawal.amount <= autoDisbursement.autoDisbursementMax
-            ) {
-              // console.log('initiate transfer')
-                await this.paymentService.updateWithdrawalStatus({
-                  clientId: data.clientId,
-                  action: 'approve',
-                  withdrawalId: withdrawal.id,
-                  comment: 'automated withdrawal',
-                  updatedBy: 'System'
-                })
-              }
-          }
+
+          if (autoDisbursement.maximumWithdrawal < data.amount) 
+            return {
+              success: false,
+              status: HttpStatus.BAD_REQUEST,
+              message:
+                  'Maximum withdrawable amount is ' + autoDisbursement.maximumWithdrawal,
+              data: null,
+            };
+
+          const jobData: any = {...data};
+          jobData.autoDisbursement = autoDisbursement;
+          jobData.withdrawalCode = generateTrxNo();
+          jobData.balance = wallet.available_balance;
+
+          const job = await this.withdrawalQueue.add(jobData, {jobId: `${data.userId}:${data.amount}`});
     
           return {
             success: true,
             status: HttpStatus.OK,
             message: 'Successful',
             data: {
-              balance,
-              code: withdrawal.withdrawal_code,
+              balance: 0,
+              code: jobData.withdrawalCode,
             },
           };
         } catch (e) {
@@ -213,28 +153,6 @@ export class WithdrawalService {
             message: 'Something went wrong',
             data: null,
           };
-        }
-    }
-
-    private async saveUserBankAccount(data) {
-        try{
-            const wAccount = await this.withdrawalAccountRepository.findOne({
-                where: {user_id: data.userId, bank_code: data.bankCode}
-            });
-            
-            if (!wAccount) {
-                const bankAccount = new WithdrawalAccount();
-                bankAccount.client_id = data.clientId;
-                bankAccount.user_id = data.userId;
-                bankAccount.bank_code = data.bankCode;
-                bankAccount.account_name = data.accountName;
-                bankAccount.account_number = data.accountNumber;
-
-                await this.withdrawalAccountRepository.save(bankAccount);
-            }
-
-        } catch(e) {
-            console.log('error saving bank account', e.message);
         }
     }
 
