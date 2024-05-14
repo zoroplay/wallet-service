@@ -437,10 +437,14 @@ export class AppService {
 
       const total = await query.clone().getCount();
 
-      let offset = (page - 1) * 20
-       offset = offset + 1;
+      let offset = 0;
+      
+      if (page > 1) {
+        (page - 1) * 20
+        offset = offset + 1;
+      }
 
-       console.log(offset);
+      console.log(offset);
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
