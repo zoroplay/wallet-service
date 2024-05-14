@@ -90,14 +90,15 @@ export class ConsumersService {
                 data.amount >= autoDisbursement.autoDisbursementMin && 
                 data.amount <= autoDisbursement.autoDisbursementMax
                 ) {
-                // console.log('initiate transfer')
-                    await this.paymentService.updateWithdrawalStatus({
-                    clientId: data.clientId,
-                    action: 'approve',
-                    withdrawalId: withdrawal.id,
-                    comment: 'automated withdrawal',
-                    updatedBy: 'System'
+                    console.log('initiate transfer')
+                    const resp = await this.paymentService.updateWithdrawalStatus({
+                        clientId: data.clientId,
+                        action: 'approve',
+                        withdrawalId: withdrawal.id,
+                        comment: 'automated withdrawal',
+                        updatedBy: 'System'
                     })
+                    console.log('transfer response', resp);
                 }
             }
             // remove job
