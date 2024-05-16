@@ -4,6 +4,8 @@ import {
   CreditUserRequest,
   DebitUserRequest,
   GetBalanceRequest,
+  GetNetworkBalanceRequest,
+  GetNetworkBalanceResponse,
   GetPaymentMethodRequest,
   ListWithdrawalRequestResponse,
   ListWithdrawalRequests,
@@ -223,6 +225,12 @@ export class AppService {
               parseFloat(wallet.casino_bonus_balance.toString()) +
               parseFloat(data.amount.toString());
             break;
+          case 'trust':
+            walletBalance = 'trust_balance';
+            balance =
+              parseFloat(wallet.trust_balance.toString()) +
+              parseFloat(data.amount.toString());
+            break;
           default:
             balance =
               parseFloat(wallet.available_balance.toString()) +
@@ -305,6 +313,10 @@ export class AppService {
           walletBalance = 'casino_bonus_balance';
           balance = wallet.casino_bonus_balance - data.amount;
           break;
+        case 'trust':
+          walletBalance = 'trust_balance';
+          balance = wallet.trust_balance - data.amount;
+        break;
         default:
           balance = wallet.available_balance - data.amount;
           break;
@@ -354,8 +366,6 @@ export class AppService {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  
 
   async listDeposits(data): Promise<PaginationResponse> {
     // console.log('fetch deposits', data)
@@ -421,6 +431,7 @@ export class AppService {
     startDate,
     endDate,
     page = 1,
+    limit = 20
   }): Promise<UserTransactionResponse> {
     try {
       let results = [];
@@ -438,25 +449,25 @@ export class AppService {
       const total = await query.clone().getCount();
 
       let offset = 0;
-      
+
       if (page > 1) {
-        (page - 1) * 20
+        (page - 1) * limit
         offset = offset + 1;
       }
 
-      console.log(offset);
+      // console.log(offset);
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
-        .limit(20)
+        .limit(limit)
         .offset(offset)
         .getRawMany();
 
-      const pager = paginateResponse([transactions, total], page, 20);
+      const pager = paginateResponse([transactions, total], page, limit);
 
       const meta: MetaData = {
         page,
-        perPage: 20,
+        perPage: limit,
         total,
         lastPage: pager.lastPage,
         nextPage: pager.nextPage,
@@ -480,11 +491,8 @@ export class AppService {
         }
       }
 
-      console.log(meta);
-
       return { success: true, message: 'Successful', data: results, meta };
     } catch (e) {
-      console.log(e.message);
       return {
         success: false,
         message: 'Unable to fetch transactions',
@@ -615,6 +623,43 @@ export class AppService {
     } catch (e) {
       console.log(e);
       return null;
+    }
+  }
+
+  async getNetworkBalance (payload: GetNetworkBalanceRequest): Promise<GetNetworkBalanceResponse> {
+    const agentWallet = await this.walletRepository.findOne({where: {user_id: payload.agentId}});
+    try {
+      console.log(payload);
+      // get agent wallet
+      // get network sum
+      const networkSum = await this.walletRepository.createQueryBuilder('w')
+      .select("SUM(available_balance)", "network_balance")
+      .addSelect("SUM(trust_balance)", "network_trust_balance")
+      .where("user_id IN(:...ids)", { ids: payload.userIds.split(',') })
+      .getRawOne(); 
+
+      console.log(networkSum);
+
+      return {
+        success: true, 
+        message: 'Success', 
+        networkBalance: parseFloat(networkSum.network_balance) + parseFloat(agentWallet.available_balance.toString()),
+        networkTrustBalance: parseFloat(networkSum.network_trust_balance) + parseFloat(agentWallet.trust_balance.toString()),
+        trustBalance: agentWallet.trust_balance,
+        availableBalance: agentWallet.available_balance,
+        balance: agentWallet.balance
+      }
+
+    } catch (e) {
+      return {
+        success: true, 
+        message: 'Success', 
+        networkBalance: 0,
+        networkTrustBalance: 0,
+        trustBalance: agentWallet.trust_balance,
+        availableBalance: agentWallet.available_balance,
+        balance: agentWallet.balance
+      }
     }
   }
 }

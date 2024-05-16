@@ -9,6 +9,7 @@ import {
   FetchDepositRangeRequest,
   FetchPlayerDepositRequest,
   GetBalanceRequest,
+  GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
   InitiateDepositRequest,
   ListDepositRequests,
@@ -160,5 +161,10 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')
   GetUserAccounts(param: GetBalanceRequest) {
     return this.withdrawalService.getUserBankAccounts(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetNetworkBalance')
+  GetNetworkBalance(param: GetNetworkBalanceRequest) {
+    return this.appService.getNetworkBalance(param);
   }
 }
