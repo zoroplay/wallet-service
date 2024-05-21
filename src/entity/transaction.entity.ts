@@ -46,6 +46,9 @@ export class Transaction {
     @Column({ type: "decimal", precision: 20, scale: 2, default: 0 })
     balance: number;
 
+    @Column({ type: "varchar", default: 'main' })
+    wallet: string;
+
     @Column({ type: "tinyint", default: 0 })
     status: number;
 

@@ -34,6 +34,7 @@ export class HelperService {
         transaction1.channel        = data.channel;
         transaction1.balance        = data.fromUserBalance;
         transaction1.status         = data.status || 0;
+        transaction1.wallet         = data.walletType
       
         model.push(transaction1);
       
@@ -50,6 +51,7 @@ export class HelperService {
         transaction2.channel        = data.channel;
         transaction2.balance        = data.toUserBalance;
         transaction2.status         = data.status || 0;
+        transaction1.wallet         = data.walletType
       
         model.push(transaction2);
       

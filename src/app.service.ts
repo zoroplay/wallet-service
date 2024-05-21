@@ -202,31 +202,36 @@ export class AppService {
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
       });
-
+      let walletType = 'Main';
       let balance = 0;
+      
       if (wallet) {
         let walletBalance = 'available_balance';
         switch (data.wallet) {
           case 'sport-bonus':
             walletBalance = 'sport_bonus_balance';
+            walletType = 'Sport Bonus';
             balance =
               parseFloat(wallet.sport_bonus_balance.toString()) +
               parseFloat(data.amount.toString());
             break;
           case 'virtual':
             walletBalance = 'virtual_bonus_balance';
+            walletType = 'Virtual Bonus';
             balance =
               parseFloat(wallet.virtual_bonus_balance.toString()) +
               parseFloat(data.amount.toString());
             break;
           case 'casino':
             walletBalance = 'casino_bonus_balance';
+            walletType = 'Casino Bonus';
             balance =
               parseFloat(wallet.casino_bonus_balance.toString()) +
               parseFloat(data.amount.toString());
             break;
           case 'trust':
             walletBalance = 'trust_balance';
+            walletType = 'Trust';
             balance =
               parseFloat(wallet.trust_balance.toString()) +
               parseFloat(data.amount.toString());
@@ -275,6 +280,7 @@ export class AppService {
         toUsername: data.username,
         toUserBalance: balance,
         status: 1,
+        walletType
       });
 
       // send deposit to trackier
@@ -294,27 +300,33 @@ export class AppService {
 
   async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
     try {
+      console.log(data);
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
       });
 
       let balance = 0;
       let walletBalance = 'available_balance';
+      let walletType = 'Main';
       switch (data.wallet) {
         case 'sport-bonus':
           walletBalance = 'sport_bonus_balance';
+          walletType = 'Sport Bonus'
           balance = wallet.sport_bonus_balance - data.amount;
           break;
         case 'virtual':
           walletBalance = 'virtual_bonus_balance';
+          walletType = 'Virtual Bonus'
           balance = wallet.virtual_bonus_balance - data.amount;
           break;
         case 'casino':
           walletBalance = 'casino_bonus_balance';
+          walletType = 'Casino Bonus'
           balance = wallet.casino_bonus_balance - data.amount;
           break;
         case 'trust':
           walletBalance = 'trust_balance';
+          walletType = 'Trust'
           balance = wallet.trust_balance - data.amount;
         break;
         default:
@@ -350,6 +362,7 @@ export class AppService {
         toUsername: 'System',
         toUserBalance: 0,
         status: 1,
+        walletType
       });
 
       // send deposit to trackier
@@ -363,6 +376,7 @@ export class AppService {
       wallet.balance = balance;
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
+      console.log(e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
