@@ -212,7 +212,7 @@ export class PaystackService {
                 });
     
                 res.on('end', () => {
-                    // console.log(JSON.parse(data))
+                    console.log(data)
                     resolve(JSON.parse(data))
                 })
             }).on('error', error => {
