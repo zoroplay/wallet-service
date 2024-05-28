@@ -166,7 +166,7 @@ export class PaystackService {
                 });
     
                 res.on('end', () => {
-                    console.log('received data', data)
+                    // console.log(JSON.parse(data))
                     resolve(JSON.parse(data))
                 })
             }).on('error', error => {
@@ -212,7 +212,7 @@ export class PaystackService {
                 });
     
                 res.on('end', () => {
-                    console.log('received data', data)
+                    // console.log(JSON.parse(data))
                     resolve(JSON.parse(data))
                 })
             }).on('error', error => {
