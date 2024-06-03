@@ -24,9 +24,9 @@ export class ConsumersService {
 
     @Process()
     async processWithdrawal(job: Job<unknown>) {
-        console.log(
-            `Processing job ${job.id} of type ${job.name}...`,
-          );
+        // console.log(
+        //     `Processing job ${job.id} of type ${job.name}...`,
+        //   );
 
         try {
             const data: any = job.data;
