@@ -293,14 +293,14 @@ export class AppService {
       wallet.balance = balance;
       return handleResponse(wallet, 'Wallet credited')
     } catch (e) {
-      console.log('credit error', e.message);
+      // console.log('credit error', e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
     try {
-      console.log(data);
+      // console.log(data);
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
       });
@@ -469,7 +469,7 @@ export class AppService {
         offset = offset + 1;
       }
 
-      // console.log(offset);
+      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
@@ -643,7 +643,7 @@ export class AppService {
   async getNetworkBalance (payload: GetNetworkBalanceRequest): Promise<GetNetworkBalanceResponse> {
     const agentWallet = await this.walletRepository.findOne({where: {user_id: payload.agentId}});
     try {
-      console.log(payload);
+      // console.log(payload);
       // get agent wallet
       // get network sum
       const networkSum = await this.walletRepository.createQueryBuilder('w')
@@ -652,7 +652,7 @@ export class AppService {
       .where("user_id IN(:...ids)", { ids: payload.userIds.split(',') })
       .getRawOne(); 
 
-      console.log(networkSum);
+      // console.log(networkSum);
 
       return {
         success: true, 
