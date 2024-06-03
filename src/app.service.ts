@@ -465,7 +465,7 @@ export class AppService {
       let offset = 0;
 
       if (page > 1) {
-        (page - 1) * limit
+        offset = (page - 1) * limit;
         offset = offset + 1;
       }
 
