@@ -213,33 +213,33 @@ export class AppService {
             walletType = 'Sport Bonus';
             balance =
               parseFloat(wallet.sport_bonus_balance.toString()) +
-              parseFloat(data.amount.toString());
+              parseFloat(data.amount);
             break;
           case 'virtual':
             walletBalance = 'virtual_bonus_balance';
             walletType = 'Virtual Bonus';
             balance =
               parseFloat(wallet.virtual_bonus_balance.toString()) +
-              parseFloat(data.amount.toString());
+              parseFloat(data.amount);
             break;
           case 'casino':
             walletBalance = 'casino_bonus_balance';
             walletType = 'Casino Bonus';
             balance =
               parseFloat(wallet.casino_bonus_balance.toString()) +
-              parseFloat(data.amount.toString());
+              parseFloat(data.amount);
             break;
           case 'trust':
             walletBalance = 'trust_balance';
             walletType = 'Trust';
             balance =
               parseFloat(wallet.trust_balance.toString()) +
-              parseFloat(data.amount.toString());
+              parseFloat(data.amount);
             break;
           default:
             balance =
               parseFloat(wallet.available_balance.toString()) +
-              parseFloat(data.amount.toString());
+              parseFloat(data.amount);
             break;
         }
         await this.walletRepository.update(
@@ -258,8 +258,8 @@ export class AppService {
         wallet.user_id = data.userId;
         wallet.client_id = data.clientId;
         wallet.username = data.username;
-        wallet.balance = data.amount || 0;
-        wallet.available_balance = data.amount || 0;
+        wallet.balance = parseFloat(data.amount) || 0;
+        wallet.available_balance = parseFloat(data.amount) || 0;
 
         await this.walletRepository.save(wallet);
       }
@@ -268,7 +268,7 @@ export class AppService {
       await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo,
-        amount: data.amount,
+        amount: parseFloat(data.amount),
         description: data.description,
         subject: data.subject,
         channel: data.channel,
@@ -305,6 +305,8 @@ export class AppService {
         where: { user_id: data.userId },
       });
 
+      const amount = parseFloat(data.amount);
+
       let balance = 0;
       let walletBalance = 'available_balance';
       let walletType = 'Main';
@@ -312,25 +314,25 @@ export class AppService {
         case 'sport-bonus':
           walletBalance = 'sport_bonus_balance';
           walletType = 'Sport Bonus'
-          balance = wallet.sport_bonus_balance - data.amount;
+          balance = wallet.sport_bonus_balance - amount;
           break;
         case 'virtual':
           walletBalance = 'virtual_bonus_balance';
           walletType = 'Virtual Bonus'
-          balance = wallet.virtual_bonus_balance - data.amount;
+          balance = wallet.virtual_bonus_balance - amount;
           break;
         case 'casino':
           walletBalance = 'casino_bonus_balance';
           walletType = 'Casino Bonus'
-          balance = wallet.casino_bonus_balance - data.amount;
+          balance = wallet.casino_bonus_balance - amount;
           break;
         case 'trust':
           walletBalance = 'trust_balance';
           walletType = 'Trust'
-          balance = wallet.trust_balance - data.amount;
+          balance = wallet.trust_balance - amount;
         break;
         default:
-          balance = wallet.available_balance - data.amount;
+          balance = wallet.available_balance - amount;
           break;
       }
       await this.walletRepository.update(
@@ -350,7 +352,7 @@ export class AppService {
       await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo: generateTrxNo(),
-        amount: data.amount,
+        amount: parseFloat(data.amount),
         description: data.description,
         subject: data.subject,
         channel: data.channel,
@@ -369,7 +371,7 @@ export class AppService {
       await this.helperService.sendActivity({
         subject: data.subject,
         username: data.username,
-        amount: data.amount,
+        amount: parseFloat(data.amount),
         transactionId: transactionNo
       })
 
