@@ -1,8 +1,126 @@
 /* eslint-disable */
 import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
+import { wrappers } from "protobufjs";
 import { Observable } from "rxjs";
+import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
+
+export interface ProcessRetailTransaction {
+  transactionId: number;
+}
+
+export interface WalletTransferRequest {
+  clientId: number;
+  toUserId: number;
+  toUsername: string;
+  fromUsername: string;
+  fromUserId: number;
+  amount: number;
+  description?: string | undefined;
+  action: string;
+}
+
+export interface ValidateTransactionRequest {
+  clientId: number;
+  userId: number;
+  code: string;
+  userRole: string;
+}
+
+export interface EmptyRequest {
+}
+
+export interface CashbookCreateExpenseCategoryRequest {
+  title: string;
+  description: string;
+}
+
+export interface ExpenseCategorySingleResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data?: ExpenseCategory | undefined;
+}
+
+export interface ExpenseCategoryRepeatedResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data: ExpenseCategory[];
+}
+
+export interface ExpenseCategory {
+  id: number;
+  title: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface CashbookCreateCashInOutRequest {
+  userId: number;
+  cashierId: number;
+  branchId: number;
+  amount: number;
+  comment: string;
+}
+
+export interface CashInOutSingleResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data?: CashInOut | undefined;
+}
+
+export interface CashInOutRepeatedResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data: CashInOut[];
+}
+
+export interface CashInOut {
+  id: number;
+  userId: number;
+  approvedBy: number;
+  branchId: number;
+  amount: number;
+  comment: string;
+  status: number;
+  createdAt: string;
+  balance: number;
+}
+
+export interface CashbookCreateExpenseTypeRequest {
+  title: string;
+  categoryId: number;
+  fixed: number;
+  amount: number;
+}
+
+export interface ExpenseTypeSingleResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data?: ExpenseType | undefined;
+}
+
+export interface ExpenseTypeRepeatedResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data: ExpenseType[];
+}
+
+export interface ExpenseType {
+  id: number;
+  title: string;
+  amount: number;
+  createdAt: string;
+  status: number;
+  fixed: number;
+  categoryId: number;
+}
 
 export interface GetUserAccountsResponse {
   data: GetUserAccountsResponse_BankAccount[];
@@ -339,7 +457,7 @@ export interface GetTransactionResponse {
   success: boolean;
   status: number;
   message: string;
-  data: Transaction[];
+  data: { [key: string]: any }[];
 }
 
 export interface OpayWebhookRequest {
@@ -429,10 +547,18 @@ export interface UpdateWithdrawalRequest {
   updatedBy: string;
 }
 
-export interface UpdateWithdrawalResponse {
+export interface CommonResponseObj {
   success: boolean;
   message: string;
   status: number;
+  data?: { [key: string]: any } | undefined;
+}
+
+export interface CommonResponseArray {
+  success: boolean;
+  message: string;
+  status: number;
+  data: { [key: string]: any }[];
 }
 
 export interface PlayerWalletData {
@@ -484,7 +610,27 @@ export interface MetaData {
 
 export const WALLET_PACKAGE_NAME = "wallet";
 
+wrappers[".google.protobuf.Struct"] = { fromObject: Struct.wrap, toObject: Struct.unwrap } as any;
+
 export interface WalletServiceClient {
+  cashbookCreateExpenseCategory(
+    request: CashbookCreateExpenseCategoryRequest,
+  ): Observable<ExpenseCategorySingleResponse>;
+
+  cashbookFindAllExpenseCategory(request: EmptyRequest): Observable<ExpenseCategoryRepeatedResponse>;
+
+  cashbookCreateExpenseType(request: CashbookCreateExpenseTypeRequest): Observable<ExpenseTypeSingleResponse>;
+
+  cashbookFindAllExpenseType(request: EmptyRequest): Observable<ExpenseTypeRepeatedResponse>;
+
+  cashbookCreateCashIn(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookFindAllCashIn(request: EmptyRequest): Observable<CashInOutRepeatedResponse>;
+
+  cashbookCreateCashOut(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookFindAllCashOut(request: EmptyRequest): Observable<CashInOutRepeatedResponse>;
+
   getBalance(request: GetBalanceRequest): Observable<WalletResponse>;
 
   createWallet(request: CreateWalletRequest): Observable<WalletResponse>;
@@ -529,16 +675,61 @@ export interface WalletServiceClient {
 
   userTransactions(request: UserTransactionRequest): Observable<UserTransactionResponse>;
 
-  updateWithdrawal(request: UpdateWithdrawalRequest): Observable<UpdateWithdrawalResponse>;
+  updateWithdrawal(request: UpdateWithdrawalRequest): Observable<CommonResponseObj>;
 
   getPlayerWalletData(request: GetBalanceRequest): Observable<PlayerWalletData>;
 
   getUserAccounts(request: GetBalanceRequest): Observable<GetUserAccountsResponse>;
 
   getNetworkBalance(request: GetNetworkBalanceRequest): Observable<GetNetworkBalanceResponse>;
+
+  walletTransfer(request: WalletTransferRequest): Observable<CommonResponseObj>;
+
+  validateDepositCode(request: ValidateTransactionRequest): Observable<CommonResponseObj>;
+
+  processShopDeposit(request: ProcessRetailTransaction): Observable<CommonResponseObj>;
+
+  validateWithdrawalCode(request: ValidateTransactionRequest): Observable<CommonResponseObj>;
+
+  processShopWithdrawal(request: ProcessRetailTransaction): Observable<CommonResponseObj>;
 }
 
 export interface WalletServiceController {
+  cashbookCreateExpenseCategory(
+    request: CashbookCreateExpenseCategoryRequest,
+  ): Promise<ExpenseCategorySingleResponse> | Observable<ExpenseCategorySingleResponse> | ExpenseCategorySingleResponse;
+
+  cashbookFindAllExpenseCategory(
+    request: EmptyRequest,
+  ):
+    | Promise<ExpenseCategoryRepeatedResponse>
+    | Observable<ExpenseCategoryRepeatedResponse>
+    | ExpenseCategoryRepeatedResponse;
+
+  cashbookCreateExpenseType(
+    request: CashbookCreateExpenseTypeRequest,
+  ): Promise<ExpenseTypeSingleResponse> | Observable<ExpenseTypeSingleResponse> | ExpenseTypeSingleResponse;
+
+  cashbookFindAllExpenseType(
+    request: EmptyRequest,
+  ): Promise<ExpenseTypeRepeatedResponse> | Observable<ExpenseTypeRepeatedResponse> | ExpenseTypeRepeatedResponse;
+
+  cashbookCreateCashIn(
+    request: CashbookCreateCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookFindAllCashIn(
+    request: EmptyRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  cashbookCreateCashOut(
+    request: CashbookCreateCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookFindAllCashOut(
+    request: EmptyRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
   getBalance(request: GetBalanceRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
   createWallet(request: CreateWalletRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
@@ -621,7 +812,7 @@ export interface WalletServiceController {
 
   updateWithdrawal(
     request: UpdateWithdrawalRequest,
-  ): Promise<UpdateWithdrawalResponse> | Observable<UpdateWithdrawalResponse> | UpdateWithdrawalResponse;
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
   getPlayerWalletData(
     request: GetBalanceRequest,
@@ -634,11 +825,39 @@ export interface WalletServiceController {
   getNetworkBalance(
     request: GetNetworkBalanceRequest,
   ): Promise<GetNetworkBalanceResponse> | Observable<GetNetworkBalanceResponse> | GetNetworkBalanceResponse;
+
+  walletTransfer(
+    request: WalletTransferRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  validateDepositCode(
+    request: ValidateTransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  processShopDeposit(
+    request: ProcessRetailTransaction,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  validateWithdrawalCode(
+    request: ValidateTransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  processShopWithdrawal(
+    request: ProcessRetailTransaction,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 }
 
 export function WalletServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
+      "cashbookCreateExpenseCategory",
+      "cashbookFindAllExpenseCategory",
+      "cashbookCreateExpenseType",
+      "cashbookFindAllExpenseType",
+      "cashbookCreateCashIn",
+      "cashbookFindAllCashIn",
+      "cashbookCreateCashOut",
+      "cashbookFindAllCashOut",
       "getBalance",
       "createWallet",
       "fetchBetRange",
@@ -665,6 +884,11 @@ export function WalletServiceControllerMethods() {
       "getPlayerWalletData",
       "getUserAccounts",
       "getNetworkBalance",
+      "walletTransfer",
+      "validateDepositCode",
+      "processShopDeposit",
+      "validateWithdrawalCode",
+      "processShopWithdrawal",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

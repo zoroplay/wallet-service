@@ -23,7 +23,8 @@ import { DepositService } from './services/deposit.service';
 import { RetailModule } from './retail/retail.module';
 import { WithdrawalService } from './services/withdrawal.service';
 import { BullModule } from '@nestjs/bull';
-import { ConsumersService } from './consumers/consumers.service';
+import { WithdrawalConsumer } from './consumers/withdrawal.consumer';
+import { DepositConsumer } from './consumers/deposit.consumer';
 
 @Module({
   imports: [
@@ -45,9 +46,14 @@ import { ConsumersService } from './consumers/consumers.service';
         }
       }
     }),
-    BullModule.registerQueue({
-      name: 'withdrawal',
-    }),
+    BullModule.registerQueue(
+      {
+        name: 'withdrawal',
+      }, 
+      {
+        name: 'deposit'
+      }
+    ),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: process.env.DB_TYPE as any,
@@ -73,7 +79,6 @@ import { ConsumersService } from './consumers/consumers.service';
   controllers: [AppController],
   providers: [
     AppService,
-    ConsumersService,
     FlutterwaveService,
     MonnifyService,
     MomoService,
@@ -83,7 +88,9 @@ import { ConsumersService } from './consumers/consumers.service';
     PaystackService,
     HelperService,
     DepositService,
-    WithdrawalService
+    DepositConsumer,
+    WithdrawalService,
+    WithdrawalConsumer
   ],
 })
 export class AppModule {}

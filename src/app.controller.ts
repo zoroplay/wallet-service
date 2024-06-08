@@ -16,11 +16,14 @@ import {
   ListWithdrawalRequests,
   OpayWebhookRequest,
   PaymentMethodRequest,
+  ProcessRetailTransaction,
   UpdateWithdrawalRequest,
   UserTransactionRequest,
+  ValidateTransactionRequest,
   VerifyBankAccountRequest,
   VerifyDepositRequest,
   WALLET_SERVICE_NAME,
+  WalletTransferRequest,
   WithdrawRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
@@ -166,5 +169,30 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetNetworkBalance')
   GetNetworkBalance(param: GetNetworkBalanceRequest) {
     return this.appService.getNetworkBalance(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'WalletTransfer')
+  walletTransfer(param: WalletTransferRequest) {
+    return this.paymentService.walletTransfer(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ValidateDepositCode')
+  ValidateDepositCodev(param: ValidateTransactionRequest) {
+    return this.depositService.validateDepositCode(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ValidateWithdrawalCode')
+  ValidateWithdrawalCode(param: ValidateTransactionRequest) {
+    return this.withdrawalService.validateWithdrawalCode(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ProcessShopWithdrawal')
+  ProcessShopWithdrawal(param: ProcessRetailTransaction) {
+    return this.withdrawalService.processShopWithdrawal(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ProcessShopDeposit')
+  ProcessShopDeposit(param: ProcessRetailTransaction) {
+    return this.depositService.processShopDeposit(param);
   }
 }

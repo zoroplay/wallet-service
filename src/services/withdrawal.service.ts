@@ -4,11 +4,9 @@ import * as dayjs from 'dayjs';
 import { generateTrxNo } from 'src/common/helpers';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
-import { GetUserAccountsResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, WithdrawRequest, WithdrawResponse } from 'src/proto/wallet.pb';
+import { CommonResponseObj, GetUserAccountsResponse, ListWithdrawalRequestResponse, ListWithdrawalRequests, ValidateTransactionRequest, WithdrawRequest, WithdrawResponse } from 'src/proto/wallet.pb';
 import { Between, Repository } from 'typeorm';
-import { HelperService } from './helper.service';
 import { IdentityService } from 'src/identity/identity.service';
-import { PaymentService } from './payments.service';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';
 import { InjectQueue } from '@nestjs/bull';
@@ -25,6 +23,7 @@ export class WithdrawalService {
         private withdrawalAccountRepository: Repository<WithdrawalAccount>,
         @InjectQueue('withdrawal')
         private withdrawalQueue: Queue,
+
         private readonly identityService: IdentityService,
     ) {}
 
@@ -81,7 +80,7 @@ export class WithdrawalService {
           jobData.withdrawalCode = generateTrxNo();
           jobData.balance = wallet.available_balance;
 
-          const job = await this.withdrawalQueue.add(jobData, {jobId: `${data.userId}:${data.amount}`});
+          await this.withdrawalQueue.add('withdrawal-request', jobData, {jobId: `${data.userId}:${data.amount}`});
     
           return {
             success: true,
@@ -181,6 +180,123 @@ export class WithdrawalService {
             console.log('something went wrong', e.message);
             return {data: []}
         }
+    }
+
+    async validateWithdrawalCode(data: ValidateTransactionRequest): Promise<CommonResponseObj> {
+      try {
+        // find withdrawal request
+        const withdrawalRequest = await this.withdrawalRepository.findOne({
+          where: {
+            withdrawal_code: data.code, 
+            client_id: data.clientId
+          }
+        });
+
+        if (!withdrawalRequest) {
+          return {
+            success: false,
+            status: HttpStatus.NOT_FOUND,
+            message: "Invalid code provided"
+          }
+        } else if (withdrawalRequest && withdrawalRequest.status !== 0) {
+          return {
+            success: false,
+            status: HttpStatus.NOT_FOUND,
+            message: "Code has already been used"
+          }
+        } else {
+          const respData = {
+            requestId: withdrawalRequest.id,
+            amount: withdrawalRequest.amount,
+            withdrawalCharge: 0,
+            withdrawalFinalAmount: 0,
+          }
+
+          if (data.userRole === 'Sales Agent') {
+            const settings = await this.identityService.getWithdrawalSettings({clientId: data.clientId, userId: data.userId})
+            
+            if (settings.allowWithdrawalComm) {
+              respData.withdrawalCharge = respData.amount * settings.withdrawalComm / 100;
+              respData.withdrawalFinalAmount = respData.amount - respData.withdrawalCharge;
+            }
+          }
+
+          return {
+            success: true,
+            status: HttpStatus.OK,
+            message: 'Valid',
+            data: respData
+          }
+        }
+
+      } catch (e) {
+        return {
+          success: false, 
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: "Unable to validate request. Something went wrong"
+        }
+      }
+    }
+
+    async processShopWithdrawal (payload) {
+      try {
+        // get withdrawal request
+        const withdrawReqeust = await this.withdrawalRepository.findOne({where: {id: payload.id, status: 0}});
+
+        if (!withdrawReqeust) {
+          return {
+            success: false,
+            status: HttpStatus.BAD_REQUEST,
+            message: 'Withdrawal request already processed'
+          }
+        }
+
+        // check if the authorizing agent and the withdrawer are the same person
+        if (withdrawReqeust.id === payload.userId) {
+          return {
+            success: false,
+            status: HttpStatus.BAD_REQUEST,
+            message: 'You cannot process your own request'
+          }
+        }
+
+        // get user wallet
+        const wallet = await this.walletRepository.findOne({
+          where: {
+            user_id: payload.userId,
+            client_id: payload.clientId,
+          },
+        });
+
+        if (wallet.available_balance < payload.amount) {
+          return {
+            success: false,
+            status: HttpStatus.BAD_REQUEST,
+            message: 'You do not have enough funds to complete this request'
+          }
+        }
+        // add user balance to payload
+        payload.balance = wallet.available_balance
+        payload.amount = payload.amount
+
+        // add request to queue
+        await this.withdrawalQueue.add('shop-withdrawal', payload, {
+          jobId: `shop-withdrawal:${withdrawReqeust.id}`
+        });
+
+        return {
+          success: true,
+          status: HttpStatus.OK,
+          message: 'Withdrawal request successful'
+        }
+
+      } catch (e) {
+        return {
+          success: false,
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: 'An error occured while processing request. Please try again'
+        }
+      }
     }
 }
 

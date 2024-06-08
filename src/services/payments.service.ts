@@ -6,7 +6,7 @@ import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { IdentityService } from 'src/identity/identity.service';
-import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, VerifyBankAccountRequest, VerifyBankAccountResponse, UpdateWithdrawalResponse } from 'src/proto/wallet.pb';
+import { InitiateDepositResponse, InitiateDepositRequest, VerifyDepositRequest, VerifyBankAccountRequest, VerifyBankAccountResponse, CommonResponseObj, WalletTransferRequest } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
 import { LessThanOrEqual, Repository } from 'typeorm';
@@ -119,7 +119,7 @@ export class PaymentService {
         }
     }
 
-    async updateWithdrawalStatus({clientId, withdrawalId, action, comment, updatedBy}): Promise<UpdateWithdrawalResponse> {
+    async updateWithdrawalStatus({clientId, withdrawalId, action, comment, updatedBy}): Promise<CommonResponseObj> {
         try {
             const wRequest = await this.withdrawalRepository.findOne({where: {id: withdrawalId}});
             if (wRequest) {
@@ -322,6 +322,45 @@ export class PaymentService {
             .andWhere('DATE(created_at) >= :today', {today})
             .getCount();
     }
+
+    async walletTransfer(payload: WalletTransferRequest): Promise<CommonResponseObj> {
+        try {
+          const {clientId, fromUserId, fromUsername, toUserId, toUsername, action, amount} = payload;
+          // find initiator wallet
+          let userWallet = await this.walletRepository.findOne({where: {user_id: fromUserId, client_id: clientId}});
+    
+          if (!userWallet) {
+            return {
+              success: false,
+              message: "Wallet not found",
+              status: HttpStatus.NOT_FOUND
+            }
+          }
+    
+          // check if user balance
+          if (action === 'deposit' && userWallet.available_balance < amount) {
+            return {
+              success: false,
+              message: "Insufficent balance",
+              status: HttpStatus.BAD_REQUEST
+            }
+          } else {// action is withdraw
+            // const 
+          }
+    
+          return {
+            success: true,
+            message: "Transaction successful",
+            status: HttpStatus.OK
+          }
+        } catch (e) {
+          return {
+            success: false,
+            message: "Unable to process request",
+            status: HttpStatus.INTERNAL_SERVER_ERROR
+          }
+        }
+      }
 
     @Cron(CronExpression.EVERY_10_MINUTES)
     async cancelPendingDepit() {

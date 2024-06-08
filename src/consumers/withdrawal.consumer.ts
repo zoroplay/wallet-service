@@ -1,6 +1,8 @@
 import { Process, Processor } from '@nestjs/bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bull';
+import { generateTrxNo } from 'src/common/helpers';
+import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
@@ -9,25 +11,27 @@ import { PaymentService } from 'src/services/payments.service';
 import { Repository } from 'typeorm';
 
 @Processor('withdrawal')
-export class ConsumersService {
+export class WithdrawalConsumer {
 
     constructor(
         @InjectRepository(Wallet)
         private walletRepository: Repository<Wallet>,
-        private readonly helperService: HelperService,
-        private readonly paymentService: PaymentService,
         @InjectRepository(Withdrawal)
         private readonly withdrawalRepository: Repository<Withdrawal>,
+        @InjectRepository(Transaction)
+        private readonly transactionRepository: Repository<Transaction>,
         @InjectRepository(WithdrawalAccount)
         private withdrawalAccountRepository: Repository<WithdrawalAccount>,
+
+        private readonly helperService: HelperService,
+        private readonly paymentService: PaymentService,
     ) {}
 
-    @Process()
+    @Process('withdrawal-request')
     async processWithdrawal(job: Job<unknown>) {
         // console.log(
         //     `Processing job ${job.id} of type ${job.name}...`,
         //   );
-
         try {
             const data: any = job.data;
             const autoDisbursement = data.autoDisbursement;
@@ -50,12 +54,12 @@ export class ConsumersService {
         
             await this.walletRepository.update(
                 {
-                user_id: data.userId,
-                client_id: data.clientId,
+                    user_id: data.userId,
+                    client_id: data.clientId,
                 },
                 {
-                // balance,
-                available_balance: balance,
+                    // balance,
+                    available_balance: balance,
                 },
             );
         
@@ -81,7 +85,7 @@ export class ConsumersService {
             });
 
             // if auto disbursement is enabled and 
-            if (autoDisbursement.autoDisbursement === 1 ) {
+            if (autoDisbursement.autoDisbursement === 1 && data.type !== 'shop') {
                 // check if withdrawal request has exceeded limit
                 const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(data.userId);
         
@@ -106,6 +110,85 @@ export class ConsumersService {
 
         } catch (e) {
             console.log(`Error processing Job: ${job.id}`, e.message);
+        }
+    }
+
+    @Process('shop-withdrawal')
+    async processShopWithdrawal(job: Job<unknown>) {
+        try {
+            const data: any = job.data;
+            //update request status
+            await this.withdrawalRepository.update({
+                id: data.id
+            }, {
+                status: 1,
+                updated_by: data.username
+            })
+
+            let balance = data.balance - data.amount;
+        
+            await this.walletRepository.update(
+                {
+                    user_id: data.userId,
+                    client_id: data.clientId,
+                },
+                {
+                    // balance,
+                    available_balance: balance,
+                },
+            );
+            // get withdrawal request
+            const withdrawRequest = await this.withdrawalRepository.findOne({where: {id: data.id}});
+
+            // update transaction log for receiver
+            await this.transactionRepository.update({
+                transaction_no: withdrawRequest.withdrawal_code,
+                tranasaction_type: 'credit'
+            }, {
+                description: 'Withdrawal Payout',
+                subject: 'Withdrawal',
+                user_id: data.userId,
+                username: data.username,
+                balance,
+            })
+
+            //check if withdrawal commission is available
+            if (data.withdrawalCharge > 0) {
+                // add commission to user balance
+                balance = balance + data.withdrawalCharge;
+
+                await this.walletRepository.update(
+                    {
+                        user_id: data.userId,
+                        client_id: data.clientId,
+                    },
+                    {
+                        // balance,
+                        available_balance: balance,
+                    },
+                );
+
+                await this.helperService.saveTransaction({
+                    clientId: data.clientId,
+                    transactionNo: generateTrxNo(),
+                    amount: data.amount,
+                    description: 'Commission on withdrawal payout',
+                    subject: 'Withdrawal Comm.',
+                    channel: 'internal',
+                    source: 'shop',
+                    fromUserId: 0,
+                    fromUsername: 'System',
+                    fromUserBalance: 0,
+                    toUserId: data.userId,
+                    toUsername: data.username,
+                    toUserBalance: balance,
+                    status: 1,
+                });
+    
+            }
+
+        } catch (e) {
+
         }
     }
 

@@ -7,8 +7,6 @@ import {
   GetNetworkBalanceRequest,
   GetNetworkBalanceResponse,
   GetPaymentMethodRequest,
-  ListWithdrawalRequestResponse,
-  ListWithdrawalRequests,
   MetaData,
   PaginationResponse,
   PaymentMethodRequest,
@@ -16,8 +14,6 @@ import {
   PlayerWalletData,
   UserTransactionResponse,
   WalletResponse,
-  WithdrawRequest,
-  WithdrawResponse,
 } from './proto/wallet.pb';
 import {
   generateTrxNo,
@@ -27,14 +23,12 @@ import {
 } from './common/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Wallet } from './entity/wallet.entity';
-import { Between, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PaymentMethod } from './entity/payment.method.entity';
 import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
-import { PaymentService } from './services/payments.service';
-import { IdentityService } from './identity/identity.service';
 var customParseFormat = require('dayjs/plugin/customParseFormat')
 
 dayjs.extend(customParseFormat)
@@ -449,6 +443,7 @@ export class AppService {
     page = 1,
     limit = 20
   }): Promise<UserTransactionResponse> {
+    console.log(startDate, endDate, userId, clientId)
     try {
       let results = [];
       let query = this.transactionRepository
@@ -471,7 +466,7 @@ export class AppService {
         offset = offset + 1;
       }
 
-      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')

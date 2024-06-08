@@ -1,23 +1,28 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Not, Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import {
+  CommonResponseObj,
   FetchBetRangeRequest,
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
   FetchPlayerDepositRequest,
+  ValidateTransactionRequest,
 } from 'src/proto/wallet.pb';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class DepositService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-
     @InjectRepository(Wallet)
     private readonly walletRepository: Repository<Wallet>,
+    @InjectQueue('deposit')
+    private depositQueue: Queue,
   ) {}
 
   async fetchDepositCount(payload: FetchDepositCountRequest) {
@@ -141,6 +146,96 @@ export class DepositService {
       
     } catch (error) {
       return { success: true, status: HttpStatus.OK, error: error.message };
+    }
+  }
+
+  async validateDepositCode ({clientId, code}: ValidateTransactionRequest): Promise<CommonResponseObj> {
+    const transaction = await this.transactionRepository.findOne({
+        where: {
+            client_id: clientId,
+            transaction_no: code,
+        }
+    })
+
+    if (transaction && transaction.status === 0) {
+        return {
+            success: true,
+            message: "Transaction found",
+            data: transaction,
+            status: HttpStatus.OK
+        }
+    } else if(transaction && transaction.status === 1) {
+        return {
+            success: false,
+            message: "Code has already been used",
+            status: HttpStatus.BAD_REQUEST
+        }
+    } else {
+        return {
+            success: false,
+            message: "Transaction not found",
+            status: HttpStatus.NOT_FOUND
+        }
+    }
+  }
+
+  async processShopDeposit(data): Promise<CommonResponseObj> {
+    try {
+      // get withdrawal request
+      const transaction = await this.transactionRepository.findOne({where: {id: data.id, status: 0}});
+
+      if (!transaction) {
+        return {
+          success: false,
+          status: HttpStatus.BAD_REQUEST,
+          message: 'Deposit request already processed'
+        }
+      }
+
+      // check if the authorizing agent and the withdrawer are the same person
+      if (transaction.id === data.userId) {
+        return {
+          success: false,
+          status: HttpStatus.BAD_REQUEST,
+          message: 'You cannot process your own request'
+        }
+      }
+
+      // get user wallet
+      const wallet = await this.walletRepository.findOne({
+        where: {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+      });
+
+      if (wallet.available_balance < data.amount) {
+        return {
+          success: false,
+          status: HttpStatus.BAD_REQUEST,
+          message: 'You do not have enough funds to complete this request'
+        }
+      }
+      // add user balance to payload
+      data.balance = wallet.available_balance
+      data.amount = transaction.amount
+
+      // add request to queue
+      await this.depositQueue.add('shop-deposit', data, {
+        jobId: `shop-deposit:${transaction.id}`
+      });
+
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        message: "Transaction has been processed"
+      }
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'An error occured while processing your request.'
+      }
     }
   }
 }
