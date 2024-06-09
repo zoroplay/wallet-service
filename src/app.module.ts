@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -20,6 +21,17 @@ import { HelperService } from './services/helper.service';
 import { OPayService } from './services/opay.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DepositService } from './services/deposit.service';
+import { CashbookService } from './cashbook/cashbook.service';
+import { CashInService } from './cashbook/services/cashin.service';
+import { ExpenseCategory } from './cashbook/entities/expense_category.entity';
+import { Expenses } from './cashbook/entities/expenses.entity';
+import { CashIn } from './cashbook/entities/cashin.entity';
+import { CashOut } from './cashbook/entities/cashout.entity';
+import { CashOutService } from './cashbook/services/cashout.service';
+import { ExpensesService } from './cashbook/services/expenses.service';
+import { ExpenseCategoryService } from './cashbook/services/expense_category.service';
+import { ExpenseTypesService } from './cashbook/services/expense_type.service';
+import { ExpenseTypes } from './cashbook/entities/expense_type.entity';
 
 @Module({
   imports: [
@@ -41,6 +53,11 @@ import { DepositService } from './services/deposit.service';
       Wallet,
       WithdrawalAccount,
       Withdrawal,
+      ExpenseCategory,
+      Expenses,
+      ExpenseTypes,
+      CashIn,
+      CashOut,
     ]),
     IdentityModule,
   ],
@@ -56,6 +73,12 @@ import { DepositService } from './services/deposit.service';
     PaystackService,
     HelperService,
     DepositService,
+    CashbookService,
+    CashInService,
+    CashOutService,
+    ExpensesService,
+    ExpenseTypesService,
+    ExpenseCategoryService,
   ],
 })
 export class AppModule {}

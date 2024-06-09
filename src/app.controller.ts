@@ -1,6 +1,14 @@
+/* eslint-disable prettier/prettier */
 import { Controller } from '@nestjs/common';
 import { AppService } from './app.service';
 import {
+  BranchRequest,
+  CashbookApproveCashInOutRequest,
+  CashbookApproveExpenseRequest,
+  CashbookCreateCashInOutRequest,
+  CashbookCreateExpenseRequest,
+  // CashbookCreateExpenseCategoryRequest,
+  CashbookCreateExpenseTypeRequest,
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
@@ -10,6 +18,7 @@ import {
   FetchPlayerDepositRequest,
   GetBalanceRequest,
   GetPaymentMethodRequest,
+  IdRequest,
   InitiateDepositRequest,
   ListDepositRequests,
   ListWithdrawalRequests,
@@ -28,6 +37,7 @@ import { PaystackService } from './services/paystack.service';
 import { OPayService } from './services/opay.service';
 import { DepositService } from './services/deposit.service';
 import { MonnifyService } from './services/monnify.service';
+import { CashbookService } from './cashbook/cashbook.service';
 
 @Controller()
 export class AppController {
@@ -38,6 +48,7 @@ export class AppController {
     private monnifyService: MonnifyService,
     private opayService: OPayService,
     private depositService: DepositService,
+    private cashbookService: CashbookService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -153,5 +164,100 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'OpayLookUpWebhook')
   OpayLookUpWebhook(param: OpayWebhookRequest) {
     return this.opayService.reQueryLookUp(param);
+  }
+
+  // CashBook Service
+  // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveCashIn')
+  CashbookApproveCashIn(param: CashbookApproveCashInOutRequest) {
+    return this.cashbookService.approveCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookDeleteOneCashIn')
+  CashbookDeleteOneCashIn(param: IdRequest) {
+    return this.cashbookService.deleteOneCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneCashIn')
+  CashbookFindOneCashIn(param: IdRequest) {
+    return this.cashbookService.findOneCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookCreateCashIn')
+  CashbookCreateCashIn(param: CashbookCreateCashInOutRequest) {
+    return this.cashbookService.addCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllCashIn')
+  CashbookFindAllCashIn() {
+    return this.cashbookService.findAllCashin();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllBranchCashIn')
+  CashbookFindAllBranchCashIn(param: BranchRequest) {
+    return this.cashbookService.findAllBranchCashin(param);
+  }
+
+  // CASH OUT
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveCashOut')
+  CashbookApproveCashOut(param: CashbookApproveCashInOutRequest) {
+    return this.cashbookService.approveCashout(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookCreateCashOut')
+  CashbookCreateCashOut(param: CashbookCreateCashInOutRequest) {
+    return this.cashbookService.addCashout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookDeleteOneCashOut')
+  CashbookDeleteOneCashOut(param: IdRequest) {
+    return this.cashbookService.deleteOneCashout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneCashOut')
+  CashbookFindOneCashOut(param: IdRequest) {
+    return this.cashbookService.findOneCashout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllCashOut')
+  CashbookFindAllCashOut() {
+    return this.cashbookService.findAllCashout();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllBranchCashOut')
+  CashbookFindAllBranchCashOut(param: BranchRequest) {
+    return this.cashbookService.findAllBranchCashout(param);
+  }
+
+  // EXPENSES
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveExpense')
+  CashbookApproveExpense(param: CashbookApproveExpenseRequest) {
+    return this.cashbookService.approveExpense(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookCreateExpense')
+  CashbookCreateExpense(param: CashbookCreateExpenseRequest) {
+    return this.cashbookService.addExpense(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookUpdateOneExpense')
+  CashbookUpdateOneExpense(data: CashbookCreateExpenseRequest) {
+    return this.cashbookService.updateExpense(data);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneExpense')
+  CashbookDeleteOneExpense(data: IdRequest) {
+    return this.cashbookService.findOneExpenses(data);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneExpense')
+  CashbookFindOneExpense(data: IdRequest) {
+    return this.cashbookService.deleteOneExpenses(data);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllBranchExpense')
+  CashbookFindAllBranchExpense(data: BranchRequest) {
+    return this.cashbookService.findAllBranchExpenses(data);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllExpense')
+  CashbookFindAllExpense() {
+    return this.cashbookService.findAllExpenses();
+  }
+
+  // EXPENSE TYPES
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookCreateExpenseType')
+  CashbookCreateExpenseType(param: CashbookCreateExpenseTypeRequest) {
+    return this.cashbookService.addExpensetype(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllExpenseType')
+  CashbookFindAllExpenseType() {
+    return this.cashbookService.findAllExpenseTypes();
   }
 }

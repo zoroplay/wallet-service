@@ -4,15 +4,50 @@ import { Observable } from "rxjs";
 
 export const protobufPackage = "identity";
 
-export interface AutoDisbursementRequest {
-  clientId: number;
+export interface GetAgentUserRequest {
+  branchId: number;
+  cashierId: number;
 }
 
-export interface AutoDisbursementResponse {
+export interface FindUserRequest {
+  userId: number;
+}
+
+export interface GetAgentUsersRequest {
+  clientId: number;
+  userId?: number | undefined;
+  username?: string | undefined;
+  roleId?: number | undefined;
+  state?: number | undefined;
+  page?: number | undefined;
+}
+
+export interface GetUserIdNameRequest {
+  username: string;
+  clientId?: number | undefined;
+}
+
+export interface GetUserIdNameResponse {
+  data: GetUserIdNameResponse_Users[];
+}
+
+export interface GetUserIdNameResponse_Users {
+  id: number;
+  username: string;
+}
+
+export interface GetWithdrawalSettingsRequest {
+  clientId: number;
+  userId?: number | undefined;
+}
+
+export interface WithdrawalSettingsResponse {
   autoDisbursement: number;
   autoDisbursementMin: number;
   autoDisbursementMax: number;
   autoDisbursementCount: number;
+  minimumWithdrawal: number;
+  maximumWithdrawal: number;
 }
 
 export interface PlaceBetRequest {
@@ -222,6 +257,8 @@ export interface CreateUserRequest {
   parent?: number | undefined;
   promoCode?: string | undefined;
   trackingToken?: string | undefined;
+  parentId?: number | undefined;
+  balance?: number | undefined;
 }
 
 export interface UpdateUserRequest {
@@ -245,6 +282,7 @@ export interface UpdateUserRequest {
   parent?: number | undefined;
   promoCode?: string | undefined;
   trackingToken?: string | undefined;
+  parentId?: string | undefined;
 }
 
 /** user */
@@ -642,6 +680,15 @@ export interface XpressLoginResponse_XpressData {
 export interface EmptyRequest {
 }
 
+export interface MetaData {
+  page: number;
+  perPage: number;
+  total: number;
+  lastPage: number;
+  nextPage: number;
+  prevPage: number;
+}
+
 export const IDENTITY_PACKAGE_NAME = "identity";
 
 export interface IdentityServiceClient {
@@ -650,6 +697,8 @@ export interface IdentityServiceClient {
   login(request: LoginRequest): Observable<LoginResponse>;
 
   xpressGameLogin(request: XpressLoginRequest): Observable<XpressLoginResponse>;
+
+  validateAuthCode(request: XpressLoginRequest): Observable<CommonResponse>;
 
   xpressGameLogout(request: SessionRequest): Observable<XpressLoginResponse>;
 
@@ -662,6 +711,10 @@ export interface IdentityServiceClient {
   createClient(request: ClientRequest): Observable<CommonResponse>;
 
   createPermission(request: PermissionRequest): Observable<CommonResponse>;
+
+  findUser(request: FindUserRequest): Observable<CommonResponse>;
+
+  getAgentUser(request: GetAgentUserRequest): Observable<CommonResponse>;
 
   saveRole(request: RoleRequest): Observable<SaveRoleResponse>;
 
@@ -743,7 +796,15 @@ export interface IdentityServiceClient {
 
   validateBet(request: PlaceBetRequest): Observable<CommonResponse>;
 
-  getAutoDisbursementSettings(request: AutoDisbursementRequest): Observable<AutoDisbursementResponse>;
+  getWithdrawalSettings(request: GetWithdrawalSettingsRequest): Observable<WithdrawalSettingsResponse>;
+
+  getUserIdandName(request: GetUserIdNameRequest): Observable<GetUserIdNameResponse>;
+
+  listAgentUsers(request: GetAgentUsersRequest): Observable<CommonResponse>;
+
+  listAgents(request: GetAgentUsersRequest): Observable<CommonResponse>;
+
+  getUserRiskSettings(request: GetAgentUsersRequest): Observable<CommonResponse>;
 }
 
 export interface IdentityServiceController {
@@ -754,6 +815,8 @@ export interface IdentityServiceController {
   xpressGameLogin(
     request: XpressLoginRequest,
   ): Promise<XpressLoginResponse> | Observable<XpressLoginResponse> | XpressLoginResponse;
+
+  validateAuthCode(request: XpressLoginRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 
   xpressGameLogout(
     request: SessionRequest,
@@ -772,6 +835,10 @@ export interface IdentityServiceController {
   createClient(request: ClientRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 
   createPermission(request: PermissionRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  findUser(request: FindUserRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getAgentUser(request: GetAgentUserRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 
   saveRole(request: RoleRequest): Promise<SaveRoleResponse> | Observable<SaveRoleResponse> | SaveRoleResponse;
 
@@ -891,9 +958,21 @@ export interface IdentityServiceController {
 
   validateBet(request: PlaceBetRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 
-  getAutoDisbursementSettings(
-    request: AutoDisbursementRequest,
-  ): Promise<AutoDisbursementResponse> | Observable<AutoDisbursementResponse> | AutoDisbursementResponse;
+  getWithdrawalSettings(
+    request: GetWithdrawalSettingsRequest,
+  ): Promise<WithdrawalSettingsResponse> | Observable<WithdrawalSettingsResponse> | WithdrawalSettingsResponse;
+
+  getUserIdandName(
+    request: GetUserIdNameRequest,
+  ): Promise<GetUserIdNameResponse> | Observable<GetUserIdNameResponse> | GetUserIdNameResponse;
+
+  listAgentUsers(request: GetAgentUsersRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  listAgents(request: GetAgentUsersRequest): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
+
+  getUserRiskSettings(
+    request: GetAgentUsersRequest,
+  ): Promise<CommonResponse> | Observable<CommonResponse> | CommonResponse;
 }
 
 export function IdentityServiceControllerMethods() {
@@ -902,12 +981,15 @@ export function IdentityServiceControllerMethods() {
       "register",
       "login",
       "xpressGameLogin",
+      "validateAuthCode",
       "xpressGameLogout",
       "validate",
       "validateClient",
       "getUserDetails",
       "createClient",
       "createPermission",
+      "findUser",
+      "getAgentUser",
       "saveRole",
       "getRoles",
       "getAgencyRoles",
@@ -948,7 +1030,11 @@ export function IdentityServiceControllerMethods() {
       "saveUserRiskSettings",
       "getSettings",
       "validateBet",
-      "getAutoDisbursementSettings",
+      "getWithdrawalSettings",
+      "getUserIdandName",
+      "listAgentUsers",
+      "listAgents",
+      "getUserRiskSettings",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
