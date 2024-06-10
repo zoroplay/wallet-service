@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-var */
+/* eslint-disable prettier/prettier */
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CreateWalletRequest,
@@ -32,9 +35,9 @@ import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
 import { PaymentService } from './services/payments.service';
 import { IdentityService } from './identity/identity.service';
-var customParseFormat = require('dayjs/plugin/customParseFormat')
+var customParseFormat = require('dayjs/plugin/customParseFormat');
 
-dayjs.extend(customParseFormat)
+dayjs.extend(customParseFormat);
 
 @Injectable()
 export class AppService {
@@ -49,7 +52,7 @@ export class AppService {
     private transactionRepository: Repository<Transaction>,
     private helperService: HelperService,
     private paymentService: PaymentService,
-    private identityService: IdentityService
+    private identityService: IdentityService,
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -138,7 +141,7 @@ export class AppService {
   async getPaymentMethods(data: GetPaymentMethodRequest) {
     try {
       const { clientId, status } = data;
-      let where: any = { client_id: clientId };
+      const where: any = { client_id: clientId };
       if (status) where.status = status;
 
       const pMethods = await this.pMethodRepository.find({ where });
@@ -242,7 +245,7 @@ export class AppService {
         );
       } else {
         // create new wallet
-        const wallet = new Wallet();
+        const wallet: any = new Wallet();
         wallet.user_id = data.userId;
         wallet.client_id = data.clientId;
         wallet.username = data.username;
@@ -275,17 +278,17 @@ export class AppService {
         subject: data.subject,
         username: data.username,
         amount: data.amount,
-        transactionId: transactionNo
-      })
+        transactionId: transactionNo,
+      });
       wallet.balance = balance;
-      return handleResponse(wallet, 'Wallet credited')
+      return handleResponse(wallet, 'Wallet credited');
     } catch (e) {
       console.log('credit error', e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
+  async debitUser(data: any): Promise<WalletResponse> {
     try {
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
@@ -346,8 +349,8 @@ export class AppService {
         subject: data.subject,
         username: data.username,
         amount: data.amount,
-        transactionId: transactionNo
-      })
+        transactionId: transactionNo,
+      });
 
       wallet.balance = balance;
       return handleResponse(wallet, 'Wallet debited');
@@ -429,27 +432,32 @@ export class AppService {
       });
 
       // get auto disbursement settings
-      const autoDisbursement = await this.identityService.getAutoDisbursementSettings({clientId: data.clientId});
+      const autoDisbursement: any =
+        await this.identityService.getAutoDisbursementSettings({
+          clientId: data.clientId,
+        });
 
-      // if auto disbursement is enabled and 
-      if (autoDisbursement.autoDisbursement === 1 ) {
+      // if auto disbursement is enabled and
+      if (autoDisbursement.autoDisbursement === 1) {
         // check if withdrawal request has exceeded limit
-        const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(data.userId);
+        const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(
+          data.userId,
+        );
 
         if (
-          (withdrawalCount) <= autoDisbursement.autoDisbursementCount && 
-          withdrawal.amount >= autoDisbursement.autoDisbursementMin && 
+          withdrawalCount <= autoDisbursement.autoDisbursementCount &&
+          withdrawal.amount >= autoDisbursement.autoDisbursementMin &&
           withdrawal.amount <= autoDisbursement.autoDisbursementMax
         ) {
           // console.log('initiate transfer')
-            await this.paymentService.updateWithdrawalStatus({
-              clientId: data.clientId,
-              action: 'approve',
-              withdrawalId: withdrawal.id,
-              comment: 'automated withdrawal',
-              updatedBy: 'System'
-            })
-          }
+          await this.paymentService.updateWithdrawalStatus({
+            clientId: data.clientId,
+            action: 'approve',
+            withdrawalId: withdrawal.id,
+            comment: 'automated withdrawal',
+            updatedBy: 'System',
+          });
+        }
       }
 
       return {
@@ -478,14 +486,18 @@ export class AppService {
     try {
       const { clientId, from, to, userId, status } = data;
 
-      const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss')
-      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
+      const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
 
       // console.log(start, end);
 
       let requests = [];
       const res = await this.withdrawalRepository.find({
-        where: { 
+        where: {
           client_id: clientId,
           created_at: Between(start, end),
         },
