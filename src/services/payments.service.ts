@@ -325,35 +325,72 @@ export class PaymentService {
 
     async walletTransfer(payload: WalletTransferRequest): Promise<CommonResponseObj> {
         try {
-          const {clientId, fromUserId, fromUsername, toUserId, toUsername, action, amount} = payload;
-          // find initiator wallet
-          let userWallet = await this.walletRepository.findOne({where: {user_id: fromUserId, client_id: clientId}});
-    
-          if (!userWallet) {
-            return {
-              success: false,
-              message: "Wallet not found",
-              status: HttpStatus.NOT_FOUND
+            const {clientId, fromUserId, fromUsername, toUserId, toUsername, action, amount, description} = payload;
+            // find initiator wallet
+            let fromWallet = await this.walletRepository.findOne({where: {user_id: fromUserId, client_id: clientId}});
+            // find receiver wallet
+            let toWallet = await this.walletRepository.findOne({where: {user_id: toUserId, client_id: clientId}});
+                
+            if (!fromWallet) {
+                return {
+                success: false,
+                message: "Wallet not found",
+                status: HttpStatus.NOT_FOUND
+                }
             }
-          }
-    
-          // check if user balance
-          if (action === 'deposit' && userWallet.available_balance < amount) {
+        
+            // check if user balance is sufficent
+            if (fromWallet.available_balance < amount) {
+                return {
+                success: false,
+                message: "Insufficent balance",
+                status: HttpStatus.BAD_REQUEST
+                }
+            } 
+            // debit from user wallet
+            const senderBalance = fromWallet.available_balance - amount;
+            // credit receiver balance
+            const receiverBalance = Number(toWallet.available_balance) + Number(amount);
+
+            //update wallets
+            await this.walletRepository.update({
+                user_id: fromUserId,
+            }, {
+                available_balance: senderBalance
+            })
+
+            await this.walletRepository.update({
+                user_id: toUserId,
+            }, {
+                available_balance: receiverBalance
+            })
+
+            await this.helperService.saveTransaction({
+                amount,
+                channel: 'retail',
+                clientId,
+                toUserId,
+                toUsername,
+                toUserBalance: receiverBalance,
+                fromUserId,
+                fromUsername,
+                fromUserbalance: senderBalance,
+                source: "internal",
+                subject: 'Funds Transfer',
+                description: description || "Inter account transfer",
+                transactionNo: generateTrxNo(),
+            })
+        
             return {
-              success: false,
-              message: "Insufficent balance",
-              status: HttpStatus.BAD_REQUEST
+                success: true,
+                message: "Transaction successful",
+                status: HttpStatus.OK,
+                data: {
+                    balance: action === 'deposit' ? senderBalance : receiverBalance
+                }
             }
-          } else {// action is withdraw
-            // const 
-          }
-    
-          return {
-            success: true,
-            message: "Transaction successful",
-            status: HttpStatus.OK
-          }
         } catch (e) {
+            console.log('error', e.message)
           return {
             success: false,
             message: "Unable to process request",
