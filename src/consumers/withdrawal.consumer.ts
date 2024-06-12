@@ -29,9 +29,9 @@ export class WithdrawalConsumer {
 
     @Process('withdrawal-request')
     async processWithdrawal(job: Job<unknown>) {
-        // console.log(
-        //     `Processing job ${job.id} of type ${job.name}...`,
-        //   );
+        console.log(
+            `Processing withdrawal job ${job.id} of type ${job.name}...`,
+          );
         try {
             const data: any = job.data;
             const autoDisbursement = data.autoDisbursement;
@@ -62,9 +62,9 @@ export class WithdrawalConsumer {
                     available_balance: balance,
                 },
             );
-        
             // save bank account
-            this.saveUserBankAccount(data);      
+            if (data.type === 'bank')
+                this.saveUserBankAccount(data);      
         
             //to-do save transaction log
             await this.helperService.saveTransaction({
@@ -73,7 +73,7 @@ export class WithdrawalConsumer {
                 amount: data.amount,
                 description: 'withdrawal request',
                 subject: 'Withdrawal',
-                channel: 'internal',
+                channel: data.type,
                 source: data.source,
                 fromUserId: data.userId,
                 fromUsername: data.username,
@@ -85,7 +85,7 @@ export class WithdrawalConsumer {
             });
 
             // if auto disbursement is enabled and 
-            if (autoDisbursement.autoDisbursement === 1 && data.type !== 'shop') {
+            if (autoDisbursement.autoDisbursement === 1 && data.type !== 'cash') {
                 // check if withdrawal request has exceeded limit
                 const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(data.userId);
         
@@ -174,7 +174,7 @@ export class WithdrawalConsumer {
                     amount: data.amount,
                     description: 'Commission on withdrawal payout',
                     subject: 'Withdrawal Comm.',
-                    channel: 'internal',
+                    channel: 'sbengine',
                     source: 'shop',
                     fromUserId: 0,
                     fromUsername: 'System',

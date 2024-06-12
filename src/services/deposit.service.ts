@@ -150,10 +150,12 @@ export class DepositService {
   }
 
   async validateDepositCode ({clientId, code}: ValidateTransactionRequest): Promise<CommonResponseObj> {
+    
     const transaction = await this.transactionRepository.findOne({
         where: {
             client_id: clientId,
             transaction_no: code,
+            tranasaction_type: 'credit'
         }
     })
 
@@ -170,6 +172,12 @@ export class DepositService {
             message: "Code has already been used",
             status: HttpStatus.BAD_REQUEST
         }
+    } else if(transaction && transaction.status === 2) {
+      return {
+        success: false,
+        message: "Code has expired",
+        status: HttpStatus.BAD_REQUEST
+      }
     } else {
         return {
             success: false,
@@ -193,7 +201,7 @@ export class DepositService {
       }
 
       // check if the authorizing agent and the withdrawer are the same person
-      if (transaction.id === data.userId) {
+      if (transaction.user_id === data.userId) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
@@ -209,26 +217,39 @@ export class DepositService {
         },
       });
 
-      if (wallet.available_balance < data.amount) {
+      if (wallet.available_balance < transaction.amount) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
           message: 'You do not have enough funds to complete this request'
         }
       }
-      // add user balance to payload
-      data.balance = wallet.available_balance
-      data.amount = transaction.amount
+      // acreate deposit job data
+      const jobData = {
+        amount: transaction.amount,
+        clientId: data.clientId,
+        fromUserId: data.userId,
+        fromUsername: data.username,
+        toUserId: transaction.user_id,
+        toUsername: transaction.username,
+        role: data.userRole,
+        transactionCode: transaction.transaction_no
+      }
+
+      console.log(jobData)
 
       // add request to queue
-      await this.depositQueue.add('shop-deposit', data, {
+      await this.depositQueue.add('shop-deposit', jobData, {
         jobId: `shop-deposit:${transaction.id}`
       });
 
       return {
         success: true,
         status: HttpStatus.OK,
-        message: "Transaction has been processed"
+        message: "Transaction has been processed",
+        data: {
+          balance: wallet.available_balance - transaction.amount
+        }
       }
     } catch (e) {
       return {

@@ -183,6 +183,7 @@ export class WithdrawalService {
     }
 
     async validateWithdrawalCode(data: ValidateTransactionRequest): Promise<CommonResponseObj> {
+      console.log(data);
       try {
         // find withdrawal request
         const withdrawalRequest = await this.withdrawalRepository.findOne({

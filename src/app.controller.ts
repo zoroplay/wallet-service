@@ -177,7 +177,7 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ValidateDepositCode')
-  ValidateDepositCodev(param: ValidateTransactionRequest) {
+  ValidateDepositCode(param: ValidateTransactionRequest) {
     return this.depositService.validateDepositCode(param);
   }
 

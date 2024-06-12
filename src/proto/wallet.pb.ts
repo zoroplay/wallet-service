@@ -7,7 +7,13 @@ import { Struct } from "./google/protobuf/struct.pb";
 export const protobufPackage = "wallet";
 
 export interface ProcessRetailTransaction {
-  transactionId: number;
+  id: number;
+  clientId: number;
+  userId: number;
+  username?: string | undefined;
+  amount?: number | undefined;
+  withdrawalCharge?: number | undefined;
+  userRole?: string | undefined;
 }
 
 export interface WalletTransferRequest {
@@ -25,44 +31,78 @@ export interface ValidateTransactionRequest {
   clientId: number;
   userId: number;
   code: string;
-  userRole: string;
+  userRole?: string | undefined;
 }
 
 export interface EmptyRequest {
 }
 
-export interface CashbookCreateExpenseCategoryRequest {
-  title: string;
-  description: string;
+export interface BranchRequest {
+  branchId: number;
+  date?: string | undefined;
 }
 
-export interface ExpenseCategorySingleResponse {
-  success: boolean;
-  status: number;
-  message: string;
-  data?: ExpenseCategory | undefined;
-}
-
-export interface ExpenseCategoryRepeatedResponse {
-  success: boolean;
-  status: number;
-  message: string;
-  data: ExpenseCategory[];
-}
-
-export interface ExpenseCategory {
+export interface IdRequest {
   id: number;
-  title: string;
-  description: string;
+}
+
+export interface CashbookApproveExpenseRequest {
+  status: number;
+  verifiedBy: number;
+  amount: number;
+  expenseId: number;
+  comment: string;
+}
+
+export interface CashbookCreateExpenseRequest {
+  amount: number;
+  expenseTypeId: number;
+  branchId: number;
+  comment: string;
+  id?: number | undefined;
+}
+
+export interface ExpenseSingleResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data?: Expense | undefined;
+}
+
+export interface ExpenseRepeatedResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data: Expense[];
+}
+
+export interface Expense {
+  id: number;
+  userId: number;
+  expenseTypeId: number;
+  requestedAmount: number;
+  approvedAmount: number;
+  status: number;
+  branchComment: string;
+  adminComment: string;
+  verifiedAt: string;
+  verifiedBy: number;
   createdAt: string;
+  balance?: number | undefined;
+}
+
+export interface CashbookApproveCashInOutRequest {
+  status: number;
+  id: number;
+  verifiedBy: number;
 }
 
 export interface CashbookCreateCashInOutRequest {
   userId: number;
-  cashierId: number;
   branchId: number;
   amount: number;
   comment: string;
+  id?: number | undefined;
 }
 
 export interface CashInOutSingleResponse {
@@ -88,12 +128,11 @@ export interface CashInOut {
   comment: string;
   status: number;
   createdAt: string;
-  balance: number;
+  balance?: number | undefined;
 }
 
 export interface CashbookCreateExpenseTypeRequest {
   title: string;
-  categoryId: number;
   fixed: number;
   amount: number;
 }
@@ -119,7 +158,6 @@ export interface ExpenseType {
   createdAt: string;
   status: number;
   fixed: number;
-  categoryId: number;
 }
 
 export interface GetUserAccountsResponse {
@@ -613,23 +651,55 @@ export const WALLET_PACKAGE_NAME = "wallet";
 wrappers[".google.protobuf.Struct"] = { fromObject: Struct.wrap, toObject: Struct.unwrap } as any;
 
 export interface WalletServiceClient {
-  cashbookCreateExpenseCategory(
-    request: CashbookCreateExpenseCategoryRequest,
-  ): Observable<ExpenseCategorySingleResponse>;
+  cashbookApproveExpense(request: CashbookApproveExpenseRequest): Observable<ExpenseSingleResponse>;
 
-  cashbookFindAllExpenseCategory(request: EmptyRequest): Observable<ExpenseCategoryRepeatedResponse>;
+  cashbookCreateExpense(request: CashbookCreateExpenseRequest): Observable<ExpenseSingleResponse>;
+
+  cashbookFindAllExpense(request: EmptyRequest): Observable<ExpenseRepeatedResponse>;
+
+  cashbookFindOneExpense(request: IdRequest): Observable<ExpenseSingleResponse>;
+
+  cashbookDeleteOneExpense(request: IdRequest): Observable<ExpenseSingleResponse>;
+
+  cashbookUpdateOneExpense(request: CashbookCreateExpenseRequest): Observable<ExpenseSingleResponse>;
+
+  cashbookFindAllBranchExpense(request: BranchRequest): Observable<ExpenseRepeatedResponse>;
 
   cashbookCreateExpenseType(request: CashbookCreateExpenseTypeRequest): Observable<ExpenseTypeSingleResponse>;
 
   cashbookFindAllExpenseType(request: EmptyRequest): Observable<ExpenseTypeRepeatedResponse>;
 
+  cashbookApproveCashIn(request: CashbookApproveCashInOutRequest): Observable<CashInOutSingleResponse>;
+
   cashbookCreateCashIn(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookUpdateCashIn(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookDeleteOneCashIn(request: IdRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookFindOneCashIn(request: IdRequest): Observable<CashInOutSingleResponse>;
 
   cashbookFindAllCashIn(request: EmptyRequest): Observable<CashInOutRepeatedResponse>;
 
+  cashbookFindAllBranchCashIn(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
+
+  findAllBranchApprovedCashinWDate(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
+
+  findAllBranchPendingCashinWDate(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
+
+  cashbookApproveCashOut(request: CashbookApproveCashInOutRequest): Observable<CashInOutSingleResponse>;
+
   cashbookCreateCashOut(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
 
+  cashbookUpdateCashOut(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookDeleteOneCashOut(request: IdRequest): Observable<CashInOutSingleResponse>;
+
+  cashbookFindOneCashOut(request: IdRequest): Observable<CashInOutSingleResponse>;
+
   cashbookFindAllCashOut(request: EmptyRequest): Observable<CashInOutRepeatedResponse>;
+
+  cashbookFindAllBranchCashOut(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
 
   getBalance(request: GetBalanceRequest): Observable<WalletResponse>;
 
@@ -683,6 +753,8 @@ export interface WalletServiceClient {
 
   getNetworkBalance(request: GetNetworkBalanceRequest): Observable<GetNetworkBalanceResponse>;
 
+  /** RETAIL SERVICES */
+
   walletTransfer(request: WalletTransferRequest): Observable<CommonResponseObj>;
 
   validateDepositCode(request: ValidateTransactionRequest): Observable<CommonResponseObj>;
@@ -695,16 +767,33 @@ export interface WalletServiceClient {
 }
 
 export interface WalletServiceController {
-  cashbookCreateExpenseCategory(
-    request: CashbookCreateExpenseCategoryRequest,
-  ): Promise<ExpenseCategorySingleResponse> | Observable<ExpenseCategorySingleResponse> | ExpenseCategorySingleResponse;
+  cashbookApproveExpense(
+    request: CashbookApproveExpenseRequest,
+  ): Promise<ExpenseSingleResponse> | Observable<ExpenseSingleResponse> | ExpenseSingleResponse;
 
-  cashbookFindAllExpenseCategory(
+  cashbookCreateExpense(
+    request: CashbookCreateExpenseRequest,
+  ): Promise<ExpenseSingleResponse> | Observable<ExpenseSingleResponse> | ExpenseSingleResponse;
+
+  cashbookFindAllExpense(
     request: EmptyRequest,
-  ):
-    | Promise<ExpenseCategoryRepeatedResponse>
-    | Observable<ExpenseCategoryRepeatedResponse>
-    | ExpenseCategoryRepeatedResponse;
+  ): Promise<ExpenseRepeatedResponse> | Observable<ExpenseRepeatedResponse> | ExpenseRepeatedResponse;
+
+  cashbookFindOneExpense(
+    request: IdRequest,
+  ): Promise<ExpenseSingleResponse> | Observable<ExpenseSingleResponse> | ExpenseSingleResponse;
+
+  cashbookDeleteOneExpense(
+    request: IdRequest,
+  ): Promise<ExpenseSingleResponse> | Observable<ExpenseSingleResponse> | ExpenseSingleResponse;
+
+  cashbookUpdateOneExpense(
+    request: CashbookCreateExpenseRequest,
+  ): Promise<ExpenseSingleResponse> | Observable<ExpenseSingleResponse> | ExpenseSingleResponse;
+
+  cashbookFindAllBranchExpense(
+    request: BranchRequest,
+  ): Promise<ExpenseRepeatedResponse> | Observable<ExpenseRepeatedResponse> | ExpenseRepeatedResponse;
 
   cashbookCreateExpenseType(
     request: CashbookCreateExpenseTypeRequest,
@@ -714,20 +803,68 @@ export interface WalletServiceController {
     request: EmptyRequest,
   ): Promise<ExpenseTypeRepeatedResponse> | Observable<ExpenseTypeRepeatedResponse> | ExpenseTypeRepeatedResponse;
 
+  cashbookApproveCashIn(
+    request: CashbookApproveCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
   cashbookCreateCashIn(
     request: CashbookCreateCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookUpdateCashIn(
+    request: CashbookCreateCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookDeleteOneCashIn(
+    request: IdRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookFindOneCashIn(
+    request: IdRequest,
   ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
 
   cashbookFindAllCashIn(
     request: EmptyRequest,
   ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
 
+  cashbookFindAllBranchCashIn(
+    request: BranchRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  findAllBranchApprovedCashinWDate(
+    request: BranchRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  findAllBranchPendingCashinWDate(
+    request: BranchRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  cashbookApproveCashOut(
+    request: CashbookApproveCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
   cashbookCreateCashOut(
     request: CashbookCreateCashInOutRequest,
   ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
 
+  cashbookUpdateCashOut(
+    request: CashbookCreateCashInOutRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookDeleteOneCashOut(
+    request: IdRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
+  cashbookFindOneCashOut(
+    request: IdRequest,
+  ): Promise<CashInOutSingleResponse> | Observable<CashInOutSingleResponse> | CashInOutSingleResponse;
+
   cashbookFindAllCashOut(
     request: EmptyRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  cashbookFindAllBranchCashOut(
+    request: BranchRequest,
   ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
 
   getBalance(request: GetBalanceRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
@@ -826,6 +963,8 @@ export interface WalletServiceController {
     request: GetNetworkBalanceRequest,
   ): Promise<GetNetworkBalanceResponse> | Observable<GetNetworkBalanceResponse> | GetNetworkBalanceResponse;
 
+  /** RETAIL SERVICES */
+
   walletTransfer(
     request: WalletTransferRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
@@ -850,14 +989,31 @@ export interface WalletServiceController {
 export function WalletServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "cashbookCreateExpenseCategory",
-      "cashbookFindAllExpenseCategory",
+      "cashbookApproveExpense",
+      "cashbookCreateExpense",
+      "cashbookFindAllExpense",
+      "cashbookFindOneExpense",
+      "cashbookDeleteOneExpense",
+      "cashbookUpdateOneExpense",
+      "cashbookFindAllBranchExpense",
       "cashbookCreateExpenseType",
       "cashbookFindAllExpenseType",
+      "cashbookApproveCashIn",
       "cashbookCreateCashIn",
+      "cashbookUpdateCashIn",
+      "cashbookDeleteOneCashIn",
+      "cashbookFindOneCashIn",
       "cashbookFindAllCashIn",
+      "cashbookFindAllBranchCashIn",
+      "findAllBranchApprovedCashinWDate",
+      "findAllBranchPendingCashinWDate",
+      "cashbookApproveCashOut",
       "cashbookCreateCashOut",
+      "cashbookUpdateCashOut",
+      "cashbookDeleteOneCashOut",
+      "cashbookFindOneCashOut",
       "cashbookFindAllCashOut",
+      "cashbookFindAllBranchCashOut",
       "getBalance",
       "createWallet",
       "fetchBetRange",
