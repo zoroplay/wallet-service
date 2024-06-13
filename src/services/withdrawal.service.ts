@@ -21,14 +21,16 @@ export class WithdrawalService {
         private withdrawalRepository: Repository<Withdrawal>,
         @InjectRepository(WithdrawalAccount)
         private withdrawalAccountRepository: Repository<WithdrawalAccount>,
+        
         @InjectQueue('withdrawal')
-        private withdrawalQueue: Queue,
+        private readonly withdrawalQueue: Queue,
 
         private readonly identityService: IdentityService,
     ) {}
 
     async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-        try {
+
+      try {
           const wallet = await this.walletRepository.findOne({
             where: {
               user_id: data.userId,

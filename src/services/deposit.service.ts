@@ -236,7 +236,7 @@ export class DepositService {
         transactionCode: transaction.transaction_no
       }
 
-      console.log(jobData)
+      // console.log(jobData)
 
       // add request to queue
       await this.depositQueue.add('shop-deposit', jobData, {

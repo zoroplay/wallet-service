@@ -1,11 +1,9 @@
 import { Process, Processor } from '@nestjs/bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bull';
-import { generateTrxNo } from 'src/common/helpers';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { IdentityService } from 'src/identity/identity.service';
-import { HelperService } from 'src/services/helper.service';
 import { Repository } from 'typeorm';
 
 @Processor('deposit')

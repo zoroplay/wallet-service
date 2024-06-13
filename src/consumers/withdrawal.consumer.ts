@@ -29,19 +29,21 @@ export class WithdrawalConsumer {
 
     @Process('withdrawal-request')
     async processWithdrawal(job: Job<unknown>) {
-        console.log(
-            `Processing withdrawal job ${job.id} of type ${job.name}...`,
-          );
+        // console.log(
+        //     `Processing withdrawal job ${job.id} of type ${job.name}...`,
+        //   );
         try {
             const data: any = job.data;
+
+            // console.log(data)
             const autoDisbursement = data.autoDisbursement;
 
             // save withdrawal request
             const withdrawal = new Withdrawal();
             withdrawal.account_name = data.accountName;
             withdrawal.bank_code = data.bankCode;
-            withdrawal.bank_name = data.bankName;
-            withdrawal.account_number = data.accountNumber;
+            withdrawal.bank_name = data.bankName || 'sbengine';
+            withdrawal.account_number = data.accountNumber || "";
             withdrawal.user_id = data.userId;
             withdrawal.username = data.username;
             withdrawal.client_id = data.clientId;
