@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
+  CommonResponseArray,
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
@@ -29,6 +30,7 @@ import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
+import { Bank } from './entity/bank.entity';
 var customParseFormat = require('dayjs/plugin/customParseFormat')
 
 dayjs.extend(customParseFormat)
@@ -44,6 +46,8 @@ export class AppService {
     private withdrawalRepository: Repository<Withdrawal>,
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
+    @InjectRepository(Bank)
+    private bankRepository: Repository<Bank>,
     private helperService: HelperService,
   ) {}
 
@@ -433,6 +437,12 @@ export class AppService {
       console.log(e.message);
       return paginateResponse([[], 0], 1, 100, 'failed');
     }
+  }
+
+  async listBanks(): Promise<CommonResponseArray> {
+    const banks = await this.bankRepository.find();
+
+    return {success: true, status: HttpStatus.OK, message: 'Banks retrieved', data: banks}
   }
 
   async getUserTransactions({

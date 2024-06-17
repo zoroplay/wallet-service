@@ -4,6 +4,7 @@ import {
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
+  EmptyRequest,
   FetchBetRangeRequest,
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
@@ -134,6 +135,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'ListDeposits')
   ListDeposits(param: ListDepositRequests) {
     return this.appService.listDeposits(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ListBanks')
+  ListBanks(param: EmptyRequest) {
+    return this.appService.listBanks();
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'UserTransactions')
