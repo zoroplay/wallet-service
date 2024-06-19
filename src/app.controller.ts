@@ -92,6 +92,11 @@ export class AppController {
     return this.appService.debitUser(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'DebitAgentBalance')
+  DebitAgent(param: DebitUserRequest) {
+    return this.appService.debitAgentBalance(param);
+  }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'InititateDeposit')
   InititateDeposit(param: InitiateDepositRequest) {
     return this.paymentService.inititateDeposit(param);

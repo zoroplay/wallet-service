@@ -381,6 +381,32 @@ export class AppService {
     }
   }
 
+  async debitAgentBalance (data: DebitUserRequest) {
+    const {userId, clientId} = data;
+    try {
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: data.userId },
+      });
+
+      const amount = parseFloat(data.amount);
+
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          balance: wallet.balance - amount,
+        },
+      );
+      
+      return handleResponse(wallet, 'Wallet debited');
+    } catch (e) {
+      return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async listDeposits(data): Promise<PaginationResponse> {
     // console.log('fetch deposits', data)
     try {

@@ -766,6 +766,8 @@ export interface WalletServiceClient {
   validateWithdrawalCode(request: ValidateTransactionRequest): Observable<CommonResponseObj>;
 
   processShopWithdrawal(request: ProcessRetailTransaction): Observable<CommonResponseObj>;
+
+  debitAgentBalance(request: DebitUserRequest): Observable<CommonResponseObj>;
 }
 
 export interface WalletServiceController {
@@ -990,6 +992,10 @@ export interface WalletServiceController {
   processShopWithdrawal(
     request: ProcessRetailTransaction,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  debitAgentBalance(
+    request: DebitUserRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1052,6 +1058,7 @@ export function WalletServiceControllerMethods() {
       "processShopDeposit",
       "validateWithdrawalCode",
       "processShopWithdrawal",
+      "debitAgentBalance",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
