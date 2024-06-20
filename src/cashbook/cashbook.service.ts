@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { CashInService } from './services/cashin.service';
 import { CashOutService } from './services/cashout.service';
 import { ExpensesService } from './services/expenses.service';
-import { ExpenseCategoryService } from './services/expense_category.service';
 import { ExpenseTypesService } from './services/expense_type.service';
 import {
   BranchRequest,
@@ -22,7 +21,6 @@ export class CashbookService {
     private cashoutService: CashOutService,
     private expenseService: ExpensesService,
     private expensetypeService: ExpenseTypesService,
-    private expensecategoryService: ExpenseCategoryService,
   ) {}
   // Cashin
   async approveCashin(data: CashbookApproveCashInOutRequest) {
@@ -46,12 +44,21 @@ export class CashbookService {
     return this.cashinService.findAllBranchCashin(data);
   }
 
+  async findAllBranchApprovedCashinWDate(data: BranchRequest) {
+    return this.cashinService.findAllBranchApprovedCashinWDate(data);
+  }
+
+  async findAllBranchPendingCashinWDate(data: BranchRequest) {
+    return this.cashinService.findAllBranchPendingCashinWDate(data);
+  }
+
   //  Cash Out
   async approveCashout(data: CashbookApproveCashInOutRequest) {
     return this.cashoutService.approve(data);
   }
 
   async addCashout(data: CashbookCreateCashInOutRequest) {
+    console.log(`adding cashout`, data);
     return this.cashoutService.addCashOut(data);
   }
 

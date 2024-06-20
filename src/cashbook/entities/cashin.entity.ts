@@ -10,19 +10,19 @@ import {
 
 @Entity({ name: 'cash_in' })
 export class CashIn {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   user_id: number;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   branch_id: number;
 
   @Index()
-  @Column({ type: 'bigint', nullable: true })
+  @Column({ type: 'int', nullable: true })
   verified_by: number;
 
   @Index()
@@ -30,22 +30,22 @@ export class CashIn {
   amount: number;
 
   @Index()
-  @Column({ type: 'bigint', default: 0 })
+  @Column({ type: 'int', default: 0 })
   status: number;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
+  @Column({ type: 'varchar', length: 225, nullable: false })
   comment: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'datetime' })
   verified_at: Date;
 
   @Index()
-  @CreateDateColumn()
-  created_at: string;
+  @CreateDateColumn({ type: 'datetime' })
+  created_at: Date;
 
   @Index()
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at: string;
 }

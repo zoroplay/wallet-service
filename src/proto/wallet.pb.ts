@@ -3,15 +3,42 @@ import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { wrappers } from "protobufjs";
 import { Observable } from "rxjs";
 import { Struct } from "./google/protobuf/struct.pb";
-import { ProcessRetailTransaction, ValidateTransactionRequest, WalletTransferRequest } from "./retail.pb";
 
 export const protobufPackage = "wallet";
+
+export interface ProcessRetailTransaction {
+  id: number;
+  clientId: number;
+  userId: number;
+  username: string;
+  amount: number;
+  withdrawalCharge: number;
+}
+
+export interface WalletTransferRequest {
+  clientId: number;
+  toUserId: number;
+  toUsername: string;
+  fromUsername: string;
+  fromUserId: number;
+  amount: number;
+  description?: string | undefined;
+  action: string;
+}
+
+export interface ValidateTransactionRequest {
+  clientId: number;
+  userId: number;
+  code: string;
+  userRole: string;
+}
 
 export interface EmptyRequest {
 }
 
 export interface BranchRequest {
   branchId: number;
+  date?: string | undefined;
 }
 
 export interface IdRequest {
@@ -655,6 +682,10 @@ export interface WalletServiceClient {
 
   cashbookFindAllBranchCashIn(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
 
+  findAllBranchApprovedCashinWDate(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
+
+  findAllBranchPendingCashinWDate(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
+
   cashbookApproveCashOut(request: CashbookApproveCashInOutRequest): Observable<CashInOutSingleResponse>;
 
   cashbookCreateCashOut(request: CashbookCreateCashInOutRequest): Observable<CashInOutSingleResponse>;
@@ -796,6 +827,14 @@ export interface WalletServiceController {
   ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
 
   cashbookFindAllBranchCashIn(
+    request: BranchRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  findAllBranchApprovedCashinWDate(
+    request: BranchRequest,
+  ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
+
+  findAllBranchPendingCashinWDate(
     request: BranchRequest,
   ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
 
@@ -965,6 +1004,8 @@ export function WalletServiceControllerMethods() {
       "cashbookFindOneCashIn",
       "cashbookFindAllCashIn",
       "cashbookFindAllBranchCashIn",
+      "findAllBranchApprovedCashinWDate",
+      "findAllBranchPendingCashinWDate",
       "cashbookApproveCashOut",
       "cashbookCreateCashOut",
       "cashbookUpdateCashOut",

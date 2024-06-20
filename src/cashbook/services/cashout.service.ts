@@ -2,7 +2,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CashOut } from '../entities/cashout.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import {
   ErrorResponse,
   handleError,
@@ -47,8 +47,8 @@ export class CashOutService {
     try {
       const { amount, branchId, comment, userId } = createCashOutDto;
       const [userRes, branchRes] = await Promise.all([
-        await this.identityService.getUser(userId),
-        await this.identityService.getUser(branchId),
+        await this.identityService.getUser({ userId }),
+        await this.identityService.getUser({ userId: branchId }),
       ]);
       if (!userRes.success)
         return handleError(
@@ -82,6 +82,89 @@ export class CashOutService {
     }
   }
 
+  async findAllBranchApprovedCashoutWDate(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
+    try {
+      const date = new Date(data.date);
+
+      // Calculate the start and end of the specified day
+      const startOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(startOfDay.getDate() + 1);
+      const cashouts = await this.cashoutRepository.findBy({
+        branch_id: data.branchId,
+        status: 1,
+        created_at: Between(startOfDay, endOfDay),
+      });
+
+      const allMap = await Promise.all(
+        cashouts.map((item) => {
+          return this.response(item);
+        }),
+      );
+
+      //  handleResponse(allMap, 'all cash-ins fetched successfully');
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        data: allMap,
+        message: 'all cash-ins fetched successfully',
+      };
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+  async findAllBranchPendingCashoutWDate(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
+    try {
+      const date = new Date(data.date);
+
+      // Calculate the start and end of the specified day
+      const startOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(startOfDay.getDate() + 1);
+      const cashouts = await this.cashoutRepository.findBy({
+        branch_id: data.branchId,
+        status: 0,
+        created_at: Between(startOfDay, endOfDay),
+      });
+
+      const allMap = await Promise.all(
+        cashouts.map((item) => {
+          return this.response(item);
+        }),
+      );
+
+      //  handleResponse(allMap, 'all cash-ins fetched successfully');
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        data: allMap,
+        message: 'all cash-ins fetched successfully',
+      };
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   async findAll(): Promise<ErrorResponse | SuccessResponse> {
     try {
       const all = await this.cashoutRepository.find();
@@ -104,7 +187,9 @@ export class CashOutService {
       );
     }
   }
-  async findAllBranch(data: BranchRequest): Promise<ErrorResponse | SuccessResponse> {
+  async findAllBranch(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
       const all = await this.cashoutRepository.findBy({
         branch_id: data.branchId,
@@ -218,7 +303,7 @@ export class CashOutService {
     try {
       const { status, verifiedBy, id } = approveDto;
       const [branchRef, cashOut] = await Promise.all([
-        await this.identityService.getUser(verifiedBy),
+        await this.identityService.getUser({ userId: verifiedBy }),
         await this.cashoutRepository.findOneBy({
           id,
           branch_id: verifiedBy,

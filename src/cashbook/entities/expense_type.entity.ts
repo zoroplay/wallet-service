@@ -18,26 +18,22 @@ export class ExpenseTypes {
   amount: number;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   fixed: number;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   status: number;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
+  @Column({ type: 'varchar', length: 225, nullable: false })
   title: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
-  approved_at: Date;
-
-  @Index()
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   created_at: string;
 
   @Index()
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at: string;
 }

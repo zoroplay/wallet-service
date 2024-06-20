@@ -23,13 +23,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DepositService } from './services/deposit.service';
 import { CashbookService } from './cashbook/cashbook.service';
 import { CashInService } from './cashbook/services/cashin.service';
-import { ExpenseCategory } from './cashbook/entities/expense_category.entity';
 import { Expenses } from './cashbook/entities/expenses.entity';
 import { CashIn } from './cashbook/entities/cashin.entity';
 import { CashOut } from './cashbook/entities/cashout.entity';
 import { CashOutService } from './cashbook/services/cashout.service';
 import { ExpensesService } from './cashbook/services/expenses.service';
-import { ExpenseCategoryService } from './cashbook/services/expense_category.service';
 import { ExpenseTypesService } from './cashbook/services/expense_type.service';
 import { ExpenseTypes } from './cashbook/entities/expense_type.entity';
 
@@ -53,7 +51,6 @@ import { ExpenseTypes } from './cashbook/entities/expense_type.entity';
       Wallet,
       WithdrawalAccount,
       Withdrawal,
-      ExpenseCategory,
       Expenses,
       ExpenseTypes,
       CashIn,
@@ -78,7 +75,6 @@ import { ExpenseTypes } from './cashbook/entities/expense_type.entity';
     CashOutService,
     ExpensesService,
     ExpenseTypesService,
-    ExpenseCategoryService,
   ],
 })
 export class AppModule {}

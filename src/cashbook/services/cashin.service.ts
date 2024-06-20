@@ -2,7 +2,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CashIn } from '../entities/cashin.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import {
   ErrorResponse,
   handleError,
@@ -47,8 +47,8 @@ export class CashInService {
     try {
       const { amount, branchId, comment, userId } = createCashInDto;
       const [userRes, branchRes] = await Promise.all([
-        await this.identityService.getUser(userId),
-        await this.identityService.getUser(branchId),
+        this.identityService.getUser({ userId }),
+        this.identityService.getUser({ userId: branchId }),
       ]);
 
       if (!userRes.success)
@@ -63,7 +63,6 @@ export class CashInService {
           null,
           HttpStatus.BAD_REQUEST,
         );
-
       const cashinData = new CashIn();
       cashinData.amount = Number(amount);
       cashinData.branch_id = Number(branchId);
@@ -91,6 +90,90 @@ export class CashInService {
         }),
       );
 
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        data: allMap,
+        message: 'all cash-ins fetched successfully',
+      };
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async findAllBranchApprovedCashinWDate(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
+    try {
+      const date = new Date(data.date);
+
+      // Calculate the start and end of the specified day
+      const startOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(startOfDay.getDate() + 1);
+      const cashins = await this.cashinRepository.findBy({
+        branch_id: data.branchId,
+        status: 1,
+        created_at: Between(startOfDay, endOfDay),
+      });
+
+      const allMap = await Promise.all(
+        cashins.map((item) => {
+          return this.response(item);
+        }),
+      );
+
+      //  handleResponse(allMap, 'all cash-ins fetched successfully');
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        data: allMap,
+        message: 'all cash-ins fetched successfully',
+      };
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+  async findAllBranchPendingCashinWDate(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
+    try {
+      const date = new Date(data.date);
+
+      // Calculate the start and end of the specified day
+      const startOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(startOfDay.getDate() + 1);
+      const cashins = await this.cashinRepository.findBy({
+        branch_id: data.branchId,
+        status: 0,
+        created_at: Between(startOfDay, endOfDay),
+      });
+
+      const allMap = await Promise.all(
+        cashins.map((item) => {
+          return this.response(item);
+        }),
+      );
+      console.log(allMap);
+
+      //  handleResponse(allMap, 'all cash-ins fetched successfully');
       return {
         success: true,
         status: HttpStatus.OK,
@@ -221,7 +304,7 @@ export class CashInService {
     try {
       const { status, verifiedBy, id } = approveDto;
       const [branchRef, cashIn] = await Promise.all([
-        await this.identityService.getUser(verifiedBy),
+        await this.identityService.getUser({ userId: verifiedBy }),
         await this.cashinRepository.findOneBy({
           id,
           branch_id: verifiedBy,

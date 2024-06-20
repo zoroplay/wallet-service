@@ -142,55 +142,55 @@ export class ExpenseTypesService {
     }
   }
 
-  async approve(id: number, data): Promise<ErrorResponse | SuccessResponse> {
-    try {
-      const { status } = data;
-      const expenseType = await this.expensetypesRepository.findOneBy({
-        id,
-      });
+  // async approve(id: number, data): Promise<ErrorResponse | SuccessResponse> {
+  //   try {
+  //     const { status } = data;
+  //     const expenseType = await this.expensetypesRepository.findOneBy({
+  //       id,
+  //     });
 
-      if (!expenseType)
-        return handleError(
-          `Expense does not exist`,
-          null,
-          HttpStatus.NOT_FOUND,
-        );
-      if (status === 1) {
-        const updatedExpenseType = await this.expensetypesRepository.update(
-          { id },
-          {
-            status: 1,
-            approved_at: new Date(),
-          },
-        );
-        return handleResponse(
-          updatedExpenseType,
-          'Expense types Approved successfully',
-        );
-      }
-      if (status === 2) {
-        const updatedExpense = await this.expensetypesRepository.update(
-          { id },
-          {
-            status: 2,
-            approved_at: null,
-          },
-        );
-        return handleResponse(updatedExpense, 'Expense Type Rejected');
-      }
-      return handleError(
-        `Status state of ${status} does not match expected state`,
-        null,
-        HttpStatus.BAD_REQUEST,
-      );
-    } catch (error) {
-      return handleError(
-        `Error! Something went wrong: ${error.message}`,
-        null,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
+  //     if (!expenseType)
+  //       return handleError(
+  //         `Expense does not exist`,
+  //         null,
+  //         HttpStatus.NOT_FOUND,
+  //       );
+  //     if (status === 1) {
+  //       const updatedExpenseType = await this.expensetypesRepository.update(
+  //         { id },
+  //         {
+  //           status: 1,
+  //           approved_at: new Date(),
+  //         },
+  //       );
+  //       return handleResponse(
+  //         updatedExpenseType,
+  //         'Expense types Approved successfully',
+  //       );
+  //     }
+  //     if (status === 2) {
+  //       const updatedExpense = await this.expensetypesRepository.update(
+  //         { id },
+  //         {
+  //           status: 2,
+  //           approved_at: null,
+  //         },
+  //       );
+  //       return handleResponse(updatedExpense, 'Expense Type Rejected');
+  //     }
+  //     return handleError(
+  //       `Status state of ${status} does not match expected state`,
+  //       null,
+  //       HttpStatus.BAD_REQUEST,
+  //     );
+  //   } catch (error) {
+  //     return handleError(
+  //       `Error! Something went wrong: ${error.message}`,
+  //       null,
+  //       HttpStatus.BAD_REQUEST,
+  //     );
+  //   }
+  // }
   async remove(id: number): Promise<ErrorResponse | SuccessResponse> {
     try {
       const expenseType = await this.expensetypesRepository.findOneBy({ id });

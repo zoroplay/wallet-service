@@ -13,11 +13,11 @@ import { ExpenseTypes } from './expense_type.entity';
 
 @Entity({ name: 'expenses' })
 export class Expenses {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   branch_id: number;
 
   @ManyToOne(() => ExpenseTypes, { eager: true })
@@ -25,7 +25,7 @@ export class Expenses {
   expense_type_id: number;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   verified_by: number;
 
   @Index()
@@ -36,26 +36,26 @@ export class Expenses {
   approved_amount: number;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
+  @Column({ type: 'varchar', length: 225, nullable: false })
   branch_comment: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
+  @Column({ type: 'varchar', length: 225, nullable: false })
   admin_comment: string;
 
   @Index()
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   status: number;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
+  @Column({ type: 'datetime', nullable: true })
   verified_at: Date;
 
   @Index()
-  @CreateDateColumn()
-  created_at: string;
+  @CreateDateColumn({ type: 'datetime' })
+  created_at: Date;
 
   @Index()
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updated_at: string;
 }

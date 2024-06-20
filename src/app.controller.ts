@@ -193,6 +193,16 @@ export class AppController {
     return this.cashbookService.findAllBranchCashin(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FindAllBranchApprovedCashinWDate')
+  FindAllBranchApprovedCashinWDate(param: BranchRequest) {
+    return this.cashbookService.findAllBranchApprovedCashinWDate(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FindAllBranchPendingCashinWDate')
+  FindAllBranchPendingCashinWDate(param: BranchRequest) {
+    return this.cashbookService.findAllBranchPendingCashinWDate(param);
+  }
+
   // CASH OUT
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveCashOut')
   CashbookApproveCashOut(param: CashbookApproveCashInOutRequest) {

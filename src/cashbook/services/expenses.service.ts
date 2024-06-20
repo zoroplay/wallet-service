@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import {
   ErrorResponse,
   handleError,
@@ -50,9 +50,9 @@ export class ExpensesService {
     try {
       const { amount, expenseTypeId, branchId, comment } = data;
       const expenseData = new Expenses();
-      expenseData.requested_amount = Number(amount);
-      expenseData.branch_id = Number(branchId);
-      expenseData.expense_type_id = Number(expenseTypeId);
+      expenseData.requested_amount = amount;
+      expenseData.branch_id = branchId;
+      expenseData.expense_type_id = expenseTypeId;
       expenseData.branch_comment = comment;
 
       const expense = await this.expensesRepository.save(expenseData);
@@ -72,8 +72,11 @@ export class ExpensesService {
     try {
       const all = await this.expensesRepository.find();
       const allMap = await Promise.all(
-        all.map((item) => {
-          return this.response(item);
+        all.map((item: any) => {
+          return this.response({
+            ...item,
+            expense_type_id: item.expense_type_id.id,
+          });
         }),
       );
       return handleResponse(allMap, 'all expenses fetched successfully');
@@ -94,11 +97,14 @@ export class ExpensesService {
         branch_id: data.branchId,
       });
       const allMap = await Promise.all(
-        all.map((item) => {
-          return this.response(item);
+        all.map((item: any) => {
+          return this.response({
+            ...item,
+            expense_type_id: item.expense_type_id.id,
+          });
         }),
       );
-      return handleResponse(allMap, 'all expenses fetched successfully');
+      return handleResponse(allMap, 'all branch expenses fetched successfully');
     } catch (error) {
       return handleError(
         `Error! Something went wrong: ${error.message}`,
@@ -108,6 +114,88 @@ export class ExpensesService {
     }
   }
 
+  async findAllBranchApprovedExpensesWDate(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
+    try {
+      const date = new Date(data.date);
+
+      // Calculate the start and end of the specified day
+      const startOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(startOfDay.getDate() + 1);
+      const expenses = await this.expensesRepository.findBy({
+        branch_id: data.branchId,
+        status: 1,
+        created_at: Between(startOfDay, endOfDay),
+      });
+
+      const allMap = await Promise.all(
+        expenses.map((item) => {
+          return this.response(item);
+        }),
+      );
+
+      //  handleResponse(allMap, 'all cash-ins fetched successfully');
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        data: allMap,
+        message: 'all cash-ins fetched successfully',
+      };
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+  async findAllBranchPendingExpensesWDate(
+    data: BranchRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
+    try {
+      const date = new Date(data.date);
+
+      // Calculate the start and end of the specified day
+      const startOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(startOfDay.getDate() + 1);
+      const expenses = await this.expensesRepository.findBy({
+        branch_id: data.branchId,
+        status: 0,
+        created_at: Between(startOfDay, endOfDay),
+      });
+
+      const allMap = await Promise.all(
+        expenses.map((item) => {
+          return this.response(item);
+        }),
+      );
+
+      //  handleResponse(allMap, 'all cash-ins fetched successfully');
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        data: allMap,
+        message: 'all cash-ins fetched successfully',
+      };
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
   async findOne(data: IdRequest) {
     try {
       const { id } = data;
@@ -183,7 +271,7 @@ export class ExpensesService {
     try {
       const { status, verifiedBy, amount, expenseId, comment } = approveDto;
       const [adminRef, Expense]: any = await Promise.all([
-        await this.identityService.getUser(verifiedBy),
+        await this.identityService.getUser({ userId: verifiedBy }),
         await this.expensesRepository.findOneBy({
           id: expenseId,
         }),
