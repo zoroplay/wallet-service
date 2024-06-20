@@ -32,6 +32,7 @@ export class ExpensesService {
       id: values.id,
       userId: values.user_id,
       expenseTypeId: values.expense_type_id,
+      expenseType: values.expense_type,
       requestedAmount: values.requested_amount,
       approvedAmount: values.approved_amount,
       status: values.status,
@@ -76,9 +77,11 @@ export class ExpensesService {
           return this.response({
             ...item,
             expense_type_id: item.expense_type_id.id,
+            expense_type: item.expense_type_id.title,
           });
         }),
       );
+      console.log(allMap);
       return handleResponse(allMap, 'all expenses fetched successfully');
     } catch (error) {
       return handleError(
@@ -101,6 +104,7 @@ export class ExpensesService {
           return this.response({
             ...item,
             expense_type_id: item.expense_type_id.id,
+            expense_type: item.expense_type_id.title,
           });
         }),
       );

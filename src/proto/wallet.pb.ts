@@ -10,9 +10,10 @@ export interface ProcessRetailTransaction {
   id: number;
   clientId: number;
   userId: number;
-  username: string;
-  amount: number;
-  withdrawalCharge: number;
+  username?: string | undefined;
+  amount?: number | undefined;
+  withdrawalCharge?: number | undefined;
+  userRole?: string | undefined;
 }
 
 export interface WalletTransferRequest {
@@ -30,7 +31,7 @@ export interface ValidateTransactionRequest {
   clientId: number;
   userId: number;
   code: string;
-  userRole: string;
+  userRole?: string | undefined;
 }
 
 export interface EmptyRequest {
@@ -88,6 +89,7 @@ export interface Expense {
   verifiedBy: number;
   createdAt: string;
   balance?: number | undefined;
+  expenseType?: string | undefined;
 }
 
 export interface CashbookApproveCashInOutRequest {
@@ -633,7 +635,7 @@ export interface PaginationResponse {
   nextPage: number;
   prevPage: number;
   lastPage: number;
-  data: string;
+  data: { [key: string]: any }[];
 }
 
 export interface MetaData {
@@ -724,6 +726,8 @@ export interface WalletServiceClient {
 
   verifyBankAccount(request: VerifyBankAccountRequest): Observable<VerifyBankAccountResponse>;
 
+  listBanks(request: EmptyRequest): Observable<CommonResponseArray>;
+
   getTransactions(request: GetTransactionRequest): Observable<GetTransactionResponse>;
 
   getPaymentMethods(request: GetPaymentMethodRequest): Observable<GetPaymentMethodResponse>;
@@ -763,6 +767,8 @@ export interface WalletServiceClient {
   validateWithdrawalCode(request: ValidateTransactionRequest): Observable<CommonResponseObj>;
 
   processShopWithdrawal(request: ProcessRetailTransaction): Observable<CommonResponseObj>;
+
+  debitAgentBalance(request: DebitUserRequest): Observable<CommonResponseObj>;
 }
 
 export interface WalletServiceController {
@@ -906,6 +912,10 @@ export interface WalletServiceController {
     request: VerifyBankAccountRequest,
   ): Promise<VerifyBankAccountResponse> | Observable<VerifyBankAccountResponse> | VerifyBankAccountResponse;
 
+  listBanks(
+    request: EmptyRequest,
+  ): Promise<CommonResponseArray> | Observable<CommonResponseArray> | CommonResponseArray;
+
   getTransactions(
     request: GetTransactionRequest,
   ): Promise<GetTransactionResponse> | Observable<GetTransactionResponse> | GetTransactionResponse;
@@ -983,6 +993,10 @@ export interface WalletServiceController {
   processShopWithdrawal(
     request: ProcessRetailTransaction,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  debitAgentBalance(
+    request: DebitUserRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1025,6 +1039,7 @@ export function WalletServiceControllerMethods() {
       "verifyDeposit",
       "requestWithdrawal",
       "verifyBankAccount",
+      "listBanks",
       "getTransactions",
       "getPaymentMethods",
       "savePaymentMethod",
@@ -1044,6 +1059,7 @@ export function WalletServiceControllerMethods() {
       "processShopDeposit",
       "validateWithdrawalCode",
       "processShopWithdrawal",
+      "debitAgentBalance",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
