@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { HelperService } from './helper.service';
 import { post, get } from 'src/common/axios';
 import { generateTrxNo } from 'src/common/helpers';
+import axios from 'axios';
 
 @Injectable()
 export class MonnifyService {
@@ -162,11 +163,10 @@ export class MonnifyService {
             if (!paymentSettings) return {success: false, message: 'Monnify has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
     
             const authRes = await this.authenticate(paymentSettings);
-            console.log('auth response', authRes);
             
             if(authRes.requestSuccessful) {
                 // do transfer with paystack transfer api
-                const resp = await post(`${paymentSettings.base_url}/api/v2/disbursements/single`, {
+                const resp = await axios.post(`${paymentSettings.base_url}/api/v2/disbursements/single`, {
                     amount: withdrawal.amount,
                     reference: withdrawal.withdrawal_code,
                     currency: 'NGN',
@@ -174,10 +174,10 @@ export class MonnifyService {
                     destinationBankCode: withdrawal.bank_code,
                     destinationAccountNumber: withdrawal.account_number,
                     sourceAccountNumber: paymentSettings.merchant_id,
-                }, {
+                }, {headers: {
                     'Authorization': `Bearer ${authRes.responseBody.accessToken}`,
                     'Content-Type': 'application/json',
-                });
+                }});
 
                 console.log('transfer', resp)
                 const body = resp.data;
@@ -211,7 +211,7 @@ export class MonnifyService {
 
     private async authenticate(paymentSettings: PaymentMethod) {
         const key = btoa(`${paymentSettings.public_key}:${paymentSettings.secret_key}`);
-        console.log('auth key', key);
+
         return await post(`${paymentSettings.base_url}/api/v1/auth/login`, {}, {
             'Authorization': 'Basic ' + key
         })
