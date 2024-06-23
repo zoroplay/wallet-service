@@ -140,6 +140,7 @@ export class PaymentService {
                             case 'mgurush':
                                 break;
                             case 'monnify':
+                                resp = await this.monnifyService.disburseFunds(wRequest, clientId);
                                 break;
                             case 'flutterwave':
                                 break;

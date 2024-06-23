@@ -140,6 +140,7 @@ export class AppService {
       let where: any = { client_id: clientId };
       if (status) where.status = status;
 
+      console.log(where)
       const pMethods = await this.pMethodRepository.find({ where });
 
       return handleResponse(pMethods, 'Payment methods retrieved successfully');
@@ -400,7 +401,7 @@ export class AppService {
           balance: wallet.balance - amount,
         },
       );
-      
+
       return handleResponse(wallet, 'Wallet debited');
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
