@@ -124,7 +124,7 @@ export class PaystackService {
             if (initRes.success) {
                 // do transfer with paystack transfer api
                 const resp: any = await this.doTransfer(withdrawal.amount, withdrawal.withdrawal_code, initRes.data.recipient_code, paymentSettings.secret_key)
-                console.log(resp);
+                // console.log(resp);
                 return {success: resp.success, data: resp.data, message: resp.message};
 
             } else {

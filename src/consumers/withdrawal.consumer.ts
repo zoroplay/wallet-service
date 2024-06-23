@@ -42,7 +42,7 @@ export class WithdrawalConsumer {
             const withdrawal = new Withdrawal();
             withdrawal.account_name = data.accountName;
             withdrawal.bank_code = data.bankCode;
-            withdrawal.bank_name = data.bankName || 'sbengine';
+            withdrawal.bank_name = data.bankName ;
             withdrawal.account_number = data.accountNumber || "";
             withdrawal.user_id = data.userId;
             withdrawal.username = data.username;
