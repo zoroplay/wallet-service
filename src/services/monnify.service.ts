@@ -157,6 +157,7 @@ export class MonnifyService {
     async disburseFunds(withdrawal: Withdrawal, client_id) {
         try {
             const paymentSettings = await this.monnifySettings(client_id);
+            console.log(paymentSettings)
             // return false if paystack settings is not available
             if (!paymentSettings) return {success: false, message: 'Monnify has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
     
@@ -185,7 +186,7 @@ export class MonnifyService {
 
         } catch (e) {
             console.log(e.message);
-            return {success: false, message: 'Paystack Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
+            return {success: false, message: 'Monnify Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
         }
     }
 
