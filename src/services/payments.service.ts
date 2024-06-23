@@ -125,7 +125,7 @@ export class PaymentService {
             if (wRequest) {
                 if (action === 'approve') {
                     const paymentMethod = await this.paymentMethodRepository.findOne({
-                        where: {for_disbursement: 1}
+                        where: {for_disbursement: 1, client_id: clientId}
                     })
                     console.log('active withdrawa method', paymentMethod);
                     if (paymentMethod) {
