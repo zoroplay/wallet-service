@@ -165,6 +165,7 @@ export class MonnifyService {
             const authRes = await this.authenticate(paymentSettings);
             
             if(authRes.requestSuccessful) {
+                console.log(authRes.responseBody.accessToken)
                 // do transfer with paystack transfer api
                 const resp = await axios.post(`${paymentSettings.base_url}/api/v2/disbursements/single`, {
                     amount: withdrawal.amount,
