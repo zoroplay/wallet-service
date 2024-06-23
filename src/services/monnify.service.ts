@@ -162,7 +162,8 @@ export class MonnifyService {
             if (!paymentSettings) return {success: false, message: 'Monnify has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
     
             const authRes = await this.authenticate(paymentSettings);
-
+            console.log('auth response', authRes);
+            
             if(authRes.requestSuccessful) {
                 // do transfer with paystack transfer api
                 const resp = await post(`${paymentSettings.base_url}/api/v2/disbursements/single`, {
@@ -210,7 +211,7 @@ export class MonnifyService {
 
     private async authenticate(paymentSettings: PaymentMethod) {
         const key = btoa(`${paymentSettings.public_key}:${paymentSettings.secret_key}`);
-
+        console.log('auth key', key);
         return await post(`${paymentSettings.base_url}/api/v1/auth/login`, {}, {
             'Authorization': 'Basic ' + key
         })
