@@ -457,9 +457,9 @@ export class AppService {
 
       const total = await query.getCount();
 
-      // console.log(result)
+      const results = result.map((item) => ({...item, created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss')}))
 
-      return paginateResponse([result, total], page, limit);
+      return paginateResponse([results, total], page, limit);
     } catch (e) {
       console.log(e.message);
       return paginateResponse([[], 0], 1, 100, 'failed');
