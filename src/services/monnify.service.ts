@@ -178,10 +178,9 @@ export class MonnifyService {
                 });
 
                 console.log('transfer', resp)
-                const body = resp.data;
 
 
-                return {success: body.requestSuccessful, data: body.data, message: body.message};
+                return {success: resp.requestSuccessful, data: resp.data, message: resp.message};
 
             } else {
                 return authRes;

@@ -264,7 +264,7 @@ export class PaystackService {
                         const transaction = await this.transactionRepository.findOne({
                             where: {
                                 client_id: data.clientId, 
-                                transaction_no: data.reference,
+                                transaction_no: ref[0],
                                 tranasaction_type: 'credit'
                             }
                         });
@@ -306,7 +306,7 @@ export class PaystackService {
                                 status: 1
                             })
                         } else {
-                            console.log('transfer.success: withdrawal not found', data.reference)
+                            console.log('transfer.success: withdrawal not found', ref[0])
                         }
                         break;
                     case 'transfer.failed':
@@ -350,7 +350,7 @@ export class PaystackService {
                 
 
                         } else {
-                            console.log('transfer.failed: withdrawal not found', data.reference)
+                            console.log('transfer.failed: withdrawal not found', ref[0])
                         }
                         break;
                     case 'transfer.reversed':
