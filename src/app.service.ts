@@ -710,4 +710,14 @@ export class AppService {
       }
     }
   }
+
+  async deletePlayerData (user_id) {
+    await this.transactionRepository.delete({user_id});
+
+    await this.walletRepository.delete({user_id});
+
+    await this.withdrawalRepository.delete({user_id});
+
+    return {success: true, message: 'Successful'}
+  }
 }

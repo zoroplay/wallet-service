@@ -12,6 +12,7 @@ import {
   GetBalanceRequest,
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
+  IdRequest,
   InitiateDepositRequest,
   ListDepositRequests,
   ListWithdrawalRequests,
@@ -205,5 +206,10 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'ProcessShopDeposit')
   ProcessShopDeposit(param: ProcessRetailTransaction) {
     return this.depositService.processShopDeposit(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'DeletePlayerData')
+  DeletePlayerData(param: IdRequest) {
+    return this.appService.deletePlayerData(param.id);
   }
 }
