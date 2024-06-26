@@ -21,6 +21,7 @@ export class OPayService {
 
   async updateNotify(param: OpayWebhookRequest) {
     try {
+      console.log(param)
       // find transaction
       const transaction = await this.transactionRepository
         .createQueryBuilder()
