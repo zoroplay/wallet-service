@@ -21,7 +21,6 @@ export class OPayService {
 
   async updateNotify(param: OpayWebhookRequest) {
     try {
-      console.log(param)
       // find transaction
       const transaction = await this.transactionRepository
         .createQueryBuilder()
@@ -39,50 +38,59 @@ export class OPayService {
           .andWhere('username = :username', { username: param.username })
           .getOne();
 
-        const amount = parseFloat(param.amount) / 100;
-        const balance =
-          parseFloat(wallet.available_balance.toString()) +
-          parseFloat(amount.toString());
+        if (wallet) {
 
-        // update user wallet
-        await this.walletRepository.update(
-          {
-            id: wallet.id,
-          },
-          {
-            available_balance: balance,
-          },
-        );
+          const amount = parseFloat(param.amount) / 100;
+          const balance =
+            parseFloat(wallet.available_balance.toString()) +
+            parseFloat(amount.toString());
 
-        //save transaction
-        await this.helperService.saveTransaction({
-          amount: amount,
-          channel: 'opay',
-          clientId: param.clientId,
-          toUserId: wallet.user_id,
-          toUsername: wallet.username,
-          toUserBalance: balance,
-          fromUserId: 0,
-          fromUsername: 'System',
-          fromUserbalance: 0,
-          source: 'external',
-          subject: 'Deposit',
-          description: param.orderNo,
-          transactionNo: ref,
-          status: 1,
-        });
+          // update user wallet
+          await this.walletRepository.update(
+            {
+              id: wallet.id,
+            },
+            {
+              available_balance: balance,
+            },
+          );
 
-        return {
-          responseCode: '00000',
-          responseMessage: 'SUCCESSFULL',
-          data: {
-            UserID: param.username,
-            OrderNo: param.orderNo,
-            TransAmount: param.amount,
-            PaymentReference: ref,
-            Status: 0,
-          },
-        };
+          //save transaction
+          await this.helperService.saveTransaction({
+            amount: amount,
+            channel: 'opay',
+            clientId: param.clientId,
+            toUserId: wallet.user_id,
+            toUsername: wallet.username,
+            toUserBalance: balance,
+            fromUserId: 0,
+            fromUsername: 'System',
+            fromUserbalance: 0,
+            source: 'external',
+            subject: 'Deposit',
+            description: param.orderNo,
+            transactionNo: ref,
+            status: 1,
+          });
+
+          return {
+            responseCode: '00000',
+            responseMessage: 'SUCCESSFULL',
+            data: {
+              UserID: param.username,
+              OrderNo: param.orderNo,
+              TransAmount: param.amount,
+              PaymentReference: ref,
+              Status: 0,
+            },
+          };
+        } else {
+          return {
+            responseCode: '10967',
+            responseMessage: 'Invalid user ID',
+            data: {},
+          };
+        }
       } else {
         return {
           responseCode: '05011',
