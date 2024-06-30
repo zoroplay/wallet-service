@@ -535,6 +535,7 @@ export class AppService {
             transactionDate: transaction.transaction_created_at,
             channel: transaction.transaction_channel,
             status: transaction.transaction_status,
+            wallet: transaction.transaction_wallet
           });
         }
       }
