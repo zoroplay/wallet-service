@@ -79,7 +79,7 @@ export class OPayService {
             data: {
               UserID: param.username,
               OrderNo: param.orderNo,
-              TransAmount: param.amount,
+              TransAmount: amount,
               PaymentReference: ref,
               Status: 0,
             },
@@ -99,7 +99,7 @@ export class OPayService {
         };
       }
     } catch (e) {
-      console.log('opay error', e);
+      // console.log('opay error', e);
       return {
         responseCode: '10967',
         responseMessage: 'Internal server error',
