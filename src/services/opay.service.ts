@@ -79,7 +79,7 @@ export class OPayService {
             data: {
               UserID: param.username,
               OrderNo: param.orderNo,
-              TransAmount: amount,
+              TransAmount: param.amount,
               PaymentReference: ref,
               Status: 0,
             },
@@ -131,7 +131,7 @@ export class OPayService {
           UserID: transaction.user_id,
           OrderNo: orderNo,
           TransDate: dayjs(transaction.created_at).format('YYYY-MM-DD'),
-          TransAmount: transaction.amount,
+          TransAmount: transaction.amount * 100,
           PaymentReference: transaction.transaction_no,
           Status,
         },
