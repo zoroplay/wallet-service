@@ -10,6 +10,7 @@ import {
   FetchDepositRangeRequest,
   FetchPlayerDepositRequest,
   GetBalanceRequest,
+  GetMoneyTransactionRequest,
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
   IdRequest,
@@ -35,6 +36,7 @@ import { OPayService } from './services/opay.service';
 import { DepositService } from './services/deposit.service';
 import { MonnifyService } from './services/monnify.service';
 import { WithdrawalService } from './services/withdrawal.service';
+import { ReportingService } from './services/reporting.service';
 
 @Controller()
 export class AppController {
@@ -46,6 +48,7 @@ export class AppController {
     private opayService: OPayService,
     private depositService: DepositService,
     private withdrawalService: WithdrawalService,
+    private reportingService: ReportingService
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -211,5 +214,10 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'DeletePlayerData')
   DeletePlayerData(param: IdRequest) {
     return this.appService.deletePlayerData(param.id);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetMoneyTransaction')
+  GetMoneyTransaction(param: GetMoneyTransactionRequest) {
+    return this.reportingService.getMoneyTransaction(param);
   }
 }

@@ -25,6 +25,7 @@ import { WithdrawalService } from './services/withdrawal.service';
 import { BullModule } from '@nestjs/bull';
 import { WithdrawalConsumer } from './consumers/withdrawal.consumer';
 import { DepositConsumer } from './consumers/deposit.consumer';
+import { ReportingService } from './services/reporting.service';
 
 @Module({
   imports: [
@@ -90,7 +91,8 @@ import { DepositConsumer } from './consumers/deposit.consumer';
     DepositService,
     DepositConsumer,
     WithdrawalService,
-    WithdrawalConsumer
+    WithdrawalConsumer,
+    ReportingService
   ],
 })
 export class AppModule {}
