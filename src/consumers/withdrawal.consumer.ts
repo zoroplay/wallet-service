@@ -29,9 +29,9 @@ export class WithdrawalConsumer {
 
     @Process('withdrawal-request')
     async processWithdrawal(job: Job<unknown>) {
-        // console.log(
-        //     `Processing withdrawal job ${job.id} of type ${job.name}...`,
-        //   );
+        console.log(
+            `Processing withdrawal job ${job.id} of type ${job.name}...`,
+          );
         try {
             const data: any = job.data;
 
