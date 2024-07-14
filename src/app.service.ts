@@ -140,10 +140,16 @@ export class AppService {
       let where: any = { client_id: clientId };
       if (status) where.status = status;
 
-      console.log(where)
+      let results = []
+      // console.log(where)
       const pMethods = await this.pMethodRepository.find({ where });
 
-      return handleResponse(pMethods, 'Payment methods retrieved successfully');
+      if (status) {
+        results = pMethods.map(p => ({slug: p.provider, display_name: p.display_name}))
+      } else {
+        results = pMethods
+      }
+      return handleResponse(results, 'Payment methods retrieved successfully');
     } catch (e) {
       return handleError(e.message, {}, HttpStatus.INTERNAL_SERVER_ERROR);
     }

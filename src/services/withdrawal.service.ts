@@ -213,6 +213,7 @@ export class WithdrawalService {
             amount: withdrawalRequest.amount,
             withdrawalCharge: 0,
             withdrawalFinalAmount: 0,
+            username: withdrawalRequest.username
           }
 
           if (data.userRole === 'Sales Agent') {
