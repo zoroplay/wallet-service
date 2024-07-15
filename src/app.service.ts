@@ -536,7 +536,7 @@ export class AppService {
     }
   }
 
-  async listDeposits(data): Promise<PaginationResponse> {
+  async listDeposits(data): Promise<any> {
     // console.log('fetch deposits', data)
     try {
       // console.log(data);

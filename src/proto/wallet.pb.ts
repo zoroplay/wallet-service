@@ -6,6 +6,18 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
+export interface GetTransactionsRequest {
+  clientId: number;
+  from: string;
+  to: string;
+  transactionType?: string | undefined;
+  referenceNo?: string | undefined;
+  username?: string | undefined;
+  keyword?: string | undefined;
+  limit?: number | undefined;
+  page: number;
+}
+
 export interface ProcessRetailTransaction {
   id: number;
   clientId: number;
@@ -576,6 +588,7 @@ export interface TransactionData {
   transactionDate: string;
   channel: string;
   status: number;
+  wallet: string;
 }
 
 export interface UpdateWithdrawalRequest {
@@ -752,9 +765,15 @@ export interface WalletServiceClient {
 
   getPlayerWalletData(request: GetBalanceRequest): Observable<PlayerWalletData>;
 
+  deletePlayerData(request: IdRequest): Observable<CommonResponseObj>;
+
   getUserAccounts(request: GetBalanceRequest): Observable<GetUserAccountsResponse>;
 
   getNetworkBalance(request: GetNetworkBalanceRequest): Observable<GetNetworkBalanceResponse>;
+
+  getMoneyTransaction(request: GetTransactionsRequest): Observable<CommonResponseObj>;
+
+  getSystemTransaction(request: GetTransactionsRequest): Observable<CommonResponseObj>;
 
   /** RETAIL SERVICES */
 
@@ -964,6 +983,8 @@ export interface WalletServiceController {
     request: GetBalanceRequest,
   ): Promise<PlayerWalletData> | Observable<PlayerWalletData> | PlayerWalletData;
 
+  deletePlayerData(request: IdRequest): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
   getUserAccounts(
     request: GetBalanceRequest,
   ): Promise<GetUserAccountsResponse> | Observable<GetUserAccountsResponse> | GetUserAccountsResponse;
@@ -971,6 +992,14 @@ export interface WalletServiceController {
   getNetworkBalance(
     request: GetNetworkBalanceRequest,
   ): Promise<GetNetworkBalanceResponse> | Observable<GetNetworkBalanceResponse> | GetNetworkBalanceResponse;
+
+  getMoneyTransaction(
+    request: GetTransactionsRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  getSystemTransaction(
+    request: GetTransactionsRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
   /** RETAIL SERVICES */
 
@@ -1052,8 +1081,11 @@ export function WalletServiceControllerMethods() {
       "userTransactions",
       "updateWithdrawal",
       "getPlayerWalletData",
+      "deletePlayerData",
       "getUserAccounts",
       "getNetworkBalance",
+      "getMoneyTransaction",
+      "getSystemTransaction",
       "walletTransfer",
       "validateDepositCode",
       "processShopDeposit",

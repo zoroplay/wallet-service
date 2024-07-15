@@ -16,6 +16,7 @@ import {
   BranchRequest,
   CashbookApproveExpenseRequest,
   IdRequest,
+  Expense,
 } from 'src/proto/wallet.pb';
 
 @Injectable()
@@ -81,7 +82,6 @@ export class ExpensesService {
           });
         }),
       );
-      console.log(allMap);
       return handleResponse(allMap, 'all expenses fetched successfully');
     } catch (error) {
       return handleError(
@@ -245,19 +245,41 @@ export class ExpensesService {
           null,
           HttpStatus.NOT_ACCEPTABLE,
         );
-
-      const updatedExpense = await this.expensesRepository.update(
-        { id },
-        {
-          requested_amount: amount ? Number(amount) : expense.requested_amount,
-          branch_comment: comment ? comment : expense.branch_comment,
-          branch_id: branchId ? branchId : expense.branch_id,
-          expense_type_id: expenseTypeId
-            ? expenseTypeId
-            : expense.expense_type_id,
-        },
+      let res: Expense;
+      console.log('1:', 1);
+      console.log(
+        'branchId __: expense.branch_id',
+        expense.branch_id,
+        branchId,
       );
-      const res = this.response(updatedExpense);
+      console.log(amount, expenseTypeId, branchId, id, comment);
+      if (branchId === expense.branch_id) {
+        const updatedExpense = await this.expensesRepository.update(
+          { id },
+          {
+            requested_amount: amount
+              ? Number(amount)
+              : expense.requested_amount,
+            branch_comment: comment ? comment : expense.branch_comment,
+            expense_type_id: expenseTypeId
+              ? expenseTypeId
+              : expense.expense_type_id,
+          },
+        );
+        res = this.response(updatedExpense);
+      } else {
+        const updatedExpense = await this.expensesRepository.update(
+          { id },
+          {
+            approved_amount: amount ? Number(amount) : expense.requested_amount,
+            admin_comment: comment ? comment : expense.branch_comment,
+            expense_type_id: expenseTypeId
+              ? expenseTypeId
+              : expense.expense_type_id,
+          },
+        );
+        res = this.response(updatedExpense);
+      }
 
       return handleResponse(res, 'Expense updated successfully');
     } catch (error) {

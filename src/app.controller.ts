@@ -243,14 +243,14 @@ export class AppController {
   CashbookUpdateOneExpense(data: CashbookCreateExpenseRequest) {
     return this.cashbookService.updateExpense(data);
   }
-  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneExpense')
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookDeleteOneExpense')
   CashbookDeleteOneExpense(data: IdRequest) {
-    return this.cashbookService.findOneExpenses(data);
+    return this.cashbookService.deleteOneExpenses(data);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneExpense')
   CashbookFindOneExpense(data: IdRequest) {
-    return this.cashbookService.deleteOneExpenses(data);
+    return this.cashbookService.findOneExpenses(data);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllBranchExpense')
   CashbookFindAllBranchExpense(data: BranchRequest) {
