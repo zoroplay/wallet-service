@@ -1,12 +1,12 @@
 /* eslint-disable prettier/prettier */
-import { HttpStatus, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { firstValueFrom } from "rxjs";
-import { generateTrxNo } from "src/common/helpers";
-import { PaymentMethod } from "src/entity/payment.method.entity";
-import { Wallet } from "src/entity/wallet.entity";
-import { Withdrawal } from "src/entity/withdrawal.entity";
-import { IdentityService } from "src/identity/identity.service";
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { firstValueFrom } from 'rxjs';
+import { generateTrxNo } from 'src/common/helpers';
+import { PaymentMethod } from 'src/entity/payment.method.entity';
+import { Wallet } from 'src/entity/wallet.entity';
+import { Withdrawal } from 'src/entity/withdrawal.entity';
+import { IdentityService } from 'src/identity/identity.service';
 import {
   InitiateDepositResponse,
   InitiateDepositRequest,
@@ -15,14 +15,14 @@ import {
   VerifyBankAccountResponse,
   CommonResponseObj,
   WalletTransferRequest,
-} from "src/proto/wallet.pb";
-import { HelperService } from "src/services/helper.service";
-import { PaystackService } from "src/services/paystack.service";
-import { LessThanOrEqual, Repository } from "typeorm";
-import { MonnifyService } from "./monnify.service";
-import * as dayjs from "dayjs";
-import { Cron, CronExpression } from "@nestjs/schedule";
-import { Transaction } from "src/entity/transaction.entity";
+} from 'src/proto/wallet.pb';
+import { HelperService } from 'src/services/helper.service';
+import { PaystackService } from 'src/services/paystack.service';
+import { LessThanOrEqual, Repository } from 'typeorm';
+import { MonnifyService } from './monnify.service';
+import * as dayjs from 'dayjs';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { Transaction } from 'src/entity/transaction.entity';
 
 @Injectable()
 export class PaymentService {
@@ -38,24 +38,24 @@ export class PaymentService {
     private paystackService: PaystackService,
     private monnifyService: MonnifyService,
     private identityService: IdentityService,
-    private helperService: HelperService
+    private helperService: HelperService,
   ) {}
 
   async inititateDeposit(
-    param: InitiateDepositRequest
+    param: InitiateDepositRequest,
   ): Promise<InitiateDepositResponse> {
     const transactionNo = generateTrxNo();
-    let link = "",
+    let link = '',
       description;
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
       .createQueryBuilder()
-      .where("client_id = :clientId", { clientId: param.clientId })
-      .andWhere("user_id = :user_id", { user_id: param.userId })
+      .where('client_id = :clientId', { clientId: param.clientId })
+      .andWhere('user_id = :user_id', { user_id: param.userId })
       .getOne();
 
-    if (!wallet) return { success: false, message: "Wallet not found" };
+    if (!wallet) return { success: false, message: 'Wallet not found' };
 
     // To-Do: Get user info
     const user = await this.identityService
@@ -66,54 +66,54 @@ export class PaymentService {
       })
       .toPromise();
 
-    if (user.username === "")
-      return { success: false, message: "User does not exist" };
+    if (user.username === '')
+      return { success: false, message: 'User does not exist' };
 
     try {
       switch (param.paymentMethod) {
-        case "paystack":
+        case 'paystack':
           const pRes: any = await this.paystackService.generatePaymentLink(
             {
               amount: param.amount * 100,
               email: user.email || `${user.username}@${user.siteUrl}`,
               reference: transactionNo,
-              callback_url: user.callbackUrl + "/payment-verification/paystack",
+              callback_url: user.callbackUrl + '/payment-verification/paystack',
             },
-            param.clientId
+            param.clientId,
           );
 
-          description = "Online Deposit (Paystack)";
+          description = 'Online Deposit (Paystack)';
           if (!pRes.success) return pRes;
 
           link = pRes.data.authorization_url;
 
           break;
-        case "flutterwave":
-          description = "Online Deposit (Flutterwave)";
+        case 'flutterwave':
+          description = 'Online Deposit (Flutterwave)';
           break;
-        case "monnify":
+        case 'monnify':
           const mRes: any = await this.monnifyService.generatePaymentLink(
             {
               amount: param.amount,
               name: user.username,
               email: user.email || `${user.username}@${user.siteUrl}`,
               reference: transactionNo,
-              callback_url: user.callbackUrl + "/payment-verification/monnify",
+              callback_url: user.callbackUrl + '/payment-verification/monnify',
             },
-            param.clientId
+            param.clientId,
           );
 
-          description = "Online Deposit (Monnify)";
+          description = 'Online Deposit (Monnify)';
           if (!mRes.success) return mRes;
 
           link = mRes.data;
           break;
-        case "mgurush":
-          description = "Online Deposit (mGurush)";
+        case 'mgurush':
+          description = 'Online Deposit (mGurush)';
 
           break;
         default:
-          description = "Shop Deposit";
+          description = 'Shop Deposit';
           break;
       }
 
@@ -125,22 +125,22 @@ export class PaymentService {
         toUsername: wallet.username,
         toUserBalance: wallet.available_balance,
         fromUserId: 0,
-        fromUsername: "System",
+        fromUsername: 'System',
         fromUserbalance: 0,
         source: param.source,
-        subject: "Deposit",
+        subject: 'Deposit',
         description,
         transactionNo,
       });
 
       return {
         success: true,
-        message: "Success",
+        message: 'Success',
         data: { transactionRef: transactionNo, link },
       };
     } catch (e) {
       console.log(e.message);
-      return { success: false, message: "Unable to complete transaction" };
+      return { success: false, message: 'Unable to complete transaction' };
     }
   }
 
@@ -156,7 +156,7 @@ export class PaymentService {
         where: { id: withdrawalId },
       });
       if (wRequest) {
-        if (action === "approve") {
+        if (action === 'approve') {
           const paymentMethod = await this.paymentMethodRepository.findOne({
             where: { for_disbursement: 1 },
           });
@@ -164,21 +164,21 @@ export class PaymentService {
             let resp: any = {
               success: false,
               message:
-                "Unable to disburse funds with " + paymentMethod.provider,
+                'Unable to disburse funds with ' + paymentMethod.provider,
               status: HttpStatus.NOT_IMPLEMENTED,
             };
             switch (paymentMethod.provider) {
-              case "paystack":
+              case 'paystack':
                 resp = await this.paystackService.disburseFunds(
                   wRequest,
-                  clientId
+                  clientId,
                 );
                 break;
-              case "mgurush":
+              case 'mgurush':
                 break;
-              case "monnify":
+              case 'monnify':
                 break;
-              case "flutterwave":
+              case 'flutterwave':
                 break;
               default:
                 break;
@@ -192,7 +192,7 @@ export class PaymentService {
                 {
                   status: 1,
                   updated_by: updatedBy,
-                }
+                },
               );
 
             // return response
@@ -200,7 +200,7 @@ export class PaymentService {
           } else {
             return {
               success: false,
-              message: "No payment method has been setup for auto disbursement",
+              message: 'No payment method has been setup for auto disbursement',
               status: HttpStatus.NOT_IMPLEMENTED,
             };
           }
@@ -214,7 +214,7 @@ export class PaymentService {
               status: 2,
               comment,
               updated_by: updatedBy,
-            }
+            },
           );
           //return funds to user wallet
           const wallet = await this.walletRepository.findOne({
@@ -235,42 +235,42 @@ export class PaymentService {
             },
             {
               available_balance: balance,
-            }
+            },
           );
 
           await this.helperService.saveTransaction({
             amount: wRequest.amount,
-            channel: "internal",
+            channel: 'internal',
             clientId,
             toUserId: wallet.user_id,
             toUsername: wallet.username,
             toUserBalance: balance,
             fromUserId: 0,
-            fromUsername: "System",
+            fromUsername: 'System',
             fromUserbalance: 0,
-            source: "internal",
-            subject: "Rejected Request",
-            description: comment || "Withdrawal request was cancelled",
+            source: 'internal',
+            subject: 'Rejected Request',
+            description: comment || 'Withdrawal request was cancelled',
             transactionNo: generateTrxNo(),
             status: 1,
           });
           return {
             success: true,
-            message: "Withdrawal request updated",
+            message: 'Withdrawal request updated',
             status: HttpStatus.CREATED,
           };
         }
       } else {
         return {
           success: false,
-          message: "Withdrawal request not found",
+          message: 'Withdrawal request not found',
           status: HttpStatus.NOT_FOUND,
         };
       }
     } catch (e) {
       return {
         success: false,
-        message: "Unable to request status",
+        message: 'Unable to request status',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
@@ -284,30 +284,30 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      if (param.transactionRef !== "undefined") {
+      if (param.transactionRef !== 'undefined') {
         switch (param.paymentChannel) {
-          case "paystack":
+          case 'paystack':
             return this.paystackService.verifyTransaction(param);
-          case "monnify":
+          case 'monnify':
             return this.monnifyService.verifyTransaction(param);
-          case "flutterwave":
+          case 'flutterwave':
             break;
           default:
             break;
         }
       }
     } catch (e) {
-      console.log("Error", e.message);
+      console.log('Error', e.message);
       return {
         success: false,
-        message: "Internal Server error",
+        message: 'Internal Server error',
         status: HttpStatus.BAD_REQUEST,
       };
     }
   }
 
   async verifyBankAccount(
-    param: VerifyBankAccountRequest
+    param: VerifyBankAccountRequest,
   ): Promise<VerifyBankAccountResponse> {
     try {
       // find payment method for withdrawal
@@ -321,20 +321,20 @@ export class PaymentService {
         return {
           success: false,
           status: HttpStatus.NOT_FOUND,
-          message: "No payment method is active for disbursement",
+          message: 'No payment method is active for disbursement',
         };
       // To-Do: Get user info
       const user = await firstValueFrom(
         this.identityService.getUserDetails({
           clientId: param.clientId,
           userId: param.userId,
-        })
+        }),
       );
 
-      if (!user.data.firstName || user.data.firstName === "")
+      if (!user.data.firstName || user.data.firstName === '')
         return {
           success: false,
-          message: "Please update your profile details to proceed",
+          message: 'Please update your profile details to proceed',
           status: HttpStatus.NOT_FOUND,
         };
 
@@ -343,27 +343,27 @@ export class PaymentService {
 
       let resp, name, names;
       switch (paymentMethod.provider) {
-        case "paystack":
+        case 'paystack':
           resp = await this.paystackService.resolveAccountNumber(
             param.clientId,
             param.accountNumber,
-            param.bankCode
+            param.bankCode,
           );
           if (resp.success) {
-            names = resp.data.account_name.toLowerCase().split(" ");
+            names = resp.data.account_name.toLowerCase().split(' ');
             name = resp.data.account_name;
           } else {
             return {
               success: false,
               status: HttpStatus.NOT_FOUND,
               message:
-                "Could not resolve account name. Check parameters or try again",
+                'Could not resolve account name. Check parameters or try again',
             };
           }
 
-        case "flutterwave":
+        case 'flutterwave':
           break;
-        case "monnify":
+        case 'monnify':
           break;
         default:
           break;
@@ -381,7 +381,7 @@ export class PaymentService {
       } else {
         return {
           success: false,
-          message: "Your bank account names does not match your name on file",
+          message: 'Your bank account names does not match your name on file',
           status: HttpStatus.NOT_FOUND,
         };
       }
@@ -389,14 +389,14 @@ export class PaymentService {
       console.log(err);
       return {
         success: false,
-        message: "Error verifying account",
+        message: 'Error verifying account',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
   }
 
   async walletTransfer(
-    payload: WalletTransferRequest
+    payload: WalletTransferRequest,
   ): Promise<CommonResponseObj> {
     try {
       const {
@@ -421,7 +421,7 @@ export class PaymentService {
       if (!fromWallet) {
         return {
           success: false,
-          message: "Wallet not found",
+          message: 'Wallet not found',
           status: HttpStatus.NOT_FOUND,
         };
       }
@@ -430,7 +430,7 @@ export class PaymentService {
       if (fromWallet.available_balance < amount) {
         return {
           success: false,
-          message: "Insufficent balance",
+          message: 'Insufficent balance',
           status: HttpStatus.BAD_REQUEST,
         };
       }
@@ -447,7 +447,7 @@ export class PaymentService {
         },
         {
           available_balance: senderBalance,
-        }
+        },
       );
 
       await this.walletRepository.update(
@@ -456,12 +456,12 @@ export class PaymentService {
         },
         {
           available_balance: receiverBalance,
-        }
+        },
       );
 
       await this.helperService.saveTransaction({
         amount,
-        channel: "retail",
+        channel: 'retail',
         clientId,
         toUserId,
         toUsername,
@@ -469,33 +469,43 @@ export class PaymentService {
         fromUserId,
         fromUsername,
         fromUserbalance: senderBalance,
-        source: "internal",
-        subject: "Funds Transfer",
-        description: description || "Inter account transfer",
+        source: 'internal',
+        subject: 'Funds Transfer',
+        description: description || 'Inter account transfer',
         transactionNo: generateTrxNo(),
       });
 
       return {
         success: true,
-        message: "Transaction successful",
+        message: 'Transaction successful',
         status: HttpStatus.OK,
         data: {
-          balance: action === "deposit" ? senderBalance : receiverBalance,
+          balance: action === 'deposit' ? senderBalance : receiverBalance,
         },
       };
     } catch (e) {
-      console.log("error", e.message);
+      console.log('error', e.message);
       return {
         success: false,
-        message: "Unable to process request",
+        message: 'Unable to process request',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
   }
+  async checkNoOfWithdrawals(userId) {
+    const today = dayjs().format('YYYY-MM-DD');
+
+    return await this.withdrawalRepository
+      .createQueryBuilder('withdrawals')
+      .where('user_id = :userId', { userId })
+      .where('status = :status', { status: 1 })
+      .andWhere('DATE(created_at) >= :today', { today })
+      .getCount();
+  }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async cancelPendingDepit() {
-    const now = dayjs().subtract(7, "minutes").format("YYYY-MM-DD HH:mm:ss");
+    const now = dayjs().subtract(7, 'minutes').format('YYYY-MM-DD HH:mm:ss');
     //delete pending transactions after 15mins
     await this.transactionRepository.update(
       {
@@ -504,7 +514,7 @@ export class PaymentService {
       },
       {
         status: 2,
-      }
+      },
     );
     // console.log('transactions', transactions);
   }
