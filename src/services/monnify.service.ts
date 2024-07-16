@@ -160,52 +160,36 @@ export class MonnifyService {
             // return false if paystack settings is not available
             if (!paymentSettings) return {success: false, message: 'Monnify has not been configured for client', status: HttpStatus.NOT_IMPLEMENTED};
     
-            const initRes = await this.initiateTransfer(withdrawal.account_number, withdrawal.account_name, withdrawal.bank_code, paymentSettings);
-            if (initRes.success) {
+            const authRes = await this.authenticate(paymentSettings);
+
+            if(authRes.requestSuccessful) {
                 // do transfer with paystack transfer api
-                const resp = await post(`${paymentSettings.base_url}/transfer`, {
-                    source: 'balance',
+                const resp = await post(`${paymentSettings.base_url}/api/v2/disbursements/single`, {
                     amount: withdrawal.amount,
                     reference: withdrawal.withdrawal_code,
-                    recipient: initRes.data.recipient_code,
-                    reason:  'Payout request'
+                    currency: 'NGN',
+                    narration:  'Payout request',
+                    destinationBankCode: withdrawal.bank_code,
+                    destinationAccountNumber: withdrawal.account_number,
+                    sourceAccountNumber: paymentSettings.merchant_id,
                 }, {
-                    'Authorization': `Bearer ${paymentSettings.secret_key}`,
+                    'Authorization': `Bearer ${authRes.responseBody.accessToken}`,
                     'Content-Type': 'application/json',
                 });
 
                 console.log('transfer', resp)
 
 
-                return {success: resp.status, data: resp.data, message: resp.message};
+                return {success: resp.requestSuccessful, data: resp.data, message: resp.message};
 
             } else {
-                return initRes;
+                return authRes;
             }
 
         } catch (e) {
             console.log(e.message);
-            return {success: false, message: 'Paystack Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
+            return {success: false, message: 'Monnify Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
         }
-    }
-
-    private async initiateTransfer(accountNo, accountName, bankCode, paymentSettings) {
-        const url = `${paymentSettings.base_url}/transferrecipient`;
-        const data = {
-            type: 'nuban',
-            name: accountName,
-            account_number: accountNo.toString(),
-            bank_code: bankCode,
-            currency: 'NGN'
-        }
-
-        const resp = await post(url, data , {
-            'Authorization': `Bearer ${paymentSettings.secret_key}`,
-            'Content-Type': 'application/json',
-        })
-        
-        console.log('initiate', resp)
-        return {success: resp.status, data: resp.data, message: resp.message};
     }
 
     async resolveAccountNumber(client_id, accountNo, banckCode) {
@@ -224,7 +208,7 @@ export class MonnifyService {
 
     private async authenticate(paymentSettings: PaymentMethod) {
         const key = btoa(`${paymentSettings.public_key}:${paymentSettings.secret_key}`);
-
+        
         return await post(`${paymentSettings.base_url}/api/v1/auth/login`, {}, {
             'Authorization': 'Basic ' + key
         })

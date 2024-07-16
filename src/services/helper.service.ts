@@ -1,21 +1,21 @@
 /* eslint-disable prettier/prettier */
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import axios from 'axios';
-import * as dayjs from 'dayjs';
-import { Transaction } from 'src/entity/transaction.entity';
-import { Wallet } from 'src/entity/wallet.entity';
-import { Repository } from 'typeorm';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import axios from "axios";
+import * as dayjs from "dayjs";
+import { Transaction } from "src/entity/transaction.entity";
+import { Wallet } from "src/entity/wallet.entity";
+import { Repository } from "typeorm";
 
 @Injectable()
 export class HelperService {
-  protected trackierUrl = 'https://api.trackierigaming.io';
+  protected trackierUrl = "https://api.trackierigaming.io";
 
   constructor(
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(Wallet)
-    private walletRepository: Repository<Wallet>,
+    private walletRepository: Repository<Wallet>
   ) {}
 
   async saveTransaction(data) {
@@ -28,7 +28,7 @@ export class HelperService {
     transaction1.username = data.fromUsername;
     transaction1.transaction_no = data.transactionNo;
     transaction1.amount = data.amount;
-    transaction1.tranasaction_type = 'debit';
+    transaction1.tranasaction_type = "debit";
     transaction1.subject = data.subject;
     transaction1.description = data.description;
     transaction1.source = data.source;
@@ -44,7 +44,7 @@ export class HelperService {
     transaction2.username = data.toUsername;
     transaction2.transaction_no = data.transactionNo;
     transaction2.amount = data.amount;
-    transaction2.tranasaction_type = 'credit';
+    transaction2.tranasaction_type = "credit";
     transaction2.subject = data.subject;
     transaction2.description = data.description;
     transaction2.source = data.source;
@@ -67,9 +67,9 @@ export class HelperService {
       fees: 0,
       wins: 0,
       bonuses: 0,
-      currency: 'ngn',
+      currency: "ngn",
       deposits: 0,
-      productId: '1',
+      productId: "1",
       customerId: data.username,
       withdrawls: 0,
       adjustments: 0,
@@ -77,17 +77,17 @@ export class HelperService {
       transactionId: data.transactionId,
     };
     switch (data.subject) {
-      case 'Deposit':
+      case "Deposit":
         payload.deposits = parseFloat(data.amount);
-        payload.productId = '1';
+        payload.productId = "1";
         break;
-      case 'Withdrawal Request':
+      case "Withdrawal Request":
         payload.withdrawls = parseFloat(data.amount);
         break;
-      case 'Sport Win':
+      case "Sport Win":
         payload.wins = parseFloat(data.amount);
         break;
-      case 'Bet Deposit (Sport)':
+      case "Bet Deposit (Sport)":
         payload.bets = parseFloat(data.amount);
         break;
       default:
@@ -99,21 +99,21 @@ export class HelperService {
     const authres: any = await this.getAccessToken();
 
     if (!authres.success) {
-      console.log('Unable to get trackier auth token');
+      console.log("Unable to get trackier auth token");
       return;
     } else {
       await axios
         .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
           headers: {
-            'x-api-key': process.env.TRACKIER_API_KEY,
+            "x-api-key": process.env.TRACKIER_API_KEY,
             authorization: `BEARER ${authres.data.accessToken}`,
           },
         })
         .then((res) => {
-          console.log('trackier activity', res.data);
+          console.log("trackier activity", res.data);
         })
         .catch((err) => {
-          console.log('trackier error', err.response.data);
+          console.log("trackier error", err.response.data);
         });
     }
   }
@@ -123,8 +123,8 @@ export class HelperService {
       `${this.trackierUrl}/api/public/v2/oauth/access-refresh-token`,
       {
         auth_code:
-          '$2a$04$geRYyxPlSFlL6uMVUQNgnOV0YvXQB4cr3usXLfp7b0WzZHpky61nO',
-      },
+          "$2a$04$geRYyxPlSFlL6uMVUQNgnOV0YvXQB4cr3usXLfp7b0WzZHpky61nO",
+      }
     );
 
     return resp.data;
@@ -138,7 +138,7 @@ export class HelperService {
       },
       {
         available_balance: amount,
-      },
+      }
     );
   }
 }

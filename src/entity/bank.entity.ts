@@ -27,6 +27,9 @@ export class Bank {
     @Column({ type: "varchar", length: 20, default: 'NGN' })
     currency: string;
 
+    @Column({ type: "varchar", length: 20, default: 'nuban' })
+    type: string;
+
     @Column({ type: "tinyint", default: 0 })
     status: number;
 

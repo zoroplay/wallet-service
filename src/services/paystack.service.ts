@@ -185,7 +185,7 @@ export class PaystackService {
         const params = JSON.stringify({
             source: 'balance',
             amount: parseFloat(amount) * 100,
-            reference,
+            reference: reference+"_"+generateTrxNo(),
             recipient,
             reason:  'Payout request'
         })
@@ -257,12 +257,14 @@ export class PaystackService {
             const hash = crypto.createHmac('sha512', paymentSettings.secret_key).update(data.body).digest('hex');
 
             if (hash == data.paystackKey) {
+                const ref = data.reference.split("_")
+
                 switch (data.event) {
                     case 'charge.success':
                         const transaction = await this.transactionRepository.findOne({
                             where: {
                                 client_id: data.clientId, 
-                                transaction_no: data.reference,
+                                transaction_no: ref[0],
                                 tranasaction_type: 'credit'
                             }
                         });
@@ -294,7 +296,7 @@ export class PaystackService {
                         break;
                     case 'transfer.success': 
                         const withdrawalSuccess = await this.withdrawalRepository.findOne({
-                            where: {client_id: data.clientId, withdrawal_code: data.reference}
+                            where: {client_id: data.clientId, withdrawal_code: ref[0]}
                         });
                         if (withdrawalSuccess && withdrawalSuccess.status === 0) {
                             // update withdrawal status
@@ -304,12 +306,12 @@ export class PaystackService {
                                 status: 1
                             })
                         } else {
-                            console.log('transfer.success: withdrawal not found', data.reference)
+                            console.log('transfer.success: withdrawal not found', ref[0])
                         }
                         break;
                     case 'transfer.failed':
                         const withdrawalFailed = await this.withdrawalRepository.findOne({
-                            where: {client_id: data.clientId, withdrawal_code: data.reference}
+                            where: {client_id: data.clientId, withdrawal_code: ref[0]}
                         });
                         if (withdrawalFailed) {
                              // update withdrawal status
@@ -348,12 +350,12 @@ export class PaystackService {
                 
 
                         } else {
-                            console.log('transfer.failed: withdrawal not found', data.reference)
+                            console.log('transfer.failed: withdrawal not found', ref[0])
                         }
                         break;
                     case 'transfer.reversed':
                         const reversed = await this.withdrawalRepository.findOne({
-                            where: {client_id: data.clientId, withdrawal_code: data.reference}
+                            where: {client_id: data.clientId, withdrawal_code: ref[0]}
                         });
                         if (reversed) {
                              // update withdrawal status

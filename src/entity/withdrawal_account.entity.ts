@@ -31,7 +31,7 @@ export class WithdrawalAccount {
     @Column({ type: "varchar", length: 150, nullable: true})
     authorization_code: string;
 
-    @Column({ type: "tinyint", default: 0 })
+    @Column({ type: "tinyint", default: 1 })
     status: number;
 
     @Index()
