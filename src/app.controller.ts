@@ -1,6 +1,14 @@
-import { Controller } from '@nestjs/common';
-import { AppService } from './app.service';
+/* eslint-disable prettier/prettier */
+import { Controller } from "@nestjs/common";
+import { AppService } from "./app.service";
 import {
+  BranchRequest,
+  CashbookApproveCashInOutRequest,
+  CashbookApproveExpenseRequest,
+  CashbookCreateCashInOutRequest,
+  CashbookCreateExpenseRequest,
+  // CashbookCreateExpenseCategoryRequest,
+  CashbookCreateExpenseTypeRequest,
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
@@ -28,15 +36,16 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
-} from 'src/proto/wallet.pb';
-import { GrpcMethod } from '@nestjs/microservices';
-import { PaymentService } from './services/payments.service';
-import { PaystackService } from './services/paystack.service';
-import { OPayService } from './services/opay.service';
-import { DepositService } from './services/deposit.service';
-import { MonnifyService } from './services/monnify.service';
-import { WithdrawalService } from './services/withdrawal.service';
-import { ReportingService } from './services/reporting.service';
+} from "src/proto/wallet.pb";
+import { GrpcMethod } from "@nestjs/microservices";
+import { PaymentService } from "./services/payments.service";
+import { PaystackService } from "./services/paystack.service";
+import { OPayService } from "./services/opay.service";
+import { DepositService } from "./services/deposit.service";
+import { MonnifyService } from "./services/monnify.service";
+import { CashbookService } from "./cashbook/cashbook.service";
+import { WithdrawalService } from "./services/withdrawal.service";
+import { ReportingService } from "./services/reporting.service";
 
 @Controller()
 export class AppController {
@@ -47,176 +56,280 @@ export class AppController {
     private monnifyService: MonnifyService,
     private opayService: OPayService,
     private depositService: DepositService,
+    private cashbookService: CashbookService,
     private withdrawalService: WithdrawalService,
     private reportingService: ReportingService
   ) {}
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
+  @GrpcMethod(WALLET_SERVICE_NAME, "FetchBetRange")
   FetchBetRange(payload: FetchBetRangeRequest) {
     return this.depositService.fetchBetRange(payload);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
+  @GrpcMethod(WALLET_SERVICE_NAME, "FetchDepositCount")
   FetchDepositCount(payload: FetchDepositCountRequest) {
-    console.log('entered fetchDepositCount');
+    console.log("entered fetchDepositCount");
     return this.depositService.fetchDepositCount(payload);
   }
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
+  @GrpcMethod(WALLET_SERVICE_NAME, "FetchPlayerDeposit")
   FetchPlayerDeposit(payload: FetchPlayerDepositRequest) {
     return this.depositService.fetchPlayerDeposit(payload);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositRange')
+  @GrpcMethod(WALLET_SERVICE_NAME, "FetchDepositRange")
   FetchDepositRange(payload: FetchDepositRangeRequest) {
     return this.depositService.fetchDepositRange(payload);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'CreateWallet')
+  @GrpcMethod(WALLET_SERVICE_NAME, "CreateWallet")
   CreateWallet(param: CreateWalletRequest) {
     return this.appService.createWallet(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GetBalance')
+  @GrpcMethod(WALLET_SERVICE_NAME, "GetBalance")
   GetBalance(param: GetBalanceRequest) {
     return this.appService.getBalance(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GetPlayerWalletData')
+  @GrpcMethod(WALLET_SERVICE_NAME, "GetPlayerWalletData")
   GetPlayerWalletData(param: GetBalanceRequest) {
     return this.appService.getWalletSummary(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'CreditUser')
+  @GrpcMethod(WALLET_SERVICE_NAME, "CreditUser")
   CreditUser(param: CreditUserRequest) {
     return this.appService.creditUser(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'DebitUser')
+  @GrpcMethod(WALLET_SERVICE_NAME, "DebitUser")
   DebitUser(param: DebitUserRequest) {
     return this.appService.debitUser(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'DebitAgentBalance')
+  @GrpcMethod(WALLET_SERVICE_NAME, "DebitAgentBalance")
   DebitAgent(param: DebitUserRequest) {
     return this.appService.debitAgentBalance(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'InititateDeposit')
+  @GrpcMethod(WALLET_SERVICE_NAME, "InititateDeposit")
   InititateDeposit(param: InitiateDepositRequest) {
     return this.paymentService.inititateDeposit(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'VerifyDeposit')
+  @GrpcMethod(WALLET_SERVICE_NAME, "VerifyDeposit")
   VerifyDeposit(param: VerifyDepositRequest) {
     return this.paymentService.verifyDeposit(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'SavePaymentMethod')
+  @GrpcMethod(WALLET_SERVICE_NAME, "SavePaymentMethod")
   SavePaymentMethod(param: PaymentMethodRequest) {
     return this.appService.savePaymentMethod(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GetPaymentMethods')
+  @GrpcMethod(WALLET_SERVICE_NAME, "GetPaymentMethods")
   GetPaymentMethod(param: GetPaymentMethodRequest) {
     return this.appService.getPaymentMethods(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'VerifyBankAccount')
+  @GrpcMethod(WALLET_SERVICE_NAME, "VerifyBankAccount")
   VerifyBankAccount(param: VerifyBankAccountRequest) {
     return this.paymentService.verifyBankAccount(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'RequestWithdrawal')
+  @GrpcMethod(WALLET_SERVICE_NAME, "RequestWithdrawal")
   RequestWithdrawal(param: WithdrawRequest) {
     return this.withdrawalService.requestWithdrawal(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'UpdateWithdrawal')
+  @GrpcMethod(WALLET_SERVICE_NAME, "UpdateWithdrawal")
   UpdateWithdrawal(param: UpdateWithdrawalRequest) {
     return this.paymentService.updateWithdrawalStatus(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ListWithdrawals')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ListWithdrawals")
   ListWithdrawals(param: ListWithdrawalRequests) {
     return this.withdrawalService.listWithdrawalRequest(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ListDeposits')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ListDeposits")
   ListDeposits(param: ListDepositRequests) {
     return this.appService.listDeposits(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ListBanks')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ListBanks")
   ListBanks(param: EmptyRequest) {
     return this.appService.listBanks();
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'UserTransactions')
+  @GrpcMethod(WALLET_SERVICE_NAME, "UserTransactions")
   UserTransactions(param: UserTransactionRequest) {
     return this.appService.getUserTransactions(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'PaystackWebhook')
+  @GrpcMethod(WALLET_SERVICE_NAME, "PaystackWebhook")
   PaystackWebhook(param: WithdrawRequest) {
     return this.paystackService.handleWebhook(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'MonnifyWebhook')
+  @GrpcMethod(WALLET_SERVICE_NAME, "MonnifyWebhook")
   MonnifyWebhook(param: WithdrawRequest) {
     return this.monnifyService.handleWebhook(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'OpayDepositWebhook')
+  @GrpcMethod(WALLET_SERVICE_NAME, "OpayDepositWebhook")
   OpayDepositWebhook(param: OpayWebhookRequest) {
     return this.opayService.updateNotify(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'OpayLookUpWebhook')
+  @GrpcMethod(WALLET_SERVICE_NAME, "OpayLookUpWebhook")
   OpayLookUpWebhook(param: OpayWebhookRequest) {
     return this.opayService.reQueryLookUp(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')
+  // CashBook Service
+  // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookApproveCashIn")
+  CashbookApproveCashIn(param: CashbookApproveCashInOutRequest) {
+    return this.cashbookService.approveCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookDeleteOneCashIn")
+  CashbookDeleteOneCashIn(param: IdRequest) {
+    return this.cashbookService.deleteOneCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindOneCashIn")
+  CashbookFindOneCashIn(param: IdRequest) {
+    return this.cashbookService.findOneCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookCreateCashIn")
+  CashbookCreateCashIn(param: CashbookCreateCashInOutRequest) {
+    return this.cashbookService.addCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllCashIn")
+  CashbookFindAllCashIn() {
+    return this.cashbookService.findAllCashin();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllBranchCashIn")
+  CashbookFindAllBranchCashIn(param: BranchRequest) {
+    return this.cashbookService.findAllBranchCashin(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, "FindAllBranchApprovedCashinWDate")
+  FindAllBranchApprovedCashinWDate(param: BranchRequest) {
+    return this.cashbookService.findAllBranchApprovedCashinWDate(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, "FindAllBranchPendingCashinWDate")
+  FindAllBranchPendingCashinWDate(param: BranchRequest) {
+    return this.cashbookService.findAllBranchPendingCashinWDate(param);
+  }
+
+  // CASH OUT
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookApproveCashOut")
+  CashbookApproveCashOut(param: CashbookApproveCashInOutRequest) {
+    return this.cashbookService.approveCashout(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookCreateCashOut")
+  CashbookCreateCashOut(param: CashbookCreateCashInOutRequest) {
+    return this.cashbookService.addCashout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookDeleteOneCashOut")
+  CashbookDeleteOneCashOut(param: IdRequest) {
+    return this.cashbookService.deleteOneCashout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindOneCashOut")
+  CashbookFindOneCashOut(param: IdRequest) {
+    return this.cashbookService.findOneCashout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllCashOut")
+  CashbookFindAllCashOut() {
+    return this.cashbookService.findAllCashout();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllBranchCashOut")
+  CashbookFindAllBranchCashOut(param: BranchRequest) {
+    return this.cashbookService.findAllBranchCashout(param);
+  }
+
+  // EXPENSES
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookApproveExpense")
+  CashbookApproveExpense(param: CashbookApproveExpenseRequest) {
+    return this.cashbookService.approveExpense(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookCreateExpense")
+  CashbookCreateExpense(param: CashbookCreateExpenseRequest) {
+    return this.cashbookService.addExpense(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookUpdateOneExpense")
+  CashbookUpdateOneExpense(data: CashbookCreateExpenseRequest) {
+    return this.cashbookService.updateExpense(data);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookDeleteOneExpense")
+  CashbookDeleteOneExpense(data: IdRequest) {
+    return this.cashbookService.deleteOneExpenses(data);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindOneExpense")
+  CashbookFindOneExpense(data: IdRequest) {
+    return this.cashbookService.findOneExpenses(data);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllBranchExpense")
+  CashbookFindAllBranchExpense(data: BranchRequest) {
+    return this.cashbookService.findAllBranchExpenses(data);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllExpense")
+  CashbookFindAllExpense() {
+    return this.cashbookService.findAllExpenses();
+  }
+
+  // EXPENSE TYPES
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookCreateExpenseType")
+  CashbookCreateExpenseType(param: CashbookCreateExpenseTypeRequest) {
+    return this.cashbookService.addExpensetype(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "CashbookFindAllExpenseType")
+  CashbookFindAllExpenseType() {
+    return this.cashbookService.findAllExpenseTypes();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, "GetUserAccounts")
   GetUserAccounts(param: GetBalanceRequest) {
     return this.withdrawalService.getUserBankAccounts(param);
   }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GetNetworkBalance')
+  @GrpcMethod(WALLET_SERVICE_NAME, "GetNetworkBalance")
   GetNetworkBalance(param: GetNetworkBalanceRequest) {
     return this.appService.getNetworkBalance(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'WalletTransfer')
+  @GrpcMethod(WALLET_SERVICE_NAME, "WalletTransfer")
   walletTransfer(param: WalletTransferRequest) {
     return this.paymentService.walletTransfer(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ValidateDepositCode')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ValidateDepositCode")
   ValidateDepositCode(param: ValidateTransactionRequest) {
     return this.depositService.validateDepositCode(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ValidateWithdrawalCode')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ValidateWithdrawalCode")
   ValidateWithdrawalCode(param: ValidateTransactionRequest) {
     return this.withdrawalService.validateWithdrawalCode(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ProcessShopWithdrawal')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ProcessShopWithdrawal")
   ProcessShopWithdrawal(param: ProcessRetailTransaction) {
     return this.withdrawalService.processShopWithdrawal(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ProcessShopDeposit')
+  @GrpcMethod(WALLET_SERVICE_NAME, "ProcessShopDeposit")
   ProcessShopDeposit(param: ProcessRetailTransaction) {
     return this.depositService.processShopDeposit(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'DeletePlayerData')
+  @GrpcMethod(WALLET_SERVICE_NAME, "DeletePlayerData")
   DeletePlayerData(param: IdRequest) {
     return this.appService.deletePlayerData(param.id);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GetMoneyTransaction')
+  @GrpcMethod(WALLET_SERVICE_NAME, "GetMoneyTransaction")
   GetMoneyTransaction(param: GetMoneyTransactionRequest) {
     return this.reportingService.getMoneyTransaction(param);
   }

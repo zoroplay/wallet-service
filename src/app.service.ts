@@ -1,4 +1,7 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-var */
+/* eslint-disable prettier/prettier */
+import { HttpStatus, Injectable } from "@nestjs/common";
 import {
   CommonResponseArray,
   CreateWalletRequest,
@@ -15,25 +18,26 @@ import {
   PlayerWalletData,
   UserTransactionResponse,
   WalletResponse,
-} from './proto/wallet.pb';
+} from "./proto/wallet.pb";
 import {
   generateTrxNo,
   handleError,
   handleResponse,
   paginateResponse,
-} from './common/helpers';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Wallet } from './entity/wallet.entity';
-import { Repository } from 'typeorm';
-import { PaymentMethod } from './entity/payment.method.entity';
-import { Withdrawal } from './entity/withdrawal.entity';
-import { HelperService } from './services/helper.service';
-import { Transaction } from './entity/transaction.entity';
-import * as dayjs from 'dayjs';
-import { Bank } from './entity/bank.entity';
-var customParseFormat = require('dayjs/plugin/customParseFormat')
+} from "./common/helpers";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Wallet } from "./entity/wallet.entity";
+import { Repository } from "typeorm";
+import { PaymentMethod } from "./entity/payment.method.entity";
+import { Withdrawal } from "./entity/withdrawal.entity";
+import { HelperService } from "./services/helper.service";
+import { Transaction } from "./entity/transaction.entity";
+import * as dayjs from "dayjs";
 
-dayjs.extend(customParseFormat)
+import { Bank } from "./entity/bank.entity";
+var customParseFormat = require("dayjs/plugin/customParseFormat");
+
+dayjs.extend(customParseFormat);
 
 @Injectable()
 export class AppService {
@@ -48,7 +52,7 @@ export class AppService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(Bank)
     private bankRepository: Repository<Bank>,
-    private helperService: HelperService,
+    private helperService: HelperService
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -64,12 +68,12 @@ export class AppService {
 
       await this.walletRepository.save(wallet);
       let amt = amount;
-      let desc = 'Initial Balance';
-      let subject = 'Deposit';
+      let desc = "Initial Balance";
+      let subject = "Deposit";
       if (bonus > 0) {
         amt = bonus;
-        desc = 'Registration bonus';
-        subject = 'Bonus';
+        desc = "Registration bonus";
+        subject = "Bonus";
       }
       // create transaction
       if (amount > 0 || bonus > 0) {
@@ -79,10 +83,10 @@ export class AppService {
           amount: data.amount,
           description: desc,
           subject,
-          channel: 'Internal Transfer',
-          source: '',
+          channel: "Internal Transfer",
+          source: "",
           fromUserId: 0,
-          fromUsername: 'System',
+          fromUsername: "System",
           fromUserBalance: 0,
           toUserId: userId,
           toUsername: username,
@@ -101,7 +105,7 @@ export class AppService {
           virtualBonusBalance: wallet.virtual_bonus_balance,
           casinoBonusBalance: wallet.casino_bonus_balance,
         },
-        'Wallet created',
+        "Wallet created"
       );
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -127,7 +131,7 @@ export class AppService {
           virtualBonusBalance: wallet.virtual_bonus_balance,
           casinoBonusBalance: wallet.casino_bonus_balance,
         },
-        'Wallet fetched',
+        "Wallet fetched"
       );
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -137,26 +141,29 @@ export class AppService {
   async getPaymentMethods(data: GetPaymentMethodRequest) {
     try {
       const { clientId, status } = data;
-      let where: any = { client_id: clientId };
+      const where: any = { client_id: clientId };
       if (status) where.status = status;
 
-      let results = []
+      let results = [];
       // console.log(where)
       const pMethods = await this.pMethodRepository.find({ where });
 
       if (status) {
-        results = pMethods.map(p => ({slug: p.provider, display_name: p.display_name}))
+        results = pMethods.map((p) => ({
+          slug: p.provider,
+          display_name: p.display_name,
+        }));
       } else {
-        results = pMethods
+        results = pMethods;
       }
-      return handleResponse(results, 'Payment methods retrieved successfully');
+      return handleResponse(results, "Payment methods retrieved successfully");
     } catch (e) {
       return handleError(e.message, {}, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async savePaymentMethod(
-    data: PaymentMethodRequest,
+    data: PaymentMethodRequest
   ): Promise<PaymentMethodResponse> {
     try {
       let paymentMethod;
@@ -194,7 +201,7 @@ export class AppService {
           forDisbursemnt: paymentMethod.for_disbursement,
           id: paymentMethod.id,
         },
-        'Saved',
+        "Saved"
       );
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -207,36 +214,36 @@ export class AppService {
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
       });
-      let walletType = 'Main';
+      let walletType = "Main";
       let balance = 0;
-      
+
       if (wallet) {
-        let walletBalance = 'available_balance';
+        let walletBalance = "available_balance";
         switch (data.wallet) {
-          case 'sport-bonus':
-            walletBalance = 'sport_bonus_balance';
-            walletType = 'Sport Bonus';
+          case "sport-bonus":
+            walletBalance = "sport_bonus_balance";
+            walletType = "Sport Bonus";
             balance =
               parseFloat(wallet.sport_bonus_balance.toString()) +
               parseFloat(data.amount);
             break;
-          case 'virtual':
-            walletBalance = 'virtual_bonus_balance';
-            walletType = 'Virtual Bonus';
+          case "virtual":
+            walletBalance = "virtual_bonus_balance";
+            walletType = "Virtual Bonus";
             balance =
               parseFloat(wallet.virtual_bonus_balance.toString()) +
               parseFloat(data.amount);
             break;
-          case 'casino':
-            walletBalance = 'casino_bonus_balance';
-            walletType = 'Casino Bonus';
+          case "casino":
+            walletBalance = "casino_bonus_balance";
+            walletType = "Casino Bonus";
             balance =
               parseFloat(wallet.casino_bonus_balance.toString()) +
               parseFloat(data.amount);
             break;
-          case 'trust':
-            walletBalance = 'trust_balance';
-            walletType = 'Trust';
+          case "trust":
+            walletBalance = "trust_balance";
+            walletType = "Trust";
             balance =
               parseFloat(wallet.trust_balance.toString()) +
               parseFloat(data.amount);
@@ -255,11 +262,11 @@ export class AppService {
           {
             // balance,
             [walletBalance]: balance,
-          },
+          }
         );
       } else {
         // create new wallet
-        const wallet = new Wallet();
+        const wallet: any = new Wallet();
         wallet.user_id = data.userId;
         wallet.client_id = data.clientId;
         wallet.username = data.username;
@@ -279,13 +286,13 @@ export class AppService {
         channel: data.channel,
         source: data.source,
         fromUserId: 0,
-        fromUsername: 'System',
+        fromUsername: "System",
         fromUserBalance: 0,
         toUserId: data.userId,
         toUsername: data.username,
         toUserBalance: balance,
         status: 1,
-        walletType
+        walletType,
       });
 
       // send deposit to trackier
@@ -293,17 +300,17 @@ export class AppService {
         subject: data.subject,
         username: data.username,
         amount: data.amount,
-        transactionId: transactionNo
-      })
+        transactionId: transactionNo,
+      });
       wallet.balance = balance;
-      return handleResponse(wallet, 'Wallet credited')
+      return handleResponse(wallet, "Wallet credited");
     } catch (e) {
       // console.log('credit error', e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
+  async debitUser(data: any): Promise<WalletResponse> {
     try {
       // console.log(data);
       const wallet = await this.walletRepository.findOne({
@@ -313,29 +320,29 @@ export class AppService {
       const amount = parseFloat(data.amount);
 
       let balance = 0;
-      let walletBalance = 'available_balance';
-      let walletType = 'Main';
+      let walletBalance = "available_balance";
+      let walletType = "Main";
       switch (data.wallet) {
-        case 'sport-bonus':
-          walletBalance = 'sport_bonus_balance';
-          walletType = 'Sport Bonus'
+        case "sport-bonus":
+          walletBalance = "sport_bonus_balance";
+          walletType = "Sport Bonus";
           balance = wallet.sport_bonus_balance - amount;
           break;
-        case 'virtual':
-          walletBalance = 'virtual_bonus_balance';
-          walletType = 'Virtual Bonus'
+        case "virtual":
+          walletBalance = "virtual_bonus_balance";
+          walletType = "Virtual Bonus";
           balance = wallet.virtual_bonus_balance - amount;
           break;
-        case 'casino':
-          walletBalance = 'casino_bonus_balance';
-          walletType = 'Casino Bonus'
+        case "casino":
+          walletBalance = "casino_bonus_balance";
+          walletType = "Casino Bonus";
           balance = wallet.casino_bonus_balance - amount;
           break;
-        case 'trust':
-          walletBalance = 'trust_balance';
-          walletType = 'Trust'
+        case "trust":
+          walletBalance = "trust_balance";
+          walletType = "Trust";
           balance = wallet.trust_balance - amount;
-        break;
+          break;
         default:
           balance = wallet.available_balance - amount;
           break;
@@ -348,7 +355,7 @@ export class AppService {
         {
           // balance,
           [walletBalance]: balance,
-        },
+        }
       );
 
       const transactionNo = generateTrxNo();
@@ -366,10 +373,10 @@ export class AppService {
         fromUsername: data.username,
         fromUserBalance: balance,
         toUserId: 0,
-        toUsername: 'System',
+        toUsername: "System",
         toUserBalance: 0,
         status: 1,
-        walletType
+        walletType,
       });
 
       // send deposit to trackier
@@ -377,19 +384,19 @@ export class AppService {
         subject: data.subject,
         username: data.username,
         amount: parseFloat(data.amount),
-        transactionId: transactionNo
-      })
+        transactionId: transactionNo,
+      });
 
       wallet.balance = balance;
-      return handleResponse(wallet, 'Wallet debited');
+      return handleResponse(wallet, "Wallet debited");
     } catch (e) {
       console.log(e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async debitAgentBalance (data: DebitUserRequest) {
-    const {userId, clientId} = data;
+  async debitAgentBalance(data: DebitUserRequest) {
+    const { userId, clientId } = data;
     try {
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
@@ -405,16 +412,16 @@ export class AppService {
         {
           // balance,
           balance: wallet.balance - amount,
-        },
+        }
       );
 
-      return handleResponse(wallet, 'Wallet debited');
+      return handleResponse(wallet, "Wallet debited");
     } catch (e) {
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async listDeposits(data): Promise<PaginationResponse> {
+  async listDeposits(data): Promise<any> {
     // console.log('fetch deposits', data)
     try {
       // console.log(data);
@@ -432,50 +439,58 @@ export class AppService {
       const skip = (page - 1) * limit;
 
       let query = this.transactionRepository
-        .createQueryBuilder('transaction')
-        .where('client_id = :clientId', { clientId })
-        .andWhere('user_id != 0')
-        .andWhere('subject = :type', { type: 'Deposit' })
-        .andWhere('created_at >= :startDate', { startDate })
-        .andWhere('created_at <= :endDate', { endDate });
+        .createQueryBuilder("transaction")
+        .where("client_id = :clientId", { clientId })
+        .andWhere("user_id != 0")
+        .andWhere("subject = :type", { type: "Deposit" })
+        .andWhere("created_at >= :startDate", { startDate })
+        .andWhere("created_at <= :endDate", { endDate });
 
-      if (paymentMethod !== '')
-        query = query.andWhere('channel = :paymentMethod', { paymentMethod });
+      if (paymentMethod !== "")
+        query = query.andWhere("channel = :paymentMethod", { paymentMethod });
 
-      if (username !== '')
-        query = query.andWhere('username = :username', { username });
+      if (username !== "")
+        query = query.andWhere("username = :username", { username });
 
       // if (status !== '')
       //   query = query.andWhere("status = :status", {status});
 
-      if (transactionId !== '')
-        query = query.andWhere('transaction_no = :transactionId', {
+      if (transactionId !== "")
+        query = query.andWhere("transaction_no = :transactionId", {
           transactionId,
         });
 
       // console.log(skip, limit)
 
       const result = await query
-        .orderBy('created_at', 'DESC')
+        .orderBy("created_at", "DESC")
         .take(limit)
         .skip(skip)
         .getMany();
 
       const total = await query.getCount();
 
-      const results = result.map((item) => ({...item, created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss')}))
+      const results = result.map((item) => ({
+        ...item,
+        created_at: dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss"),
+      }));
 
       return paginateResponse([results, total], page, limit);
     } catch (e) {
       console.log(e.message);
-      return paginateResponse([[], 0], 1, 100, 'failed');
+      return paginateResponse([[], 0], 1, 100, "failed");
     }
   }
 
   async listBanks(): Promise<CommonResponseArray> {
     const banks = await this.bankRepository.find();
 
-    return {success: true, status: HttpStatus.OK, message: 'Banks retrieved', data: banks}
+    return {
+      success: true,
+      status: HttpStatus.OK,
+      message: "Banks retrieved",
+      data: banks,
+    };
   }
 
   async getUserTransactions({
@@ -484,21 +499,21 @@ export class AppService {
     startDate,
     endDate,
     page = 1,
-    limit = 20
+    limit = 20,
   }): Promise<UserTransactionResponse> {
     // console.log(startDate, endDate, userId, clientId)
     try {
       let results = [];
       let query = this.transactionRepository
-        .createQueryBuilder('transaction')
-        .where('transaction.client_id = :clientId', { clientId })
-        .andWhere('transaction.user_id = :userId', { userId });
+        .createQueryBuilder("transaction")
+        .where("transaction.client_id = :clientId", { clientId })
+        .andWhere("transaction.user_id = :userId", { userId });
 
-      if (startDate && startDate != '')
-        query.andWhere('DATE(created_at) >= :startDate', { startDate });
+      if (startDate && startDate != "")
+        query.andWhere("DATE(created_at) >= :startDate", { startDate });
 
-      if (endDate && endDate != '')
-        query.andWhere('DATE(created_at) <= :endDate', { endDate });
+      if (endDate && endDate != "")
+        query.andWhere("DATE(created_at) <= :endDate", { endDate });
 
       const total = await query.clone().getCount();
 
@@ -512,7 +527,7 @@ export class AppService {
       console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
-        .orderBy('transaction.created_at', 'DESC')
+        .orderBy("transaction.created_at", "DESC")
         .limit(limit)
         .offset(offset)
         .getRawMany();
@@ -525,8 +540,8 @@ export class AppService {
         total,
         lastPage: pager.lastPage,
         nextPage: pager.nextPage,
-        prevPage: pager.prevPage
-      }
+        prevPage: pager.prevPage,
+      };
 
       if (transactions.length > 0) {
         for (const transaction of transactions) {
@@ -541,16 +556,16 @@ export class AppService {
             transactionDate: transaction.transaction_created_at,
             channel: transaction.transaction_channel,
             status: transaction.transaction_status,
-            wallet: transaction.transaction_wallet
+            wallet: transaction.transaction_wallet,
           });
         }
       }
 
-      return { success: true, message: 'Successful', data: results, meta };
+      return { success: true, message: "Successful", data: results, meta };
     } catch (e) {
       return {
         success: false,
-        message: 'Unable to fetch transactions',
+        message: "Unable to fetch transactions",
         data: null,
       };
     }
@@ -566,20 +581,20 @@ export class AppService {
       });
 
       // sum deposit transactions
-      const deposits = await this.transactionRepository.sum('amount', {
-        subject: 'Deposit',
+      const deposits = await this.transactionRepository.sum("amount", {
+        subject: "Deposit",
         user_id: userId,
         status: 1,
       });
 
       // sum withdrawals transactions
-      const withdrawals = await this.withdrawalRepository.sum('amount', {
+      const withdrawals = await this.withdrawalRepository.sum("amount", {
         user_id: userId,
         status: 1,
       });
 
       // sum pending withdrawals transactions
-      const pendingWithdrawals = await this.withdrawalRepository.sum('amount', {
+      const pendingWithdrawals = await this.withdrawalRepository.sum("amount", {
         user_id: userId,
         status: 0,
       });
@@ -588,10 +603,10 @@ export class AppService {
         where: {
           user_id: userId,
           client_id: clientId,
-          subject: 'Deposit',
+          subject: "Deposit",
           status: 1,
         },
-        order: { created_at: 'DESC' },
+        order: { created_at: "DESC" },
       });
 
       // get last withdrawal
@@ -601,7 +616,7 @@ export class AppService {
           client_id: clientId,
           status: 1,
         },
-        order: { created_at: 'DESC' },
+        order: { created_at: "DESC" },
       });
 
       // get first activity
@@ -620,16 +635,16 @@ export class AppService {
           client_id: clientId,
           status: 1,
         },
-        order: { created_at: 'DESC' },
+        order: { created_at: "DESC" },
       });
 
       const averageWithdrawals = await this.transactionRepository.average(
-        'amount',
+        "amount",
         {
           user_id: userId,
           client_id: clientId,
           status: 1,
-        },
+        }
       );
 
       const noOfDeposits = await this.transactionRepository.count({
@@ -637,7 +652,7 @@ export class AppService {
           user_id: userId,
           client_id: clientId,
           status: 1,
-          subject: 'Deposit',
+          subject: "Deposit",
         },
       });
 
@@ -659,19 +674,19 @@ export class AppService {
         sportBalance: wallet.available_balance || 0,
         sportBonusBalance: wallet.sport_bonus_balance || 0,
         lastDepositDate: lastDeposit
-          ? dayjs(lastDeposit.created_at).format('YYYY-MM-DD HH:mm:ss')
-          : '-',
+          ? dayjs(lastDeposit.created_at).format("YYYY-MM-DD HH:mm:ss")
+          : "-",
         lastDepositAmount: lastDeposit ? lastDeposit.amount : 0,
         lastWithdrawalDate: lastWithdrawal
-          ? dayjs(lastWithdrawal.created_at).format('YYYY-MM-DD HH:mm:ss')
-          : '-',
+          ? dayjs(lastWithdrawal.created_at).format("YYYY-MM-DD HH:mm:ss")
+          : "-",
         lastWithdrawalAmount: lastWithdrawal ? lastWithdrawal.amount : 0,
         firstActivityDate: firstActivity
-          ? dayjs(firstActivity.created_at).format('YYYY-MM-DD HH:mm:ss')
-          : '-',
+          ? dayjs(firstActivity.created_at).format("YYYY-MM-DD HH:mm:ss")
+          : "-",
         lastActivityDate: lastActivity
-          ? dayjs(lastActivity.created_at).format('YYYY-MM-DD HH:mm:ss')
-          : '-',
+          ? dayjs(lastActivity.created_at).format("YYYY-MM-DD HH:mm:ss")
+          : "-",
       };
 
       return data;
@@ -681,50 +696,58 @@ export class AppService {
     }
   }
 
-  async getNetworkBalance (payload: GetNetworkBalanceRequest): Promise<GetNetworkBalanceResponse> {
-    const agentWallet = await this.walletRepository.findOne({where: {user_id: payload.agentId}});
+  async getNetworkBalance(
+    payload: GetNetworkBalanceRequest
+  ): Promise<GetNetworkBalanceResponse> {
+    const agentWallet = await this.walletRepository.findOne({
+      where: { user_id: payload.agentId },
+    });
     try {
       // console.log(payload);
       // get agent wallet
       // get network sum
-      const networkSum = await this.walletRepository.createQueryBuilder('w')
-      .select("SUM(available_balance)", "network_balance")
-      .addSelect("SUM(trust_balance)", "network_trust_balance")
-      .where("user_id IN(:...ids)", { ids: payload.userIds.split(',') })
-      .getRawOne(); 
+      const networkSum = await this.walletRepository
+        .createQueryBuilder("w")
+        .select("SUM(available_balance)", "network_balance")
+        .addSelect("SUM(trust_balance)", "network_trust_balance")
+        .where("user_id IN(:...ids)", { ids: payload.userIds.split(",") })
+        .getRawOne();
 
       // console.log(networkSum);
 
       return {
-        success: true, 
-        message: 'Success', 
-        networkBalance: parseFloat(networkSum.network_balance) + parseFloat(agentWallet.available_balance.toString()),
-        networkTrustBalance: parseFloat(networkSum.network_trust_balance) + parseFloat(agentWallet.trust_balance.toString()),
+        success: true,
+        message: "Success",
+        networkBalance:
+          parseFloat(networkSum.network_balance) +
+          parseFloat(agentWallet.available_balance.toString()),
+        networkTrustBalance:
+          parseFloat(networkSum.network_trust_balance) +
+          parseFloat(agentWallet.trust_balance.toString()),
         trustBalance: agentWallet.trust_balance,
         availableBalance: agentWallet.available_balance,
-        balance: agentWallet.balance
-      }
-
+        balance: agentWallet.balance,
+      };
     } catch (e) {
       return {
-        success: true, 
-        message: 'Success', 
+        success: true,
+        message: "Success",
         networkBalance: 0,
         networkTrustBalance: 0,
         trustBalance: agentWallet.trust_balance,
         availableBalance: agentWallet.available_balance,
-        balance: agentWallet.balance
-      }
+        balance: agentWallet.balance,
+      };
     }
   }
 
-  async deletePlayerData (user_id) {
-    await this.transactionRepository.delete({user_id});
+  async deletePlayerData(user_id) {
+    await this.transactionRepository.delete({ user_id });
 
-    await this.walletRepository.delete({user_id});
+    await this.walletRepository.delete({ user_id });
 
-    await this.withdrawalRepository.delete({user_id});
+    await this.withdrawalRepository.delete({ user_id });
 
-    return {success: true, message: 'Successful'}
+    return { success: true, message: "Successful" };
   }
 }
