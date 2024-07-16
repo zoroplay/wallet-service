@@ -10,9 +10,9 @@ import {
   FetchDepositRangeRequest,
   FetchPlayerDepositRequest,
   GetBalanceRequest,
-  GetMoneyTransactionRequest,
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
+  GetTransactionsRequest,
   IdRequest,
   InitiateDepositRequest,
   ListDepositRequests,
@@ -217,7 +217,12 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetMoneyTransaction')
-  GetMoneyTransaction(param: GetMoneyTransactionRequest) {
+  GetMoneyTransaction(param: GetTransactionsRequest) {
     return this.reportingService.getMoneyTransaction(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetSystemTransaction')
+  GetSystemTransaction(param: GetTransactionsRequest) {
+    return this.reportingService.getSystemTransaction(param);
   }
 }

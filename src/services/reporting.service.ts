@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as dayjs from "dayjs";
 import { paginateResponse } from "src/common/helpers";
 import { Transaction } from "src/entity/transaction.entity";
-import { CommonResponseObj, GetMoneyTransactionRequest, MetaData } from "src/proto/wallet.pb";
+import { CommonResponseObj, GetTransactionsRequest, MetaData } from "src/proto/wallet.pb";
 import { Repository } from "typeorm";
 
 
@@ -14,7 +14,7 @@ export class ReportingService {
         private readonly transactionRepository: Repository<Transaction>,
     ) {}
 
-    async getMoneyTransaction(data: GetMoneyTransactionRequest): Promise<CommonResponseObj> {
+    async getMoneyTransaction(data: GetTransactionsRequest): Promise<CommonResponseObj> {
         try {
             const { clientId, from, to, transactionType, referenceNo, username, keyword, page } = data;
             const limit = data.limit || 100;
@@ -107,6 +107,62 @@ export class ReportingService {
                 message: 'There was an error fetching transactions',
                 status: HttpStatus.INTERNAL_SERVER_ERROR,
                 data: []
+            }
+        }
+    }
+
+    async getSystemTransaction(data: GetTransactionsRequest) {
+        try {
+            const {clientId, from, to, page, limit} = data;
+
+            // console.log(data)
+            const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
+            const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');            
+
+            let query = this.transactionRepository.createQueryBuilder('t')
+                        .where("client_id = :clientId", {clientId})
+                        .andWhere('created_at >= :start', {start})
+                        .andWhere("created_at <= :end", {end})
+                        .andWhere("status = :status", {status: 1})
+                        .andWhere("user_id = :empty", {empty: 0});
+
+            let offset = 0;
+
+            if (page > 1) {
+                offset = (page - 1) * limit;
+                offset = offset + 1;
+            }
+
+            const total = await query.clone().getCount();
+
+            const result = await query.orderBy('created_at', 'DESC').limit(limit).offset(offset).getMany();
+
+            // console.log(result)
+
+            const pager = paginateResponse([result, total], page, limit);
+
+            const meta: MetaData = {
+                page,
+                perPage: limit,
+                total,
+                lastPage: pager.lastPage,
+                nextPage: pager.nextPage,
+                prevPage: pager.prevPage
+            }
+            
+            return {
+                success: true,
+                status: HttpStatus.OK,
+                message: 'Success',
+                data: {result, meta}
+            }
+
+        } catch (e) {
+            return {
+                success: false, 
+                message: 'There was an error fetching transactions',
+                status: HttpStatus.INTERNAL_SERVER_ERROR,
+                data: {}
             }
         }
     }
