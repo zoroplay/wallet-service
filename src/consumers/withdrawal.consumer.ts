@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Process, Processor } from '@nestjs/bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bull';
@@ -12,207 +13,207 @@ import { Repository } from 'typeorm';
 
 @Processor('withdrawal')
 export class WithdrawalConsumer {
+  constructor(
+    @InjectRepository(Wallet)
+    private walletRepository: Repository<Wallet>,
+    @InjectRepository(Withdrawal)
+    private readonly withdrawalRepository: Repository<Withdrawal>,
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(WithdrawalAccount)
+    private withdrawalAccountRepository: Repository<WithdrawalAccount>,
 
-    constructor(
-        @InjectRepository(Wallet)
-        private walletRepository: Repository<Wallet>,
-        @InjectRepository(Withdrawal)
-        private readonly withdrawalRepository: Repository<Withdrawal>,
-        @InjectRepository(Transaction)
-        private readonly transactionRepository: Repository<Transaction>,
-        @InjectRepository(WithdrawalAccount)
-        private withdrawalAccountRepository: Repository<WithdrawalAccount>,
+    private readonly helperService: HelperService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
-        private readonly helperService: HelperService,
-        private readonly paymentService: PaymentService,
-    ) {}
+  @Process('withdrawal-request')
+  async processWithdrawal(job: Job<unknown>) {
+    console.log(`Processing withdrawal job ${job.id} of type ${job.name}...`);
+    try {
+      const data: any = job.data;
 
-    @Process('withdrawal-request')
-    async processWithdrawal(job: Job<unknown>) {
-        console.log(
-            `Processing withdrawal job ${job.id} of type ${job.name}...`,
-          );
-        try {
-            const data: any = job.data;
+      // console.log(data)
+      const autoDisbursement = data.autoDisbursement;
 
-            // console.log(data)
-            const autoDisbursement = data.autoDisbursement;
+      // save withdrawal request
+      const withdrawal = new Withdrawal();
+      withdrawal.account_name = data.accountName;
+      withdrawal.bank_code = data.bankCode;
+      withdrawal.bank_name = data.bankName;
+      withdrawal.account_number = data.accountNumber || '';
+      withdrawal.user_id = data.userId;
+      withdrawal.username = data.username;
+      withdrawal.client_id = data.clientId;
+      withdrawal.amount = data.amount;
+      withdrawal.withdrawal_code = data.withdrawalCode;
 
-            // save withdrawal request
-            const withdrawal = new Withdrawal();
-            withdrawal.account_name = data.accountName;
-            withdrawal.bank_code = data.bankCode;
-            withdrawal.bank_name = data.bankName ;
-            withdrawal.account_number = data.accountNumber || "";
-            withdrawal.user_id = data.userId;
-            withdrawal.username = data.username;
-            withdrawal.client_id = data.clientId;
-            withdrawal.amount = data.amount;
-            withdrawal.withdrawal_code = data.withdrawalCode;
+      await this.withdrawalRepository.save(withdrawal);
 
-            await this.withdrawalRepository.save(withdrawal);
-        
-            const balance = data.balance - data.amount;
-        
-            await this.walletRepository.update(
-                {
-                    user_id: data.userId,
-                    client_id: data.clientId,
-                },
-                {
-                    // balance,
-                    available_balance: balance,
-                },
-            );
-            // save bank account
-            if (data.type === 'bank')
-                this.saveUserBankAccount(data);      
-        
-            //to-do save transaction log
-            await this.helperService.saveTransaction({
-                clientId: data.clientId,
-                transactionNo: withdrawal.withdrawal_code,
-                amount: data.amount,
-                description: 'withdrawal request',
-                subject: 'Withdrawal',
-                channel: data.type,
-                source: data.source,
-                fromUserId: data.userId,
-                fromUsername: data.username,
-                fromUserBalance: balance,
-                toUserId: 0,
-                toUsername: 'System',
-                toUserBalance: 0,
-                status: 1,
-            });
+      const balance = data.balance - data.amount;
 
-            // if auto disbursement is enabled and 
-            if (autoDisbursement.autoDisbursement === 1 && data.type !== 'cash') {
-                // check if withdrawal request has exceeded limit
-                const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(data.userId);
-        
-                if (
-                (withdrawalCount) <= autoDisbursement.autoDisbursementCount && 
-                data.amount >= autoDisbursement.autoDisbursementMin && 
-                data.amount <= autoDisbursement.autoDisbursementMax
-                ) {
-                    console.log('initiate transfer')
-                    const resp = await this.paymentService.updateWithdrawalStatus({
-                        clientId: data.clientId,
-                        action: 'approve',
-                        withdrawalId: withdrawal.id,
-                        comment: 'automated withdrawal',
-                        updatedBy: 'System'
-                    })
-                    console.log('transfer response', resp);
-                }
-            }
-            // remove job
-            // job.remove();
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          available_balance: balance,
+        },
+      );
+      // save bank account
+      if (data.type === 'bank') this.saveUserBankAccount(data);
 
-        } catch (e) {
-            console.log(`Error processing Job: ${job.id}`, e.message);
+      //to-do save transaction log
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo: withdrawal.withdrawal_code,
+        amount: data.amount,
+        description: 'withdrawal request',
+        subject: 'Withdrawal',
+        channel: data.type,
+        source: data.source,
+        fromUserId: data.userId,
+        fromUsername: data.username,
+        fromUserBalance: balance,
+        toUserId: 0,
+        toUsername: 'System',
+        toUserBalance: 0,
+        status: 1,
+      });
+
+      // if auto disbursement is enabled and
+      if (autoDisbursement.autoDisbursement === 1 && data.type !== 'cash') {
+        // check if withdrawal request has exceeded limit
+        const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(
+          data.userId,
+        );
+
+        if (
+          withdrawalCount <= autoDisbursement.autoDisbursementCount &&
+          data.amount >= autoDisbursement.autoDisbursementMin &&
+          data.amount <= autoDisbursement.autoDisbursementMax
+        ) {
+          console.log('initiate transfer');
+          const resp = await this.paymentService.updateWithdrawalStatus({
+            clientId: data.clientId,
+            action: 'approve',
+            withdrawalId: withdrawal.id,
+            comment: 'automated withdrawal',
+            updatedBy: 'System',
+          });
+          console.log('transfer response', resp);
         }
+      }
+      // remove job
+      // job.remove();
+    } catch (e) {
+      console.log(`Error processing Job: ${job.id}`, e.message);
     }
+  }
 
-    @Process('shop-withdrawal')
-    async processShopWithdrawal(job: Job<unknown>) {
-        try {
-            const data: any = job.data;
-            //update request status
-            await this.withdrawalRepository.update({
-                id: data.id
-            }, {
-                status: 1,
-                updated_by: data.username
-            })
+  @Process('shop-withdrawal')
+  async processShopWithdrawal(job: Job<unknown>) {
+    try {
+      const data: any = job.data;
+      //update request status
+      await this.withdrawalRepository.update(
+        {
+          id: data.id,
+        },
+        {
+          status: 1,
+          updated_by: data.username,
+        },
+      );
 
-            let balance = data.balance - data.amount;
-        
-            await this.walletRepository.update(
-                {
-                    user_id: data.userId,
-                    client_id: data.clientId,
-                },
-                {
-                    // balance,
-                    available_balance: balance,
-                },
-            );
-            // get withdrawal request
-            const withdrawRequest = await this.withdrawalRepository.findOne({where: {id: data.id}});
+      let balance = data.balance - data.amount;
 
-            // update transaction log for receiver
-            await this.transactionRepository.update({
-                transaction_no: withdrawRequest.withdrawal_code,
-                tranasaction_type: 'credit'
-            }, {
-                description: 'Withdrawal Payout',
-                subject: 'Withdrawal',
-                user_id: data.userId,
-                username: data.username,
-                balance,
-            })
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          available_balance: balance,
+        },
+      );
+      // get withdrawal request
+      const withdrawRequest = await this.withdrawalRepository.findOne({
+        where: { id: data.id },
+      });
 
-            //check if withdrawal commission is available
-            if (data.withdrawalCharge > 0) {
-                // add commission to user balance
-                balance = balance + data.withdrawalCharge;
+      // update transaction log for receiver
+      await this.transactionRepository.update(
+        {
+          transaction_no: withdrawRequest.withdrawal_code,
+          tranasaction_type: 'credit',
+        },
+        {
+          description: 'Withdrawal Payout',
+          subject: 'Withdrawal',
+          user_id: data.userId,
+          username: data.username,
+          balance,
+        },
+      );
 
-                await this.walletRepository.update(
-                    {
-                        user_id: data.userId,
-                        client_id: data.clientId,
-                    },
-                    {
-                        // balance,
-                        available_balance: balance,
-                    },
-                );
+      //check if withdrawal commission is available
+      if (data.withdrawalCharge > 0) {
+        // add commission to user balance
+        balance = balance + data.withdrawalCharge;
 
-                await this.helperService.saveTransaction({
-                    clientId: data.clientId,
-                    transactionNo: generateTrxNo(),
-                    amount: data.amount,
-                    description: 'Commission on withdrawal payout',
-                    subject: 'Withdrawal Comm.',
-                    channel: 'sbengine',
-                    source: 'shop',
-                    fromUserId: 0,
-                    fromUsername: 'System',
-                    fromUserBalance: 0,
-                    toUserId: data.userId,
-                    toUsername: data.username,
-                    toUserBalance: balance,
-                    status: 1,
-                });
-    
-            }
+        await this.walletRepository.update(
+          {
+            user_id: data.userId,
+            client_id: data.clientId,
+          },
+          {
+            // balance,
+            available_balance: balance,
+          },
+        );
 
-        } catch (e) {
+        await this.helperService.saveTransaction({
+          clientId: data.clientId,
+          transactionNo: generateTrxNo(),
+          amount: data.amount,
+          description: 'Commission on withdrawal payout',
+          subject: 'Withdrawal Comm.',
+          channel: 'sbengine',
+          source: 'shop',
+          fromUserId: 0,
+          fromUsername: 'System',
+          fromUserBalance: 0,
+          toUserId: data.userId,
+          toUsername: data.username,
+          toUserBalance: balance,
+          status: 1,
+        });
+      }
+    } catch (e) {}
+  }
 
-        }
+  private async saveUserBankAccount(data) {
+    try {
+      const wAccount = await this.withdrawalAccountRepository.findOne({
+        where: { user_id: data.userId, bank_code: data.bankCode },
+      });
+
+      if (!wAccount) {
+        const bankAccount = new WithdrawalAccount();
+        bankAccount.client_id = data.clientId;
+        bankAccount.user_id = data.userId;
+        bankAccount.bank_code = data.bankCode;
+        bankAccount.account_name = data.accountName;
+        bankAccount.account_number = data.accountNumber;
+
+        await this.withdrawalAccountRepository.save(bankAccount);
+      }
+    } catch (e) {
+      console.log('error saving bank account', e.message);
     }
-
-    private async saveUserBankAccount(data) {
-        try{
-            const wAccount = await this.withdrawalAccountRepository.findOne({
-                where: {user_id: data.userId, bank_code: data.bankCode}
-            });
-            
-            if (!wAccount) {
-                const bankAccount = new WithdrawalAccount();
-                bankAccount.client_id = data.clientId;
-                bankAccount.user_id = data.userId;
-                bankAccount.bank_code = data.bankCode;
-                bankAccount.account_name = data.accountName;
-                bankAccount.account_number = data.accountNumber;
-
-                await this.withdrawalAccountRepository.save(bankAccount);
-            }
-
-        } catch(e) {
-            console.log('error saving bank account', e.message);
-        }
-    }
+  }
 }

@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
-import { Inject, Injectable } from "@nestjs/common";
-import { ClientGrpc } from "@nestjs/microservices";
-import { firstValueFrom } from "rxjs";
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientGrpc } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 import {
   FindUserRequest,
   GetAgentUserRequest,
@@ -12,8 +12,8 @@ import {
   IdentityServiceClient,
   protobufPackage,
   CommonResponseObj as IdentityCommonResponseObj,
-} from "src/proto/identity.pb";
-import { CommonResponseObj } from "src/proto/wallet.pb";
+} from 'src/proto/identity.pb';
+import { CommonResponseObj } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class IdentityService {
@@ -24,7 +24,7 @@ export class IdentityService {
 
   public onModuleInit(): void {
     this.svc = this.client.getService<IdentityServiceClient>(
-      IDENTITY_SERVICE_NAME
+      IDENTITY_SERVICE_NAME,
     );
   }
 
@@ -42,5 +42,10 @@ export class IdentityService {
 
   async getWithdrawalSettings(clientId) {
     return firstValueFrom(this.svc.getWithdrawalSettings(clientId));
+  }
+  async getUser({
+    userId,
+  }: FindUserRequest): Promise<IdentityCommonResponseObj> {
+    return firstValueFrom(this.svc.findUser({ userId }));
   }
 }
