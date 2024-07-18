@@ -150,8 +150,8 @@ export class AppService {
 
       if (status) {
         results = pMethods.map((p) => ({
-          slug: p.provider,
-          display_name: p.display_name,
+          provider: p.provider,
+          title: p.display_name,
         }));
       } else {
         results = pMethods;
