@@ -18,12 +18,14 @@ import {
   CashbookIdRequest,
   Expense,
 } from 'src/proto/wallet.pb';
+import { PaymentService } from 'src/services/payments.service';
 
 @Injectable()
 export class ExpensesService {
   constructor(
     @InjectRepository(Expenses)
     private readonly expensesRepository: Repository<Expenses>,
+    private paymentService: PaymentService,
     private identityService: IdentityService,
     private appService: AppService,
   ) {}
@@ -327,32 +329,20 @@ export class ExpensesService {
             verified_at: new Date(),
           },
         );
-        await this.appService.debitUser({
-          userId: adminRef.data.userId,
+        const transferData = await this.paymentService.walletTransfer({
           clientId: adminRef.data.clientId,
-          amount: Expense.requested_amount.toFixed(2),
-          source: 'Branch',
-          description: Expense.admin_comment,
-          username: adminRef.data.username,
-          wallet: 'main',
-          subject: 'Expenses (Cashbook)',
-          channel: 'Cashbook',
-        });
-        const { data: creditData } = await this.appService.creditUser({
-          userId: branchRef.data.userId,
-          clientId: branchRef.data.clientId,
-          amount: branchRef.cashIn.amount.toFixed(2),
-          source: 'Branch',
-          description: branchRef.data.branch_comment,
-          username: adminRef.data.username,
-          wallet: 'main',
-          subject: 'Cash In (Cashbook)',
-          channel: 'Cashbook',
+          fromUserId: adminRef.data.id,
+          fromUsername: adminRef.data.username,
+          toUserId: branchRef.data.id,
+          toUsername: branchRef.data.username,
+          amount: amount,
+          action: 'deposit',
+          description: `Transfer of ${amount}  from ${adminRef.data.username} to ${branchRef.data.username}`,
         });
 
         const res = this.response({
           ...updatedExpense,
-          balance: creditData.balance,
+          balance: transferData.data.balance,
         });
 
         return handleResponse(res, 'Expense Approved successfully');

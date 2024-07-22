@@ -17,12 +17,14 @@ import {
   CashbookCreateCashInOutRequest,
   CashbookIdRequest,
 } from 'src/proto/wallet.pb';
+import { PaymentService } from 'src/services/payments.service';
 
 @Injectable()
 export class CashInService {
   constructor(
     @InjectRepository(CashIn)
     private readonly cashinRepository: Repository<CashIn>,
+    private paymentService: PaymentService,
     private identityService: IdentityService,
     private appService: AppService,
   ) {}
@@ -313,9 +315,13 @@ export class CashInService {
           null,
           HttpStatus.BAD_REQUEST,
         );
-      if (!cashIn)
+
+      const operator = await this.identityService.getUser({
+        userId: cashIn.user_id,
+      });
+      if (!operator.success)
         return handleError(
-          `Cash In with provided ID not found`,
+          `Error! Something went wrong: Authenticated ${operator.message}`,
           null,
           HttpStatus.NOT_FOUND,
         );
@@ -328,21 +334,21 @@ export class CashInService {
             verified_at: new Date(),
           },
         );
-        const { data }: any = branchRef;
-        const { data: creditData } = await this.appService.creditUser({
-          userId: data.userId,
-          clientId: data.clientId,
-          amount: cashIn.amount.toFixed(2),
-          source: 'Branch',
-          description: cashIn.comment,
-          username: data.username,
-          wallet: 'main',
-          subject: 'Cash In (Cashbook)',
-          channel: 'Cashbook',
+
+        const creditData = await this.paymentService.walletTransfer({
+          clientId: branchRef.data.clientId,
+          fromUserId: operator.data.id,
+          fromUsername: operator.data.username,
+          toUserId: branchRef.data.id,
+          toUsername: branchRef.data.username,
+          amount: cashIn.amount,
+          action: 'deposit',
+          description: `Transfer of ${cashIn.amount}  from ${operator.data.username} to ${branchRef.data.username}`,
         });
+
         const res = this.response({
           ...updatedCashin,
-          balance: creditData.balance,
+          balance: creditData.data.balance,
         });
 
         return handleResponse(res, 'Cash In Approved successfully');
