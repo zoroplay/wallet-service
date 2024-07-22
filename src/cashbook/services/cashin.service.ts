@@ -315,7 +315,18 @@ export class CashInService {
           null,
           HttpStatus.BAD_REQUEST,
         );
-
+      if (!cashIn)
+        return handleError(
+          `Cash In with provided ID not found`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
+      if (cashIn.status !== 0)
+        return handleError(
+          `Cash In with provided ID already Approved`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
       const operator = await this.identityService.getUser({
         userId: cashIn.user_id,
       });

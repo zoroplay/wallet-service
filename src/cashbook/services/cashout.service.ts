@@ -328,6 +328,12 @@ export class CashOutService {
           null,
           HttpStatus.NOT_FOUND,
         );
+      if (cashOut.status !== 0)
+        return handleError(
+          `Cash out with provided ID already Approved`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
       const operator = await this.identityService.getUser({
         userId: cashOut.user_id,
       });
