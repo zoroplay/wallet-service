@@ -19,6 +19,10 @@ export class CashIn {
 
   @Index()
   @Column({ type: 'int' })
+  client_id: number;
+
+  @Index()
+  @Column({ type: 'int' })
   branch_id: number;
 
   @Index()

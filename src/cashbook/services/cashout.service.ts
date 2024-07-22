@@ -15,7 +15,7 @@ import {
   BranchRequest,
   CashbookApproveCashInOutRequest,
   CashbookCreateCashInOutRequest,
-  IdRequest,
+  CashbookIdRequest,
 } from 'src/proto/wallet.pb';
 
 @Injectable()
@@ -45,7 +45,7 @@ export class CashOutService {
     createCashOutDto: CashbookCreateCashInOutRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { amount, branchId, comment, userId } = createCashOutDto;
+      const { amount, branchId, comment, userId, clientId } = createCashOutDto;
       const [userRes, branchRes] = await Promise.all([
         await this.identityService.getUser({ userId }),
         await this.identityService.getUser({ userId: branchId }),
@@ -66,6 +66,7 @@ export class CashOutService {
       const cashOutData = new CashOut();
       cashOutData.amount = Number(amount);
       cashOutData.branch_id = Number(branchId);
+      cashOutData.client_id = Number(clientId);
       cashOutData.user_id = Number(userId);
       cashOutData.comment = comment;
 
@@ -213,11 +214,12 @@ export class CashOutService {
       );
     }
   }
-  async findOne(data: IdRequest) {
+  async findOne(data: CashbookIdRequest) {
     try {
       const { id } = data;
       const cashin = await this.cashoutRepository.findOneBy({
         id,
+        client_id: data.clientId,
       });
       if (!cashin)
         return handleError('cash out not found', null, HttpStatus.NOT_FOUND);
@@ -271,11 +273,14 @@ export class CashOutService {
   //   }
   // }
 
-  async remove(data: IdRequest): Promise<ErrorResponse | SuccessResponse> {
+  async remove(
+    data: CashbookIdRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { id } = data;
+      const { id, clientId } = data;
       const cashout = await this.cashoutRepository.findOneBy({
         id,
+        client_id: clientId,
       });
       if (!cashout)
         return handleError(

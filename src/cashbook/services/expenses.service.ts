@@ -15,7 +15,7 @@ import {
   CashbookCreateExpenseRequest,
   BranchRequest,
   CashbookApproveExpenseRequest,
-  IdRequest,
+  CashbookIdRequest,
   Expense,
 } from 'src/proto/wallet.pb';
 
@@ -35,7 +35,7 @@ export class ExpensesService {
       expenseTypeId: values.expense_type_id,
       expenseType: values.expense_type,
       requestedAmount: values.requested_amount,
-      approvedAmount: values.approved_amount,
+      amount: values.amount,
       status: values.status,
       branchComment: values.branch_comment,
       adminComment: values.admin_comment,
@@ -50,11 +50,12 @@ export class ExpensesService {
     data: CashbookCreateExpenseRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { amount, expenseTypeId, branchId, comment } = data;
+      const { amount, expenseTypeId, branchId, comment, clientId } = data;
       const expenseData = new Expenses();
       expenseData.requested_amount = amount;
       expenseData.branch_id = branchId;
       expenseData.expense_type_id = expenseTypeId;
+      expenseData.client_id = clientId;
       expenseData.branch_comment = comment;
 
       const expense = await this.expensesRepository.save(expenseData);
@@ -98,6 +99,7 @@ export class ExpensesService {
     try {
       const all = await this.expensesRepository.findBy({
         branch_id: data.branchId,
+        client_id: data.clientId,
       });
       const allMap = await Promise.all(
         all.map((item: any) => {
@@ -200,12 +202,13 @@ export class ExpensesService {
       );
     }
   }
-  async findOne(data: IdRequest) {
+  async findOne(data: CashbookIdRequest) {
     try {
-      const { id } = data;
+      const { id, clientId } = data;
 
       const expense = await this.expensesRepository.findOneBy({
         id,
+        client_id: clientId,
       });
       if (!expense)
         return handleError(
@@ -246,13 +249,7 @@ export class ExpensesService {
           HttpStatus.NOT_ACCEPTABLE,
         );
       let res: Expense;
-      console.log('1:', 1);
-      console.log(
-        'branchId __: expense.branch_id',
-        expense.branch_id,
-        branchId,
-      );
-      console.log(amount, expenseTypeId, branchId, id, comment);
+
       if (branchId === expense.branch_id) {
         const updatedExpense = await this.expensesRepository.update(
           { id },
@@ -271,7 +268,7 @@ export class ExpensesService {
         const updatedExpense = await this.expensesRepository.update(
           { id },
           {
-            approved_amount: amount ? Number(amount) : expense.requested_amount,
+            amount: amount ? Number(amount) : expense.requested_amount,
             admin_comment: comment ? comment : expense.branch_comment,
             expense_type_id: expenseTypeId
               ? expenseTypeId
@@ -324,7 +321,7 @@ export class ExpensesService {
           { id: expenseId },
           {
             status: 1,
-            approved_amount: amount,
+            amount: amount,
             verified_by: verifiedBy,
             admin_comment: comment,
             verified_at: new Date(),
@@ -387,10 +384,15 @@ export class ExpensesService {
       );
     }
   }
-  async remove(data: IdRequest): Promise<ErrorResponse | SuccessResponse> {
+  async remove(
+    data: CashbookIdRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
       const { id } = data;
-      const Expense = await this.expensesRepository.findOneBy({ id });
+      const Expense = await this.expensesRepository.findOneBy({
+        id,
+        client_id: data.clientId,
+      });
 
       if (!Expense)
         return handleError(

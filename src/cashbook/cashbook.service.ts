@@ -11,8 +11,13 @@ import {
   CashbookCreateCashInOutRequest,
   CashbookCreateExpenseRequest,
   CashbookCreateExpenseTypeRequest,
-  IdRequest,
+  CashbookIdRequest,
+  FetchLastApprovedRequest,
+  FetchReportRequest,
+  FetchSalesReportRequest,
+  HandleReportRequest,
 } from 'src/proto/wallet.pb';
+import { SalesReportService } from './services/sales_report.service';
 
 @Injectable()
 export class CashbookService {
@@ -21,6 +26,7 @@ export class CashbookService {
     private cashoutService: CashOutService,
     private expenseService: ExpensesService,
     private expensetypeService: ExpenseTypesService,
+    private salesReportService: SalesReportService,
   ) {}
   // Cashin
   async approveCashin(data: CashbookApproveCashInOutRequest) {
@@ -30,10 +36,10 @@ export class CashbookService {
     return this.cashinService.addCashin(data);
   }
 
-  async findOneCashin(data: IdRequest) {
+  async findOneCashin(data: CashbookIdRequest) {
     return this.cashinService.findOne(data);
   }
-  async deleteOneCashin(data: IdRequest) {
+  async deleteOneCashin(data: CashbookIdRequest) {
     return this.cashinService.remove(data);
   }
   async findAllCashin() {
@@ -42,10 +48,6 @@ export class CashbookService {
 
   async findAllBranchCashin(data: BranchRequest) {
     return this.cashinService.findAllBranchCashin(data);
-  }
-
-  async findAllBranchApprovedCashinWDate(data: BranchRequest) {
-    return this.cashinService.findAllBranchApprovedCashinWDate(data);
   }
 
   async findAllBranchPendingCashinWDate(data: BranchRequest) {
@@ -69,10 +71,10 @@ export class CashbookService {
   async findAllCashout() {
     return this.cashoutService.findAll();
   }
-  async findOneCashout(data: IdRequest) {
+  async findOneCashout(data: CashbookIdRequest) {
     return this.cashoutService.findOne(data);
   }
-  async deleteOneCashout(data: IdRequest) {
+  async deleteOneCashout(data: CashbookIdRequest) {
     return this.cashoutService.remove(data);
   }
 
@@ -88,11 +90,11 @@ export class CashbookService {
     return this.expenseService.update(data);
   }
 
-  async findOneExpenses(data: IdRequest) {
+  async findOneExpenses(data: CashbookIdRequest) {
     return this.expenseService.findOne(data);
   }
 
-  async deleteOneExpenses(data: IdRequest) {
+  async deleteOneExpenses(data: CashbookIdRequest) {
     return this.expenseService.remove(data);
   }
 
@@ -110,5 +112,22 @@ export class CashbookService {
 
   async findAllExpenseTypes() {
     return this.expensetypeService.findAll();
+  }
+
+  async fetchBranchReport(data: FetchReportRequest) {
+    return this.salesReportService.fetchReport(data);
+  }
+
+  async handleReport(data: HandleReportRequest) {
+    return this.salesReportService.handleReport(data);
+  }
+  async fetchLastApproved(data: FetchLastApprovedRequest) {
+    return this.salesReportService.fetchLastApproved(data);
+  }
+  async verifyFinalTransaction(data: FetchLastApprovedRequest) {
+    return this.salesReportService.verifyFinalTransaction(data);
+  }
+  async fetchSalesReport(data: FetchSalesReportRequest) {
+    return this.salesReportService.fetchSalesReport(data);
   }
 }

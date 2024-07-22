@@ -15,7 +15,7 @@ import {
   BranchRequest,
   CashbookApproveCashInOutRequest,
   CashbookCreateCashInOutRequest,
-  IdRequest,
+  CashbookIdRequest,
 } from 'src/proto/wallet.pb';
 
 @Injectable()
@@ -45,7 +45,7 @@ export class CashInService {
     createCashInDto: CashbookCreateCashInOutRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { amount, branchId, comment, userId } = createCashInDto;
+      const { amount, branchId, comment, userId, clientId } = createCashInDto;
       const [userRes, branchRes] = await Promise.all([
         this.identityService.getUser({ userId }),
         this.identityService.getUser({ userId: branchId }),
@@ -66,6 +66,7 @@ export class CashInService {
       const cashinData = new CashIn();
       cashinData.amount = Number(amount);
       cashinData.branch_id = Number(branchId);
+      cashinData.client_id = Number(clientId);
       cashinData.user_id = Number(userId);
       cashinData.comment = comment;
 
@@ -105,24 +106,16 @@ export class CashInService {
     }
   }
 
-  async findAllBranchApprovedCashinWDate(
-    data: BranchRequest,
-  ): Promise<ErrorResponse | SuccessResponse> {
+  async findAllBranchApprovedCashin({
+    startDate,
+    endDate,
+    branchId,
+  }): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const date = new Date(data.date);
-
-      // Calculate the start and end of the specified day
-      const startOfDay = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-      );
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(startOfDay.getDate() + 1);
       const cashins = await this.cashinRepository.findBy({
-        branch_id: data.branchId,
+        branch_id: branchId,
         status: 1,
-        created_at: Between(startOfDay, endOfDay),
+        created_at: Between(startDate, endDate),
       });
 
       const allMap = await Promise.all(
@@ -171,8 +164,6 @@ export class CashInService {
           return this.response(item);
         }),
       );
-      console.log(allMap);
-
       //  handleResponse(allMap, 'all cash-ins fetched successfully');
       return {
         success: true,
@@ -195,14 +186,13 @@ export class CashInService {
     try {
       const all = await this.cashinRepository.findBy({
         branch_id: data.branchId,
+        client_id: data.clientId,
       });
-      console.log('all:', all);
       const allMap = await Promise.all(
         all.map((item) => {
           return this.response(item);
         }),
       );
-      console.log(allMap);
 
       //  handleResponse(allMap, 'all cash-ins fetched successfully');
       return {
@@ -220,11 +210,12 @@ export class CashInService {
     }
   }
 
-  async findOne(data: IdRequest) {
+  async findOne(data: CashbookIdRequest) {
     try {
-      const { id } = data;
+      const { id, clientId } = data;
       const cashin = await this.cashinRepository.findOneBy({
         id,
+        client_id: clientId,
       });
       if (!cashin)
         return handleError('cash in not found', null, HttpStatus.NOT_FOUND);
@@ -239,9 +230,14 @@ export class CashInService {
     }
   }
 
-  async remove(data: IdRequest): Promise<ErrorResponse | SuccessResponse> {
+  async remove(
+    data: CashbookIdRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const cashin = await this.cashinRepository.findOneBy({ id: data.id });
+      const cashin = await this.cashinRepository.findOneBy({
+        id: data.id,
+        client_id: data.clientId,
+      });
 
       if (!cashin)
         return handleError(
