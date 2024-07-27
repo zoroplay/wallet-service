@@ -395,12 +395,12 @@ export class AppService {
     }
   }
 
-  async resetBonusWallet(data) {
+  async awardBonusWinning(data: CreditUserRequest) {
     try {
       let wallet;
       switch (data.wallet) {
         case 'sport-bonus':
-          wallet = 'sport-bonus'
+          wallet = 'sport_bonus_balance'
           break;
         case 'casino':
           wallet = 'casino_bonus_balance'
@@ -417,6 +417,8 @@ export class AppService {
           client_id: data.clientId,
         },
         {
+          balance: parseFloat(data.amount),
+          available_balance: parseFloat(data.amount),
           [wallet]: 0,
         }
       );
@@ -438,7 +440,7 @@ export class AppService {
         toUsername: data.username,
         toUserBalance: 0,
         status: 1,
-        walletType: 'Sport Bonus',
+        walletType: 'Main',
       });
       
     } catch (e) {

@@ -28,7 +28,6 @@ import {
   OpayWebhookRequest,
   PaymentMethodRequest,
   ProcessRetailTransaction,
-  ResetBonusWalletRequest,
   UpdateWithdrawalRequest,
   UserTransactionRequest,
   ValidateTransactionRequest,
@@ -107,9 +106,9 @@ export class AppController {
     return this.appService.debitUser(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, "ResetBonusWallet")
-  ResetBonusWallet(param: ResetBonusWalletRequest) {
-    return this.appService.resetBonusWallet(param);
+  @GrpcMethod(WALLET_SERVICE_NAME, "AwardBonusWinning")
+  ResetBonusWallet(param: CreditUserRequest) {
+    return this.appService.awardBonusWinning(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, "DebitAgentBalance")
