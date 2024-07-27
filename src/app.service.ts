@@ -395,6 +395,61 @@ export class AppService {
     }
   }
 
+  async resetBonusWallet(data) {
+    try {
+      let wallet;
+      switch (data.wallet) {
+        case 'sport-bonus':
+          wallet = 'sport-bonus'
+          break;
+        case 'casino':
+          wallet = 'casino_bonus_balance'
+          break;
+        case 'virtual':
+          wallet = 'virtual_bonus_balance'
+          break;
+        default:
+          break;
+      }
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          [wallet]: 0,
+        }
+      );
+
+      const transactionNo = generateTrxNo();
+      //to-do save transaction log
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo,
+        amount: 0,
+        description: 'Bonus has been completed',
+        subject: 'Bonus Expired',
+        channel: 'Internal',
+        source: 'internal',
+        fromUserId: 0,
+        fromUsername: "System",
+        fromUserBalance: 0,
+        toUserId: data.userId,
+        toUsername: data.username,
+        toUserBalance: 0,
+        status: 1,
+        walletType: 'Sport Bonus',
+      });
+      
+    } catch (e) {
+      return {
+        success: false,
+        message: "Unable to complete transactions",
+        data: null,
+      };
+    }
+  }
+
   async debitAgentBalance(data: DebitUserRequest) {
     const { userId, clientId } = data;
     try {
