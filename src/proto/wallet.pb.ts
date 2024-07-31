@@ -829,6 +829,8 @@ export interface WalletServiceClient {
 
   creditUser(request: CreditUserRequest): Observable<WalletResponse>;
 
+  awardBonusWinning(request: CreditUserRequest): Observable<WalletResponse>;
+
   debitUser(request: DebitUserRequest): Observable<WalletResponse>;
 
   inititateDeposit(request: InitiateDepositRequest): Observable<InitiateDepositResponse>;
@@ -1032,6 +1034,8 @@ export interface WalletServiceController {
   ): Promise<FetchDepositCountResponse> | Observable<FetchDepositCountResponse> | FetchDepositCountResponse;
 
   creditUser(request: CreditUserRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
+  
+  awardBonusWinning(request: CreditUserRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
   debitUser(request: DebitUserRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
@@ -1188,6 +1192,7 @@ export function WalletServiceControllerMethods() {
       "fetchDepositRange",
       "fetchDepositCount",
       "creditUser",
+      "awardBonusWinning",
       "debitUser",
       "inititateDeposit",
       "verifyDeposit",

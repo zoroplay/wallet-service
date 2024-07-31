@@ -22,10 +22,12 @@ import {
   FetchReportRequest,
   FetchSalesReportRequest,
   GetBalanceRequest,
-  // GetMoneyTransactionRequest,
+  GetMoneyTransactionRequest,
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
   HandleReportRequest,
+
+  GetTransactionsRequest,
   IdRequest,
   InitiateDepositRequest,
   ListDepositRequests,
@@ -111,7 +113,12 @@ export class AppController {
     return this.appService.debitUser(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'DebitAgentBalance')
+  @GrpcMethod(WALLET_SERVICE_NAME, "AwardBonusWinning")
+  ResetBonusWallet(param: CreditUserRequest) {
+    return this.appService.awardBonusWinning(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, "DebitAgentBalance")
   DebitAgent(param: DebitUserRequest) {
     return this.appService.debitAgentBalance(param);
   }
@@ -346,8 +353,13 @@ export class AppController {
     return this.appService.deletePlayerData(param.id);
   }
 
-  // @GrpcMethod(WALLET_SERVICE_NAME, 'GetMoneyTransaction')
-  // GetMoneyTransaction(param: GetMoneyTransactionRequest) {
-  //   return this.reportingService.getMoneyTransaction(param);
-  // }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetMoneyTransaction')
+  GetMoneyTransaction(param: GetTransactionsRequest) {
+    return this.reportingService.getMoneyTransaction(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetSystemTransaction')
+  GetSystemTransaction(param: GetTransactionsRequest) {
+    return this.reportingService.getSystemTransaction(param);
+  }
 }

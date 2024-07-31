@@ -150,8 +150,8 @@ export class AppService {
 
       if (status) {
         results = pMethods.map((p) => ({
-          slug: p.provider,
-          display_name: p.display_name,
+          provider: p.provider,
+          title: p.display_name,
         }));
       } else {
         results = pMethods;
@@ -392,6 +392,63 @@ export class AppService {
     } catch (e) {
       console.log(e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async awardBonusWinning(data: CreditUserRequest) {
+    try {
+      let wallet;
+      switch (data.wallet) {
+        case 'sport-bonus':
+          wallet = 'sport_bonus_balance'
+          break;
+        case 'casino':
+          wallet = 'casino_bonus_balance'
+          break;
+        case 'virtual':
+          wallet = 'virtual_bonus_balance'
+          break;
+        default:
+          break;
+      }
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          balance: parseFloat(data.amount),
+          available_balance: parseFloat(data.amount),
+          [wallet]: 0,
+        }
+      );
+
+      const transactionNo = generateTrxNo();
+      //to-do save transaction log
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo,
+        amount: 0,
+        description: 'Bonus has been completed',
+        subject: 'Bonus Expired',
+        channel: 'Internal',
+        source: 'internal',
+        fromUserId: 0,
+        fromUsername: "System",
+        fromUserBalance: 0,
+        toUserId: data.userId,
+        toUsername: data.username,
+        toUserBalance: 0,
+        status: 1,
+        walletType: 'Main',
+      });
+      
+    } catch (e) {
+      return {
+        success: false,
+        message: "Unable to complete transactions",
+        data: null,
+      };
     }
   }
 

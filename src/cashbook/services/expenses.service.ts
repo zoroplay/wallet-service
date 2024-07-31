@@ -265,7 +265,7 @@ export class ExpensesService {
               : expense.expense_type_id,
           },
         );
-        res = this.response(updatedExpense);
+        // res = this.response(updatedExpense);
       } else {
         const updatedExpense = await this.expensesRepository.update(
           { id },
@@ -277,7 +277,7 @@ export class ExpensesService {
               : expense.expense_type_id,
           },
         );
-        res = this.response(updatedExpense);
+        // res = this.response(updatedExpense);
       }
 
       return handleResponse(res, 'Expense updated successfully');

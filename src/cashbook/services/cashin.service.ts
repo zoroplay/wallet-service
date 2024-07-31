@@ -43,6 +43,7 @@ export class CashInService {
       balance: values.balance ? values.balance : null,
     };
   }
+  
   async addCashin(
     createCashInDto: CashbookCreateCashInOutRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
