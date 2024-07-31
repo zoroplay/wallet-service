@@ -15,15 +15,17 @@ import {
   CashbookCreateExpenseRequest,
   BranchRequest,
   CashbookApproveExpenseRequest,
-  IdRequest,
+  CashbookIdRequest,
   Expense,
 } from 'src/proto/wallet.pb';
+import { PaymentService } from 'src/services/payments.service';
 
 @Injectable()
 export class ExpensesService {
   constructor(
     @InjectRepository(Expenses)
     private readonly expensesRepository: Repository<Expenses>,
+    private paymentService: PaymentService,
     private identityService: IdentityService,
     private appService: AppService,
   ) {}
@@ -35,7 +37,7 @@ export class ExpensesService {
       expenseTypeId: values.expense_type_id,
       expenseType: values.expense_type,
       requestedAmount: values.requested_amount,
-      approvedAmount: values.approved_amount,
+      amount: values.amount,
       status: values.status,
       branchComment: values.branch_comment,
       adminComment: values.admin_comment,
@@ -50,11 +52,12 @@ export class ExpensesService {
     data: CashbookCreateExpenseRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { amount, expenseTypeId, branchId, comment } = data;
+      const { amount, expenseTypeId, branchId, comment, clientId } = data;
       const expenseData = new Expenses();
       expenseData.requested_amount = amount;
       expenseData.branch_id = branchId;
       expenseData.expense_type_id = expenseTypeId;
+      expenseData.client_id = clientId;
       expenseData.branch_comment = comment;
 
       const expense = await this.expensesRepository.save(expenseData);
@@ -98,6 +101,7 @@ export class ExpensesService {
     try {
       const all = await this.expensesRepository.findBy({
         branch_id: data.branchId,
+        client_id: data.clientId,
       });
       const allMap = await Promise.all(
         all.map((item: any) => {
@@ -200,12 +204,13 @@ export class ExpensesService {
       );
     }
   }
-  async findOne(data: IdRequest) {
+  async findOne(data: CashbookIdRequest) {
     try {
-      const { id } = data;
+      const { id, clientId } = data;
 
       const expense = await this.expensesRepository.findOneBy({
         id,
+        client_id: clientId,
       });
       if (!expense)
         return handleError(
@@ -246,13 +251,7 @@ export class ExpensesService {
           HttpStatus.NOT_ACCEPTABLE,
         );
       let res: Expense;
-      console.log('1:', 1);
-      console.log(
-        'branchId __: expense.branch_id',
-        expense.branch_id,
-        branchId,
-      );
-      console.log(amount, expenseTypeId, branchId, id, comment);
+
       if (branchId === expense.branch_id) {
         const updatedExpense = await this.expensesRepository.update(
           { id },
@@ -271,7 +270,7 @@ export class ExpensesService {
         const updatedExpense = await this.expensesRepository.update(
           { id },
           {
-            approved_amount: amount ? Number(amount) : expense.requested_amount,
+            amount: amount ? Number(amount) : expense.requested_amount,
             admin_comment: comment ? comment : expense.branch_comment,
             expense_type_id: expenseTypeId
               ? expenseTypeId
@@ -324,38 +323,26 @@ export class ExpensesService {
           { id: expenseId },
           {
             status: 1,
-            approved_amount: amount,
+            amount: amount,
             verified_by: verifiedBy,
             admin_comment: comment,
             verified_at: new Date(),
           },
         );
-        await this.appService.debitUser({
-          userId: adminRef.data.userId,
+        const transferData = await this.paymentService.walletTransfer({
           clientId: adminRef.data.clientId,
-          amount: Expense.requested_amount.toFixed(2),
-          source: 'Branch',
-          description: Expense.admin_comment,
-          username: adminRef.data.username,
-          wallet: 'main',
-          subject: 'Expenses (Cashbook)',
-          channel: 'Cashbook',
-        });
-        const { data: creditData } = await this.appService.creditUser({
-          userId: branchRef.data.userId,
-          clientId: branchRef.data.clientId,
-          amount: branchRef.cashIn.amount.toFixed(2),
-          source: 'Branch',
-          description: branchRef.data.branch_comment,
-          username: adminRef.data.username,
-          wallet: 'main',
-          subject: 'Cash In (Cashbook)',
-          channel: 'Cashbook',
+          fromUserId: adminRef.data.id,
+          fromUsername: adminRef.data.username,
+          toUserId: branchRef.data.id,
+          toUsername: branchRef.data.username,
+          amount: amount,
+          action: 'deposit',
+          description: `Transfer of ${amount}  from ${adminRef.data.username} to ${branchRef.data.username}`,
         });
 
         const res = this.response({
           ...updatedExpense,
-          balance: creditData.balance,
+          balance: transferData.data.balance,
         });
 
         return handleResponse(res, 'Expense Approved successfully');
@@ -387,10 +374,15 @@ export class ExpensesService {
       );
     }
   }
-  async remove(data: IdRequest): Promise<ErrorResponse | SuccessResponse> {
+  async remove(
+    data: CashbookIdRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
       const { id } = data;
-      const Expense = await this.expensesRepository.findOneBy({ id });
+      const Expense = await this.expensesRepository.findOneBy({
+        id,
+        client_id: data.clientId,
+      });
 
       if (!Expense)
         return handleError(

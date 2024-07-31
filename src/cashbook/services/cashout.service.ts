@@ -15,14 +15,16 @@ import {
   BranchRequest,
   CashbookApproveCashInOutRequest,
   CashbookCreateCashInOutRequest,
-  IdRequest,
+  CashbookIdRequest,
 } from 'src/proto/wallet.pb';
+import { PaymentService } from 'src/services/payments.service';
 
 @Injectable()
 export class CashOutService {
   constructor(
     @InjectRepository(CashOut)
     private readonly cashoutRepository: Repository<CashOut>,
+    private paymentService: PaymentService,
     private identityService: IdentityService,
     private appService: AppService,
   ) {}
@@ -45,7 +47,7 @@ export class CashOutService {
     createCashOutDto: CashbookCreateCashInOutRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { amount, branchId, comment, userId } = createCashOutDto;
+      const { amount, branchId, comment, userId, clientId } = createCashOutDto;
       const [userRes, branchRes] = await Promise.all([
         await this.identityService.getUser({ userId }),
         await this.identityService.getUser({ userId: branchId }),
@@ -66,6 +68,7 @@ export class CashOutService {
       const cashOutData = new CashOut();
       cashOutData.amount = Number(amount);
       cashOutData.branch_id = Number(branchId);
+      cashOutData.client_id = Number(clientId);
       cashOutData.user_id = Number(userId);
       cashOutData.comment = comment;
 
@@ -213,11 +216,12 @@ export class CashOutService {
       );
     }
   }
-  async findOne(data: IdRequest) {
+  async findOne(data: CashbookIdRequest) {
     try {
       const { id } = data;
       const cashin = await this.cashoutRepository.findOneBy({
         id,
+        client_id: data.clientId,
       });
       if (!cashin)
         return handleError('cash out not found', null, HttpStatus.NOT_FOUND);
@@ -271,11 +275,14 @@ export class CashOutService {
   //   }
   // }
 
-  async remove(data: IdRequest): Promise<ErrorResponse | SuccessResponse> {
+  async remove(
+    data: CashbookIdRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { id } = data;
+      const { id, clientId } = data;
       const cashout = await this.cashoutRepository.findOneBy({
         id,
+        client_id: clientId,
       });
       if (!cashout)
         return handleError(
@@ -321,6 +328,21 @@ export class CashOutService {
           null,
           HttpStatus.NOT_FOUND,
         );
+      if (cashOut.status !== 0)
+        return handleError(
+          `Cash out with provided ID already Approved`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
+      const operator = await this.identityService.getUser({
+        userId: cashOut.user_id,
+      });
+      if (!operator.success)
+        return handleError(
+          `Error! Something went wrong: Authenticated ${operator.message}`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
       if (status === 1) {
         const updatedCashOut = await this.cashoutRepository.update(
           { id },
@@ -330,21 +352,21 @@ export class CashOutService {
             verified_at: new Date(),
           },
         );
-        const { data }: any = branchRef;
-        const { data: debitData } = await this.appService.debitUser({
-          userId: data.userId,
-          clientId: data.clientId,
-          amount: cashOut.amount.toFixed(2),
-          source: 'Branch',
-          description: cashOut.comment,
-          username: data.username,
-          wallet: 'main',
-          subject: 'Cash Out (Cashbook)',
-          channel: 'Cashbook',
+
+        const debitData = await this.paymentService.walletTransfer({
+          clientId: branchRef.data.clientId,
+          fromUserId: branchRef.data.id,
+          fromUsername: branchRef.data.username,
+          toUserId: operator.data.id,
+          toUsername: operator.data.username,
+          amount: cashOut.amount,
+          action: 'deposit',
+          description: `Transfer of ${cashOut.amount}  from ${branchRef.data.username} to ${operator.data.username}`,
         });
+
         const res = this.response({
           ...updatedCashOut,
-          balance: debitData.balance,
+          balance: debitData.data.balance,
         });
         return handleResponse(res, 'Cash Out Approved successfully');
       }

@@ -12,6 +12,7 @@ import {
   IdentityServiceClient,
   protobufPackage,
   CommonResponseObj as IdentityCommonResponseObj,
+  GetAgentUsersRequest,
 } from 'src/proto/identity.pb';
 import { CommonResponseObj } from 'src/proto/wallet.pb';
 
@@ -47,5 +48,10 @@ export class IdentityService {
     userId,
   }: FindUserRequest): Promise<IdentityCommonResponseObj> {
     return firstValueFrom(this.svc.findUser({ userId }));
+  }
+
+  async getAgentUser(param: GetAgentUsersRequest) {
+    // console.log(param)
+    return await firstValueFrom(this.svc.listAgentUsers(param));
   }
 }
