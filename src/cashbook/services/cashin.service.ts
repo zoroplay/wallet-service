@@ -15,14 +15,16 @@ import {
   BranchRequest,
   CashbookApproveCashInOutRequest,
   CashbookCreateCashInOutRequest,
-  IdRequest,
+  CashbookIdRequest,
 } from 'src/proto/wallet.pb';
+import { PaymentService } from 'src/services/payments.service';
 
 @Injectable()
 export class CashInService {
   constructor(
     @InjectRepository(CashIn)
     private readonly cashinRepository: Repository<CashIn>,
+    private paymentService: PaymentService,
     private identityService: IdentityService,
     private appService: AppService,
   ) {}
@@ -46,7 +48,7 @@ export class CashInService {
     createCashInDto: CashbookCreateCashInOutRequest,
   ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const { amount, branchId, comment, userId } = createCashInDto;
+      const { amount, branchId, comment, userId, clientId } = createCashInDto;
       const [userRes, branchRes] = await Promise.all([
         this.identityService.getUser({ userId }),
         this.identityService.getUser({ userId: branchId }),
@@ -67,6 +69,7 @@ export class CashInService {
       const cashinData = new CashIn();
       cashinData.amount = Number(amount);
       cashinData.branch_id = Number(branchId);
+      cashinData.client_id = Number(clientId);
       cashinData.user_id = Number(userId);
       cashinData.comment = comment;
 
@@ -106,24 +109,16 @@ export class CashInService {
     }
   }
 
-  async findAllBranchApprovedCashinWDate(
-    data: BranchRequest,
-  ): Promise<ErrorResponse | SuccessResponse> {
+  async findAllBranchApprovedCashin({
+    startDate,
+    endDate,
+    branchId,
+  }): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const date = new Date(data.date);
-
-      // Calculate the start and end of the specified day
-      const startOfDay = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-      );
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(startOfDay.getDate() + 1);
       const cashins = await this.cashinRepository.findBy({
-        branch_id: data.branchId,
+        branch_id: branchId,
         status: 1,
-        created_at: Between(startOfDay, endOfDay),
+        created_at: Between(startDate, endDate),
       });
 
       const allMap = await Promise.all(
@@ -172,8 +167,6 @@ export class CashInService {
           return this.response(item);
         }),
       );
-      console.log(allMap);
-
       //  handleResponse(allMap, 'all cash-ins fetched successfully');
       return {
         success: true,
@@ -196,14 +189,13 @@ export class CashInService {
     try {
       const all = await this.cashinRepository.findBy({
         branch_id: data.branchId,
+        client_id: data.clientId,
       });
-      console.log('all:', all);
       const allMap = await Promise.all(
         all.map((item) => {
           return this.response(item);
         }),
       );
-      console.log(allMap);
 
       //  handleResponse(allMap, 'all cash-ins fetched successfully');
       return {
@@ -221,11 +213,12 @@ export class CashInService {
     }
   }
 
-  async findOne(data: IdRequest) {
+  async findOne(data: CashbookIdRequest) {
     try {
-      const { id } = data;
+      const { id, clientId } = data;
       const cashin = await this.cashinRepository.findOneBy({
         id,
+        client_id: clientId,
       });
       if (!cashin)
         return handleError('cash in not found', null, HttpStatus.NOT_FOUND);
@@ -240,9 +233,14 @@ export class CashInService {
     }
   }
 
-  async remove(data: IdRequest): Promise<ErrorResponse | SuccessResponse> {
+  async remove(
+    data: CashbookIdRequest,
+  ): Promise<ErrorResponse | SuccessResponse> {
     try {
-      const cashin = await this.cashinRepository.findOneBy({ id: data.id });
+      const cashin = await this.cashinRepository.findOneBy({
+        id: data.id,
+        client_id: data.clientId,
+      });
 
       if (!cashin)
         return handleError(
@@ -324,6 +322,21 @@ export class CashInService {
           null,
           HttpStatus.NOT_FOUND,
         );
+      if (cashIn.status !== 0)
+        return handleError(
+          `Cash In with provided ID already Approved`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
+      const operator = await this.identityService.getUser({
+        userId: cashIn.user_id,
+      });
+      if (!operator.success)
+        return handleError(
+          `Error! Something went wrong: Authenticated ${operator.message}`,
+          null,
+          HttpStatus.NOT_FOUND,
+        );
       if (status === 1) {
         const updatedCashin = await this.cashinRepository.update(
           { id },
@@ -333,21 +346,21 @@ export class CashInService {
             verified_at: new Date(),
           },
         );
-        const { data }: any = branchRef;
-        const { data: creditData } = await this.appService.creditUser({
-          userId: data.userId,
-          clientId: data.clientId,
-          amount: cashIn.amount.toFixed(2),
-          source: 'Branch',
-          description: cashIn.comment,
-          username: data.username,
-          wallet: 'main',
-          subject: 'Cash In (Cashbook)',
-          channel: 'Cashbook',
+
+        const creditData = await this.paymentService.walletTransfer({
+          clientId: branchRef.data.clientId,
+          fromUserId: operator.data.id,
+          fromUsername: operator.data.username,
+          toUserId: branchRef.data.id,
+          toUsername: branchRef.data.username,
+          amount: cashIn.amount,
+          action: 'deposit',
+          description: `Transfer of ${cashIn.amount}  from ${operator.data.username} to ${branchRef.data.username}`,
         });
+
         const res = this.response({
           ...updatedCashin,
-          balance: creditData.balance,
+          balance: creditData.data.balance,
         });
 
         return handleResponse(res, 'Cash In Approved successfully');

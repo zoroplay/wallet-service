@@ -38,6 +38,7 @@
     "axios": "^1.6.7",
     "bull": "^4.12.2",
     "crypto": "^1.0.1",
+    "date-fns": "^3.6.0",
     "dayjs": "^1.11.10",
     "dotenv": "^16.3.1",
     "json-logger-service": "^9.0.1",
