@@ -207,7 +207,6 @@ export class MonnifyService {
     }
 
     private async authenticate(paymentSettings: PaymentMethod) {
-        console.log(paymentSettings)
         const key = btoa(`${paymentSettings.public_key}:${paymentSettings.secret_key}`);
         
         return await post(`${paymentSettings.base_url}/api/v1/auth/login`, {}, {
@@ -222,8 +221,6 @@ export class MonnifyService {
             if (!paymentSettings) return {success: false, message: 'Monnify has not been configured for client'};
 
             const authRes = await this.authenticate(paymentSettings);
-
-            console.log(authRes);
 
             if(authRes.requestSuccessful) {
                 const resp = await post(`${paymentSettings.base_url}/api/v1/merchant/transactions/init-transaction`, {
