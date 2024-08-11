@@ -6,11 +6,37 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
-export interface ResetBonusWalletRequest {
-  clientId: number;
+export interface PawapayToolkitRequest {
+  action: string;
+}
+
+export interface PawapayPredCorrRequest {
+  phoneNumber: string;
+}
+
+export interface CreatePawapayRequest {
   userId: number;
-  username: string;
-  wallet: string;
+  clientId: number;
+  source: string;
+  amount: number;
+  action: string;
+  depositId?: string | undefined;
+}
+
+export interface CreateBulkPawapayRequest {
+  userId: number;
+  clientId: number;
+  source: string;
+  amount: number[];
+}
+
+export interface FetchPawapayRequest {
+  action: string;
+  actionId: string;
+}
+
+export interface PawapayCountryRequest {
+  country: string;
 }
 
 export interface FetchLastApprovedRequest {
@@ -822,11 +848,27 @@ export interface WalletServiceClient {
 
   cashbookFindAllBranchCashOut(request: BranchRequest): Observable<CashInOutRepeatedResponse>;
 
+  handleCreatePawaPay(request: CreatePawapayRequest): Observable<CommonResponseObj>;
+
+  handleCreateBulkPawaPay(request: CreateBulkPawapayRequest): Observable<CommonResponseArray>;
+
+  handleFetchPawaPay(request: FetchPawapayRequest): Observable<CommonResponseArray>;
+
+  handlePawaPayResendCallback(request: FetchPawapayRequest): Observable<CommonResponseObj>;
+
+  handlePawaPayBalances(request: EmptyRequest): Observable<CommonResponseArray>;
+
+  handlePawaPayCountryBalances(request: PawapayCountryRequest): Observable<CommonResponseArray>;
+
+  handlePawaPayPredCorr(request: PawapayPredCorrRequest): Observable<CommonResponseObj>;
+
+  handlePawaPayToolkit(request: PawapayToolkitRequest): Observable<CommonResponseArray>;
+
+  handlePawaPayActiveConf(request: EmptyRequest): Observable<CommonResponseObj>;
+
   getBalance(request: GetBalanceRequest): Observable<WalletResponse>;
 
   createWallet(request: CreateWalletRequest): Observable<WalletResponse>;
-
-  resetBonusWallet(request: ResetBonusWalletRequest): Observable<WalletResponse>;
 
   fetchBetRange(request: FetchBetRangeRequest): Observable<FetchBetRangeResponse>;
 
@@ -837,6 +879,8 @@ export interface WalletServiceClient {
   fetchDepositCount(request: FetchDepositCountRequest): Observable<FetchDepositCountResponse>;
 
   creditUser(request: CreditUserRequest): Observable<WalletResponse>;
+
+  awardBonusWinning(request: CreditUserRequest): Observable<WalletResponse>;
 
   debitUser(request: DebitUserRequest): Observable<WalletResponse>;
 
@@ -1020,13 +1064,45 @@ export interface WalletServiceController {
     request: BranchRequest,
   ): Promise<CashInOutRepeatedResponse> | Observable<CashInOutRepeatedResponse> | CashInOutRepeatedResponse;
 
+  handleCreatePawaPay(
+    request: CreatePawapayRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  handleCreateBulkPawaPay(
+    request: CreateBulkPawapayRequest,
+  ): Promise<CommonResponseArray> | Observable<CommonResponseArray> | CommonResponseArray;
+
+  handleFetchPawaPay(
+    request: FetchPawapayRequest,
+  ): Promise<CommonResponseArray> | Observable<CommonResponseArray> | CommonResponseArray;
+
+  handlePawaPayResendCallback(
+    request: FetchPawapayRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  handlePawaPayBalances(
+    request: EmptyRequest,
+  ): Promise<CommonResponseArray> | Observable<CommonResponseArray> | CommonResponseArray;
+
+  handlePawaPayCountryBalances(
+    request: PawapayCountryRequest,
+  ): Promise<CommonResponseArray> | Observable<CommonResponseArray> | CommonResponseArray;
+
+  handlePawaPayPredCorr(
+    request: PawapayPredCorrRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  handlePawaPayToolkit(
+    request: PawapayToolkitRequest,
+  ): Promise<CommonResponseArray> | Observable<CommonResponseArray> | CommonResponseArray;
+
+  handlePawaPayActiveConf(
+    request: EmptyRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
   getBalance(request: GetBalanceRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
   createWallet(request: CreateWalletRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
-
-  resetBonusWallet(
-    request: ResetBonusWalletRequest,
-  ): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
   fetchBetRange(
     request: FetchBetRangeRequest,
@@ -1045,6 +1121,8 @@ export interface WalletServiceController {
   ): Promise<FetchDepositCountResponse> | Observable<FetchDepositCountResponse> | FetchDepositCountResponse;
 
   creditUser(request: CreditUserRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
+
+  awardBonusWinning(request: CreditUserRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
   debitUser(request: DebitUserRequest): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
@@ -1194,14 +1272,23 @@ export function WalletServiceControllerMethods() {
       "cashbookFindOneCashOut",
       "cashbookFindAllCashOut",
       "cashbookFindAllBranchCashOut",
+      "handleCreatePawaPay",
+      "handleCreateBulkPawaPay",
+      "handleFetchPawaPay",
+      "handlePawaPayResendCallback",
+      "handlePawaPayBalances",
+      "handlePawaPayCountryBalances",
+      "handlePawaPayPredCorr",
+      "handlePawaPayToolkit",
+      "handlePawaPayActiveConf",
       "getBalance",
       "createWallet",
-      "resetBonusWallet",
       "fetchBetRange",
       "fetchPlayerDeposit",
       "fetchDepositRange",
       "fetchDepositCount",
       "creditUser",
+      "awardBonusWinning",
       "debitUser",
       "inititateDeposit",
       "verifyDeposit",

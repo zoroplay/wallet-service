@@ -1,4 +1,6 @@
 /* eslint-disable prettier/prettier */
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
@@ -15,6 +17,7 @@ import {
   VerifyBankAccountResponse,
   CommonResponseObj,
   WalletTransferRequest,
+  PawapayCountryRequest,
 } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
@@ -23,6 +26,8 @@ import { MonnifyService } from './monnify.service';
 import * as dayjs from 'dayjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transaction } from 'src/entity/transaction.entity';
+import { PawapayService } from './pawapay.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PaymentService {
@@ -36,6 +41,7 @@ export class PaymentService {
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
     private paystackService: PaystackService,
+    private pawapayService: PawapayService,
     private monnifyService: MonnifyService,
     private identityService: IdentityService,
     private helperService: HelperService,
@@ -44,7 +50,7 @@ export class PaymentService {
   async inititateDeposit(
     param: InitiateDepositRequest,
   ): Promise<InitiateDepositResponse> {
-    const transactionNo = generateTrxNo();
+    let transactionNo = generateTrxNo();
     let link = '',
       description;
     // find user wallet
@@ -87,6 +93,20 @@ export class PaymentService {
 
           link = pRes.data.authorization_url;
 
+          break;
+        case 'pawapay':
+          const res = await this.pawapayService.generatePaymentLink({
+            amount: param.amount,
+            reference: transactionNo,
+            callback_url: user.callbackUrl + '/payment-verification/paystack',
+            currency: user.currency,
+          });
+
+          description = 'Online Deposit (Pawapay)';
+          if (!res.success) return res as any;
+
+          link = res.data.redirectUrl;
+          transactionNo = res.depositId;
           break;
         case 'flutterwave':
           description = 'Online Deposit (Flutterwave)';
@@ -492,7 +512,7 @@ export class PaymentService {
       };
     }
   }
-  
+
   async checkNoOfWithdrawals(userId) {
     const today = dayjs().format('YYYY-MM-DD');
 
@@ -518,5 +538,264 @@ export class PaymentService {
       },
     );
     // console.log('transactions', transactions);
+  }
+
+  async createBulkPayout(param) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+
+      const user = await this.identityService
+        .getPaymentData({
+          clientId: param.clientId,
+          userId: param.userId,
+          source: param.source,
+        })
+        .toPromise();
+      const actionId = uuidv4();
+      const res = await this.pawapayService.createBulkPayout(
+        user,
+        param.amounts,
+        actionId,
+      );
+
+      if (!res.success) return res;
+      const transactionNo = res.transactionNo;
+      await this.helperService.saveTransaction({
+        amount: param.amount,
+        channel: 'pawapay',
+        clientId: param.clientId,
+        toUserId: param.userId,
+        toUsername: wallet.username,
+        toUserBalance: wallet.available_balance,
+        fromUserId: 0,
+        fromUsername: 'System',
+        fromUserbalance: 0,
+        source: param.source,
+        subject: 'bulk payouts',
+        description: res.data.status,
+        transactionNo,
+      });
+
+      return {
+        success: true,
+        message: 'Success',
+        data: { transactionRef: transactionNo },
+      };
+    } catch (error) {
+      console.log(error.message);
+      return { success: false, message: error.message };
+    }
+  }
+  async createRequest(param) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+
+      const user = await this.identityService
+        .getPaymentData({
+          clientId: param.clientId,
+          userId: param.userId,
+          source: param.source,
+        })
+        .toPromise();
+
+      let subject, transactionNo, res;
+
+      const actionId = uuidv4();
+      switch (param.action) {
+        case 'deposit':
+          res = await this.pawapayService.createDeposit(
+            user,
+            param.amount,
+            actionId,
+          );
+          if (!res.success) return res;
+          subject = 'deposit';
+          transactionNo = res.transactionNo;
+
+          break;
+        case 'payouts':
+          res = await this.pawapayService.createPayout(
+            user,
+            param.amount,
+            actionId,
+          );
+
+          if (!res.success) return res;
+          subject = 'payouts';
+          transactionNo = res.transactionNo;
+
+          break;
+        case 'cancel-payouts':
+          res = await this.pawapayService.cancelPayout(actionId);
+          if (!res.success) return res;
+          transactionNo = res.transactionNo;
+          await this.transactionRepository.update(
+            {
+              transaction_no: transactionNo,
+            },
+            {
+              status: 2,
+            },
+          );
+          return {
+            success: true,
+            message: 'Payout cancelled successfully',
+            data: { transactionRef: transactionNo },
+          };
+          break;
+        case 'refunds':
+          res = await this.pawapayService.createRefund(
+            user,
+            param.amount,
+            actionId,
+            param.depositId,
+          );
+          if (!res.success) return res;
+          subject = 'refunds';
+          transactionNo = res.transactionNo;
+          break;
+        default:
+          return { success: false, message: 'Invalid action' };
+      }
+
+      await this.helperService.saveTransaction({
+        amount: param.amount,
+        channel: 'pawapay',
+        clientId: param.clientId,
+        toUserId: param.userId,
+        toUsername: wallet.username,
+        toUserBalance: wallet.available_balance,
+        fromUserId: 0,
+        fromUsername: 'System',
+        fromUserbalance: 0,
+        source: param.source,
+        subject,
+        description: res.data.status,
+        transactionNo,
+      });
+
+      return {
+        success: true,
+        message: 'Success',
+        data: { transactionRef: transactionNo },
+      };
+    } catch (error) {
+      console.log(error.message);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getRequests({ action, actionId }) {
+    try {
+      let data;
+      switch (action) {
+        case 'deposit':
+          data = await this.pawapayService.fetchDeposits(actionId);
+          if (!data.success) return data;
+          break;
+        case 'payouts':
+          data = await this.pawapayService.fetchPayouts(actionId);
+          if (!data.success) return data;
+
+          break;
+        case 'refunds':
+          data = await this.pawapayService.fetchRefunds(actionId);
+          if (!data.success) return data;
+
+          break;
+        default:
+          return { success: false, message: 'Invalid action' };
+      }
+
+      return {
+        success: true,
+        message: 'Success',
+        data,
+      };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async resendCallback({ action, actionId }) {
+    try {
+      let data;
+      switch (action) {
+        case 'deposit':
+          data = await this.pawapayService.depositResendCallback(actionId);
+          break;
+        case 'payouts':
+          data = await this.pawapayService.payoutResendCallback(actionId);
+          break;
+        case 'refunds':
+          data = await this.pawapayService.payoutResendCallback(actionId);
+          break;
+        default:
+          return { success: false, message: 'Invalid action' };
+      }
+      return {
+        success: true,
+        message: 'Success',
+        data,
+      };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async fetchToolkit({ action }) {
+    try {
+      let res;
+      switch (action) {
+        case 'availability':
+          res = await this.pawapayService.fetchAvailability();
+          break;
+        case 'public-key':
+          res = await this.pawapayService.fetchPublicKey();
+          break;
+        default:
+          return {
+            success: false,
+            message:
+              'Invalid action, the permitted actions are availability | public-key',
+          };
+      }
+
+      return {
+        success: true,
+        message: 'Success',
+        data: res.data,
+      };
+    } catch (error) {
+      console.log(error.message);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async predictCorrespondent(param: any) {
+    return this.pawapayService.predictCorrespondent(param.phoneNumber);
+  }
+  async fetchActiveConf() {
+    return this.pawapayService.fetchActiveConf();
+  }
+
+  async fetchWalletBalances() {
+    return this.pawapayService.fetchWalletBalances();
+  }
+
+  async fetchCountryWalletBalances(param: PawapayCountryRequest) {
+    return this.pawapayService.fetchCountryWalletBalances(param.country);
   }
 }
