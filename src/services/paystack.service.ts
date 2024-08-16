@@ -90,7 +90,8 @@ export class PaystackService {
                         subject: 'Deposit',
                         username: transaction.username,
                         amount: transaction.amount,
-                        transactionId: transaction.transaction_no
+                        transactionId: transaction.transaction_no,
+                        clientId: data.clientId
                     })
                     
                     return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
@@ -290,7 +291,8 @@ export class PaystackService {
                             subject: 'Deposit',
                             username: transaction.username,
                             amount: transaction.amount,
-                            transactionId: transaction.transaction_no
+                            transactionId: transaction.transaction_no,
+                            clientId: data.clientId
                         })
                         
                         break;

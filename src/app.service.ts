@@ -301,6 +301,7 @@ export class AppService {
         username: data.username,
         amount: data.amount,
         transactionId: transactionNo,
+        clientId: data.clientId
       });
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet credited");
@@ -385,6 +386,7 @@ export class AppService {
         username: data.username,
         amount: parseFloat(data.amount),
         transactionId: transactionNo,
+        clientId: data.clientId
       });
 
       wallet.balance = balance;

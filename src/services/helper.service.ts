@@ -95,35 +95,37 @@ export class HelperService {
     }
 
     // console.log(payload)
+    const apiKey = `${process.env.TRACKIER_API_KEY}_${data.clientId}`;
+    
+    if (apiKey) {
+      const authres: any = await this.getAccessToken(data.clientId);
 
-    const authres: any = await this.getAccessToken();
-
-    if (!authres.success) {
-      console.log("Unable to get trackier auth token");
-      return;
-    } else {
-      await axios
-        .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
-          headers: {
-            "x-api-key": process.env.TRACKIER_API_KEY,
-            authorization: `BEARER ${authres.data.accessToken}`,
-          },
-        })
-        .then((res) => {
-          console.log("trackier activity", res.data);
-        })
-        .catch((err) => {
-          console.log("trackier error", err.response.data);
-        });
+      if (!authres.success) {
+        console.log("Unable to get trackier auth token");
+        return;
+      } else {
+        await axios
+          .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
+            headers: {
+              "x-api-key": apiKey,
+              authorization: `BEARER ${authres.data.accessToken}`,
+            },
+          })
+          .then((res) => {
+            console.log("trackier activity", res.data);
+          })
+          .catch((err) => {
+            console.log("trackier error", err.response.data);
+          });
+      }
     }
   }
 
-  async getAccessToken() {
+  async getAccessToken(clientId) {
     const resp = await axios.post(
       `${this.trackierUrl}/api/public/v2/oauth/access-refresh-token`,
       {
-        auth_code:
-          "$2a$04$geRYyxPlSFlL6uMVUQNgnOV0YvXQB4cr3usXLfp7b0WzZHpky61nO",
+        auth_code: `${process.env.TRACKIER_AUTH_CODE}_${clientId}`
       }
     );
 

@@ -106,7 +106,8 @@ export class MonnifyService {
                             subject: 'Deposit',
                             username: transaction.username,
                             amount: transaction.amount,
-                            transactionId: transaction.transaction_no
+                            transactionId: transaction.transaction_no,
+                            clientId: data.clientId
                         })
                         
                         return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
@@ -123,7 +124,8 @@ export class MonnifyService {
                             subject: 'Withdrawal Request',
                             username: transaction.username,
                             amount: transaction.amount,
-                            transactionId: transaction.transaction_no
+                            transactionId: transaction.transaction_no,
+                            clientId: data.clientId
                         })
 
                         return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
@@ -315,7 +317,8 @@ export class MonnifyService {
                             subject: 'Deposit',
                             username: transaction.username,
                             amount: transaction.amount,
-                            transactionId: transaction.transaction_no
+                            transactionId: transaction.transaction_no,
+                            clientId: data.clientId
                         })
                     } else if (paymentStatus === "REVERSED" && transaction.status === 1) {
                         // find user wallet
@@ -329,7 +332,8 @@ export class MonnifyService {
                             subject: 'Withdrawal Request',
                             username: transaction.username,
                             amount: transaction.amount,
-                            transactionId: transaction.transaction_no
+                            transactionId: transaction.transaction_no,
+                            clientId: data.clientId
                         })
 
                         return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
