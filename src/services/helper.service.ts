@@ -96,9 +96,12 @@ export class HelperService {
 
     // console.log(payload)
     const apiKey = `${process.env.TRACKIER_API_KEY}_${data.clientId}`;
+    const authCode = `${process.env.TRACKIER_AUTH_CODE}_${data.clientId}`;
     
+    console.log(apiKey, authCode);
+
     if (apiKey) {
-      const authres: any = await this.getAccessToken(data.clientId);
+      const authres: any = await this.getAccessToken(authCode);
 
       if (!authres.success) {
         console.log("Unable to get trackier auth token");
@@ -121,11 +124,11 @@ export class HelperService {
     }
   }
 
-  async getAccessToken(clientId) {
+  async getAccessToken(auth_code) {
     const resp = await axios.post(
       `${this.trackierUrl}/api/public/v2/oauth/access-refresh-token`,
       {
-        auth_code: `${process.env.TRACKIER_AUTH_CODE}_${clientId}`
+        auth_code
       }
     );
 
