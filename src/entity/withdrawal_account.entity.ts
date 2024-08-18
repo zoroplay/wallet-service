@@ -19,10 +19,10 @@ export class WithdrawalAccount {
     @Column({ type: "varchar", length: 20, nullable: true})
     bank_code: string;
 
-    @Column({ type: "int" })
+    @Column({ type: "varchar", length: 150 })
     account_number: number;
 
-    @Column({ type: "varchar", length: 150, nullable: true})
+    @Column({ type: "varchar", length: 250, nullable: true})
     account_name: string;
 
     @Column({ type: "varchar", length: 150, nullable: true})

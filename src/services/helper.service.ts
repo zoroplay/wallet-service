@@ -6,6 +6,7 @@ import * as dayjs from "dayjs";
 import { Transaction } from "src/entity/transaction.entity";
 import { Wallet } from "src/entity/wallet.entity";
 import { Repository } from "typeorm";
+import 'dotenv/config';
 
 @Injectable()
 export class HelperService {
@@ -97,7 +98,7 @@ export class HelperService {
     // console.log(payload)
     const apiKey = `${process.env.TRACKIER_API_KEY}_${data.clientId}`;
     const authCode = `${process.env.TRACKIER_AUTH_CODE}_${data.clientId}`;
-    
+
     console.log(apiKey, authCode);
 
     if (apiKey) {
