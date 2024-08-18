@@ -114,6 +114,7 @@ export class AppService {
 
   async getBalance(data: GetBalanceRequest): Promise<WalletResponse> {
     try {
+
       const wallet = await this.walletRepository.findOne({
         where: {
           user_id: data.userId,
@@ -296,13 +297,17 @@ export class AppService {
       });
 
       // send deposit to trackier
-      await this.helperService.sendActivity({
-        subject: data.subject,
-        username: data.username,
-        amount: data.amount,
-        transactionId: transactionNo,
-        clientId: data.clientId
-      });
+      try {
+        await this.helperService.sendActivity({
+          subject: data.subject,
+          username: data.username,
+          amount: data.amount,
+          transactionId: transactionNo,
+          clientId: data.clientId
+        });
+      } catch (e) {
+        console.log('Trackier error: Credit User', e.message)
+      }
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet credited");
     } catch (e) {
@@ -381,13 +386,17 @@ export class AppService {
       });
 
       // send deposit to trackier
-      await this.helperService.sendActivity({
-        subject: data.subject,
-        username: data.username,
-        amount: parseFloat(data.amount),
-        transactionId: transactionNo,
-        clientId: data.clientId
-      });
+      try {
+        await this.helperService.sendActivity({
+          subject: data.subject,
+          username: data.username,
+          amount: parseFloat(data.amount),
+          transactionId: transactionNo,
+          clientId: data.clientId
+        });
+      } catch (e) {
+        console.log('trackier error: Debit User', e.message)
+      }
 
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet debited");

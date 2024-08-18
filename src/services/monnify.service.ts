@@ -102,13 +102,17 @@ export class MonnifyService {
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send deposit to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Deposit',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no,
-                            clientId: data.clientId
-                        })
+                        try {
+                            await this.helperService.sendActivity({
+                                subject: 'Deposit',
+                                username: transaction.username,
+                                amount: transaction.amount,
+                                transactionId: transaction.transaction_no,
+                                clientId: data.clientId
+                            })
+                        }  catch (e) {
+                            console.log('trackier error: Monnify', e.message)
+                        }
                         
                         return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
 
@@ -120,13 +124,17 @@ export class MonnifyService {
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send reversal request to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Withdrawal Request',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no,
-                            clientId: data.clientId
-                        })
+                        try {
+                            await this.helperService.sendActivity({
+                                subject: 'Withdrawal Request',
+                                username: transaction.username,
+                                amount: transaction.amount,
+                                transactionId: transaction.transaction_no,
+                                clientId: data.clientId
+                            })
+                        } catch (e) {
+                            console.log('Trackier error: Monnify Line 136', e.message)
+                        }
 
                         return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
                     }
@@ -313,13 +321,17 @@ export class MonnifyService {
                         await this.helperService.updateWallet(balance, transaction.user_id);
 
                         // send deposit to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Deposit',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no,
-                            clientId: data.clientId
-                        })
+                        try {
+                            await this.helperService.sendActivity({
+                                subject: 'Deposit',
+                                username: transaction.username,
+                                amount: transaction.amount,
+                                transactionId: transaction.transaction_no,
+                                clientId: data.clientId
+                            })
+                        } catch (e) {
+                            console.log('Trackier error: Monnify Line 333', e.message)
+                        }
                     } else if (paymentStatus === "REVERSED" && transaction.status === 1) {
                         // find user wallet
                         const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
@@ -328,13 +340,17 @@ export class MonnifyService {
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send reversal request to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Withdrawal Request',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no,
-                            clientId: data.clientId
-                        })
+                        try {
+                            await this.helperService.sendActivity({
+                                subject: 'Withdrawal Request',
+                                username: transaction.username,
+                                amount: transaction.amount,
+                                transactionId: transaction.transaction_no,
+                                clientId: data.clientId
+                            })
+                        } catch (e) {
+                            console.log('Trackier error: Monnify Line 352', e.message)
+                        }
 
                         return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
                     }

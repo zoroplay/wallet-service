@@ -85,14 +85,18 @@ export class PaystackService {
                         status: 1
                     });
 
-                    // send deposit to trackier
-                    await this.helperService.sendActivity({
-                        subject: 'Deposit',
-                        username: transaction.username,
-                        amount: transaction.amount,
-                        transactionId: transaction.transaction_no,
-                        clientId: data.clientId
-                    })
+                    try {
+                        // send deposit to trackier
+                        await this.helperService.sendActivity({
+                            subject: 'Deposit',
+                            username: transaction.username,
+                            amount: transaction.amount,
+                            transactionId: transaction.transaction_no,
+                            clientId: data.clientId
+                        })
+                    } catch (e) {
+                        console.log('Trackier error: Paystack Line 98', e.message)
+                    }
                     
                     return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
                 }
@@ -286,14 +290,18 @@ export class PaystackService {
                             })
                         }
 
-                        // send deposit to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Deposit',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no,
-                            clientId: data.clientId
-                        })
+                        try {
+                            // send deposit to trackier
+                            await this.helperService.sendActivity({
+                                subject: 'Deposit',
+                                username: transaction.username,
+                                amount: transaction.amount,
+                                transactionId: transaction.transaction_no,
+                                clientId: data.clientId
+                            })
+                        } catch (e) {
+                            console.log('Trackier error: Paystack Line 303', e.message)
+                        }
                         
                         break;
                     case 'transfer.success': 
