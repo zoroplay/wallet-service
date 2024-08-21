@@ -96,8 +96,8 @@ export class HelperService {
     }
 
     // console.log(payload)
-    const apiKey = `${process.env.TRACKIER_API_KEY}_${data.clientId}`;
-    const authCode = `${process.env.TRACKIER_AUTH_CODE}_${data.clientId}`;
+    const apiKey = process.env[`TRACKIER_API_KEY_${data.clientId}`];
+    const authCode = process.env[`TRACKIER_AUTH_CODE_${data.clientId}`]
 
     console.log(apiKey, authCode);
 
