@@ -38,7 +38,7 @@ export class WithdrawalService {
   ) {}
 
   async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-    console.log(data);
+    // console.log(data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: {
