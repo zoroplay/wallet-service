@@ -40,7 +40,6 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
-  WayaQuickRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -312,17 +311,6 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllExpenseType')
   CashbookFindAllExpenseType() {
     return this.cashbookService.findAllExpenseTypes();
-  }
-
-  // WAYAQUICK
-  @GrpcMethod(WALLET_SERVICE_NAME, 'HandleWayaQuickInit')
-  HandleWayaQuickInit(param: WayaQuickRequest) {
-    return this.paymentService.wayaquickInitializePayment(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'HandleWayaQuickVerify')
-  HandleWayaQuickVerify(param: WayaQuickRequest) {
-    return this.paymentService.wayaquickVerifyPayment(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')

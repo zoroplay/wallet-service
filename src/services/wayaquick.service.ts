@@ -1,38 +1,30 @@
 /* eslint-disable prettier/prettier */
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PaymentMethod } from 'src/entity/payment.method.entity';
+import { Repository } from 'typeorm';
 import * as WayaQuickRestClient from 'wayaquick-payment';
 @Injectable()
 export class WayaQuickService {
   private wayaQuickClient: WayaQuickRestClient;
 
-  constructor() {
-    const merchantId = 'MER_48MCm1724778103954FaDbe';
-    const publicKey = 'WAYAPUBK_TEST_0xcce6f814708a46b5baf6c02f4a76b8c4';
-    const environment = 'PRODUCTION';
+  constructor(
+    @InjectRepository(PaymentMethod)
+    private readonly paymentMethodRepository: Repository<PaymentMethod>,
+  ) {}
 
-    this.wayaQuickClient = new WayaQuickRestClient(
-      merchantId,
-      publicKey,
-      environment,
-    );
-  }
-
-  async initializePayment({ data: user }, amount) {
+  async generatePaymentLink(paymentData, client_id) {
+    const paymentSettings = await this.getSettings(client_id);
+    console.log(paymentData);
     try {
-      if (!user.firstName || !user.lastName || !user.email)
-        return {
-          success: false,
-          message: 'Account information not complete',
-        };
-      console.log('user:-', user, 'amount:-', amount);
-      const res = await this.wayaQuickClient.initializePayment({
-        amount: amount,
-        narration: 'Account Deposit',
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.username,
-      });
+      this.wayaQuickClient = new WayaQuickRestClient(
+        paymentSettings.merchant_id,
+        paymentSettings.public_key,
+        'PRODUCTION',
+      );
+
+      const res = await this.wayaQuickClient.initializePayment(paymentData);
+
       console.log('res:-', res, '______-----__:-');
       if (!res.status)
         return {
@@ -65,5 +57,14 @@ export class WayaQuickService {
         message: 'Unable to initiate deposit with paystack',
       };
     }
+  }
+
+  private async getSettings(client_id: number) {
+    return await this.paymentMethodRepository.findOne({
+      where: {
+        provider: 'wayaquick',
+        client_id,
+      },
+    });
   }
 }

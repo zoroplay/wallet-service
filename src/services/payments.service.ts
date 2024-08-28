@@ -47,9 +47,10 @@ export class PaymentService {
   async inititateDeposit(
     param: InitiateDepositRequest,
   ): Promise<InitiateDepositResponse> {
-    const transactionNo = generateTrxNo();
+    let transactionNo = generateTrxNo();
     let link = '',
       description;
+      console.log(param);
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
@@ -113,6 +114,25 @@ export class PaymentService {
           break;
         case 'mgurush':
           description = 'Online Deposit (mGurush)';
+          break;
+        case 'wayaquick':
+          description = 'Online Deposit (Wayaquick)';
+          const wRes: any = await this.wayaquickService.generatePaymentLink(
+            {
+              amount: param.amount,
+              email: user.email || `${user.username}@${user.siteUrl}`,
+              firstName: user.username,
+              lastName: user.username,
+              narration: description,
+              phoneNumber: '0'+user.username
+            },
+            param.clientId,
+          );
+
+          if (!wRes.success) return wRes;
+
+          link = wRes.data.authorization_url;
+          transactionNo = wRes.data.tranId;
 
           break;
         default:
@@ -279,65 +299,6 @@ export class PaymentService {
     }
   }
 
-  async wayaquickInitializePayment(param: WayaQuickRequest) {
-    try {
-      const wallet = await this.walletRepository
-        .createQueryBuilder()
-        .where('client_id = :clientId', { clientId: param.clientId })
-        .andWhere('user_id = :user_id', { user_id: param.userId })
-        .getOne();
-
-      if (!wallet) return { success: false, message: 'Wallet not found' };
-
-      const user = await firstValueFrom(
-        this.identityService.getUserDetails({
-          clientId: param.clientId,
-          userId: param.userId,
-        }),
-      );
-
-      const transaction = await this.wayaquickService.initializePayment(
-        user,
-        param.amount,
-      );
-
-      if (!transaction.success) {
-        return {
-          success: false,
-          message: transaction.message,
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-
-      await this.helperService.saveTransaction({
-        amount: param.amount,
-        channel: 'wayaquick',
-        clientId: param.clientId,
-        toUserId: param.userId,
-        toUsername: wallet.username,
-        toUserBalance: wallet.available_balance,
-        fromUserId: 0,
-        fromUsername: 'System',
-        fromUserbalance: 0,
-        source: 'internal',
-        subject: 'Payment',
-        description: 'wayaquick payment',
-        transactionNo: transaction.data.tranId,
-      });
-
-      return {
-        success: true,
-        message: transaction?.message,
-        data: transaction?.data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
   async wayaquickVerifyPayment(param: WayaQuickRequest) {
     try {
       const transaction = await this.transactionRepository.findOneBy({

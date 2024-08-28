@@ -25,7 +25,7 @@ export class Transaction {
   username: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: false })
+  @Column({ type: 'varchar', length: 150, nullable: false })
   transaction_no: string;
 
   @Column({ type: 'decimal', precision: 20, scale: 2, default: 0 })

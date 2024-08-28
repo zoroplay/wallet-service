@@ -255,6 +255,8 @@ export class AppService {
               parseFloat(data.amount);
             break;
         }
+        console.log(walletBalance, data.wallet)
+        
         await this.walletRepository.update(
           {
             user_id: data.userId,
