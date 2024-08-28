@@ -38,6 +38,7 @@ import { DepositConsumer } from './consumers/deposit.consumer';
 import { ReportingService } from './services/reporting.service';
 import { SalesReportService } from './cashbook/services/sales_report.service';
 import { SalesReport } from './cashbook/entities/sales_report.entity';
+import { WayaQuickService } from './services/wayaquick.service';
 
 @Module({
   imports: [
@@ -112,6 +113,7 @@ import { SalesReport } from './cashbook/entities/sales_report.entity';
     ExpensesService,
     ExpenseTypesService,
     SalesReportService,
+    WayaQuickService,
     DepositConsumer,
     WithdrawalService,
     WithdrawalConsumer,
