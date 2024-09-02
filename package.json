@@ -46,7 +46,8 @@
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.1",
     "sbe-service-proto": "github:zoroplay/sbe-service-proto",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.17",
+    "wayaquick-payment": "^1.0.9"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

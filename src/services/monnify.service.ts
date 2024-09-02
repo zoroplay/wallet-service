@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { HelperService } from './helper.service';
 import { post, get } from 'src/common/axios';
 import { generateTrxNo } from 'src/common/helpers';
+import { IdentityService } from 'src/identity/identity.service';
 
 @Injectable()
 export class MonnifyService {
@@ -22,7 +23,8 @@ export class MonnifyService {
         @InjectRepository(Withdrawal)
         private readonly withdrawalRepository: Repository<Withdrawal>,
 
-        private helperService: HelperService
+        private helperService: HelperService,
+        private identityService: IdentityService
     ) {
         // const paymentMethod = await this
     }
@@ -103,13 +105,16 @@ export class MonnifyService {
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send deposit to trackier
                         try {
-                            await this.helperService.sendActivity({
-                                subject: 'Deposit',
-                                username: transaction.username,
-                                amount: transaction.amount,
-                                transactionId: transaction.transaction_no,
-                                clientId: data.clientId
-                            })
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Deposit',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data);
+                            }
                         }  catch (e) {
                             console.log('trackier error: Monnify', e.message)
                         }
@@ -125,13 +130,16 @@ export class MonnifyService {
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send reversal request to trackier
                         try {
-                            await this.helperService.sendActivity({
-                                subject: 'Withdrawal Request',
-                                username: transaction.username,
-                                amount: transaction.amount,
-                                transactionId: transaction.transaction_no,
-                                clientId: data.clientId
-                            })
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Withdrawal Request',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data)
+                            }
                         } catch (e) {
                             console.log('Trackier error: Monnify Line 136', e.message)
                         }
@@ -322,13 +330,16 @@ export class MonnifyService {
 
                         // send deposit to trackier
                         try {
-                            await this.helperService.sendActivity({
-                                subject: 'Deposit',
-                                username: transaction.username,
-                                amount: transaction.amount,
-                                transactionId: transaction.transaction_no,
-                                clientId: data.clientId
-                            })
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Deposit',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data)
+                            }
                         } catch (e) {
                             console.log('Trackier error: Monnify Line 333', e.message)
                         }
@@ -341,13 +352,16 @@ export class MonnifyService {
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send reversal request to trackier
                         try {
-                            await this.helperService.sendActivity({
-                                subject: 'Withdrawal Request',
-                                username: transaction.username,
-                                amount: transaction.amount,
-                                transactionId: transaction.transaction_no,
-                                clientId: data.clientId
-                            })
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Withdrawal Request',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data)
+                            }
                         } catch (e) {
                             console.log('Trackier error: Monnify Line 352', e.message)
                         }

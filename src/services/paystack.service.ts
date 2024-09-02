@@ -11,6 +11,7 @@ import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
 import * as https from 'https';
+import { IdentityService } from 'src/identity/identity.service';
 
 @Injectable()
 export class PaystackService {
@@ -25,6 +26,7 @@ export class PaystackService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
 
     private helperService: HelperService,
+    private identityService: IdentityService,
   ) {}
 
   async generatePaymentLink(data, client_id) {
@@ -120,14 +122,17 @@ export class PaystackService {
           );
 
           try {
-            // send deposit to trackier
-            await this.helperService.sendActivity({
-              subject: 'Deposit',
-              username: transaction.username,
-              amount: transaction.amount,
-              transactionId: transaction.transaction_no,
-              clientId: data.clientId,
-            });
+            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+            if (keys.success) {
+              // send deposit to trackier
+              await this.helperService.sendActivity({
+                subject: 'Deposit',
+                username: transaction.username,
+                amount: transaction.amount,
+                transactionId: transaction.transaction_no,
+                clientId: data.clientId,
+              }, keys.data);
+            }
           } catch (e) {
             console.log('Trackier error: Paystack Line 98', e.message);
           }
@@ -378,14 +383,17 @@ export class PaystackService {
             }
 
             try {
-              // send deposit to trackier
-              await this.helperService.sendActivity({
-                subject: 'Deposit',
-                username: transaction.username,
-                amount: transaction.amount,
-                transactionId: transaction.transaction_no,
-                clientId: data.clientId,
-              });
+              const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+              if (keys.success) {
+                // send deposit to trackier
+                await this.helperService.sendActivity({
+                  subject: 'Deposit',
+                  username: transaction.username,
+                  amount: transaction.amount,
+                  transactionId: transaction.transaction_no,
+                  clientId: data.clientId,
+                }, keys.data);
+              }
             } catch (e) {
               console.log('Trackier error: Paystack Line 303', e.message);
             }

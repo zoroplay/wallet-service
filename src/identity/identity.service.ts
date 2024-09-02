@@ -13,6 +13,7 @@ import {
   protobufPackage,
   CommonResponseObj as IdentityCommonResponseObj,
   GetAgentUsersRequest,
+  SingleItemRequest,
 } from 'src/proto/identity.pb';
 import { CommonResponseObj } from 'src/proto/wallet.pb';
 
@@ -53,5 +54,10 @@ export class IdentityService {
   async getAgentUser(param: GetAgentUsersRequest) {
     // console.log(param)
     return await firstValueFrom(this.svc.listAgentUsers(param));
+  }
+
+  async getTrackierKeys(param: SingleItemRequest) {
+    // console.log(param)
+    return firstValueFrom(this.svc.getTrackierKeys(param));
   }
 }
