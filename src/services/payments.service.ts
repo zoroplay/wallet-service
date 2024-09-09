@@ -70,6 +70,8 @@ export class PaymentService {
       })
       .toPromise();
 
+      console.log(user);
+
     if (user.username === '')
       return { success: false, message: 'User does not exist' };
 
