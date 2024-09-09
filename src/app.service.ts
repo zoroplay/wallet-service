@@ -569,7 +569,7 @@ export class AppService {
     page = 1,
     limit = 20,
   }): Promise<UserTransactionResponse> {
-    // console.log(startDate, endDate, userId, clientId)
+    console.log(startDate, endDate, userId, clientId)
     try {
       let results = [];
       let query = this.transactionRepository
