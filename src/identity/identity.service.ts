@@ -4,7 +4,6 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import {
   FindUserRequest,
-  GetAgentUserRequest,
   GetClientRequest,
   GetPaymentDataRequest,
   GetUserDetailsRequest,
@@ -15,7 +14,6 @@ import {
   GetAgentUsersRequest,
   SingleItemRequest,
 } from 'src/proto/identity.pb';
-import { CommonResponseObj } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class IdentityService {
