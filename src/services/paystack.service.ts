@@ -31,6 +31,7 @@ export class PaystackService {
 
   async generatePaymentLink(data, client_id) {
     try {
+      console.log(data, client_id);
       const paymentSettings = await this.paystackSettings(client_id);
       // return false if paystack settings is not available
       if (!paymentSettings)
@@ -48,6 +49,7 @@ export class PaystackService {
           Accept: 'application/json',
         },
       );
+      console.log('paystack response', resp);
       return { success: true, data: resp.data };
     } catch (e) {
       console.log(e)
