@@ -35,6 +35,7 @@ import { Transaction } from "./entity/transaction.entity";
 import * as dayjs from "dayjs";
 
 import { Bank } from "./entity/bank.entity";
+import { IdentityService } from "./identity/identity.service";
 var customParseFormat = require("dayjs/plugin/customParseFormat");
 
 dayjs.extend(customParseFormat);
@@ -52,7 +53,8 @@ export class AppService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(Bank)
     private bankRepository: Repository<Bank>,
-    private helperService: HelperService
+    private helperService: HelperService,
+    private identityService: IdentityService,
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -255,6 +257,8 @@ export class AppService {
               parseFloat(data.amount);
             break;
         }
+        console.log(walletBalance, data.wallet)
+        
         await this.walletRepository.update(
           {
             user_id: data.userId,
@@ -298,13 +302,18 @@ export class AppService {
 
       // send deposit to trackier
       try {
-        await this.helperService.sendActivity({
-          subject: data.subject,
-          username: data.username,
-          amount: data.amount,
-          transactionId: transactionNo,
-          clientId: data.clientId
-        });
+        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+        if (keys.success){
+          await this.helperService.sendActivity({
+            subject: data.subject,
+            username: data.username,
+            amount: data.amount,
+            transactionId: transactionNo,
+            clientId: data.clientId,
+          },  keys.data);
+        }
+
       } catch (e) {
         console.log('Trackier error: Credit User', e.message)
       }
@@ -387,13 +396,17 @@ export class AppService {
 
       // send deposit to trackier
       try {
-        await this.helperService.sendActivity({
-          subject: data.subject,
-          username: data.username,
-          amount: parseFloat(data.amount),
-          transactionId: transactionNo,
-          clientId: data.clientId
-        });
+        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+        if (keys.success){
+          await this.helperService.sendActivity({
+            subject: data.subject,
+            username: data.username,
+            amount: parseFloat(data.amount),
+            transactionId: transactionNo,
+            clientId: data.clientId
+          }, keys.data);
+        }
       } catch (e) {
         console.log('trackier error: Debit User', e.message)
       }

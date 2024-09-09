@@ -60,7 +60,7 @@ export class HelperService {
     }
   }
 
-  async sendActivity(data) {
+  async sendActivity(data, keys) {
     const payload = {
       bets: 0,
       // date: dayjs().format('YYYY-MM-DD'),
@@ -96,8 +96,8 @@ export class HelperService {
     }
 
     // console.log(payload)
-    const apiKey = process.env[`TRACKIER_API_KEY_${data.clientId}`];
-    const authCode = process.env[`TRACKIER_AUTH_CODE_${data.clientId}`]
+    const apiKey = keys.ApiKey;
+    const authCode = keys.AuthCode;
 
     console.log(apiKey, authCode);
 

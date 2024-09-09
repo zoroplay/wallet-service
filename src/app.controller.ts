@@ -24,7 +24,6 @@ import {
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
   HandleReportRequest,
-
   GetTransactionsRequest,
   IdRequest,
   InitiateDepositRequest,
@@ -111,12 +110,12 @@ export class AppController {
     return this.appService.debitUser(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, "AwardBonusWinning")
+  @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
   ResetBonusWallet(param: CreditUserRequest) {
     return this.appService.awardBonusWinning(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, "DebitAgentBalance")
+  @GrpcMethod(WALLET_SERVICE_NAME, 'DebitAgentBalance')
   DebitAgent(param: DebitUserRequest) {
     return this.appService.debitAgentBalance(param);
   }
@@ -308,10 +307,12 @@ export class AppController {
   CashbookCreateExpenseType(param: CashbookCreateExpenseTypeRequest) {
     return this.cashbookService.addExpensetype(param);
   }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllExpenseType')
   CashbookFindAllExpenseType() {
     return this.cashbookService.findAllExpenseTypes();
   }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')
   GetUserAccounts(param: GetBalanceRequest) {
     return this.withdrawalService.getUserBankAccounts(param);

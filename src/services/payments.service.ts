@@ -15,6 +15,7 @@ import {
   VerifyBankAccountResponse,
   CommonResponseObj,
   WalletTransferRequest,
+  WayaQuickRequest,
 } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
@@ -23,6 +24,7 @@ import { MonnifyService } from './monnify.service';
 import * as dayjs from 'dayjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transaction } from 'src/entity/transaction.entity';
+import { WayaQuickService } from './wayaquick.service';
 
 @Injectable()
 export class PaymentService {
@@ -38,15 +40,17 @@ export class PaymentService {
     private paystackService: PaystackService,
     private monnifyService: MonnifyService,
     private identityService: IdentityService,
+    private wayaquickService: WayaQuickService,
     private helperService: HelperService,
   ) {}
 
   async inititateDeposit(
     param: InitiateDepositRequest,
   ): Promise<InitiateDepositResponse> {
-    const transactionNo = generateTrxNo();
+    let transactionNo = generateTrxNo();
     let link = '',
       description;
+      console.log(param);
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
@@ -110,6 +114,25 @@ export class PaymentService {
           break;
         case 'mgurush':
           description = 'Online Deposit (mGurush)';
+          break;
+        case 'wayaquick':
+          description = 'Online Deposit (Wayaquick)';
+          const wRes: any = await this.wayaquickService.generatePaymentLink(
+            {
+              amount: param.amount,
+              email: user.email || `${user.username}@${user.siteUrl}`,
+              firstName: user.username,
+              lastName: user.username,
+              narration: description,
+              phoneNumber: '0'+user.username
+            },
+            param.clientId,
+          );
+
+          if (!wRes.success) return wRes;
+
+          link = wRes.data.authorization_url;
+          transactionNo = wRes.data.tranId;
 
           break;
         default:
@@ -271,6 +294,45 @@ export class PaymentService {
       return {
         success: false,
         message: 'Unable to request status',
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+
+  async wayaquickVerifyPayment(param: WayaQuickRequest) {
+    try {
+      const transaction = await this.transactionRepository.findOneBy({
+        transaction_no: param.transactionId,
+        user_id: param.userId,
+        client_id: param.clientId,
+        channel: 'wayaquick',
+      });
+
+      if (!transaction) {
+        return {
+          success: false,
+          message: 'transaction id doesn`t exist',
+          status: HttpStatus.BAD_REQUEST,
+        };
+      }
+      const transact = await this.wayaquickService.verifyTransaction(param);
+
+      if (!transact.success) {
+        return {
+          success: false,
+          message: transact.message,
+          status: HttpStatus.BAD_REQUEST,
+        };
+      }
+      return {
+        success: true,
+        message: 'Success',
+        data: transact.data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error verifying account',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
@@ -492,7 +554,7 @@ export class PaymentService {
       };
     }
   }
-  
+
   async checkNoOfWithdrawals(userId) {
     const today = dayjs().format('YYYY-MM-DD');
 
