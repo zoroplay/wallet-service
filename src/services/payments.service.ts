@@ -50,7 +50,7 @@ export class PaymentService {
     let transactionNo = generateTrxNo();
     let link = '',
       description;
-      console.log(param);
+      // console.log(param);
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
@@ -70,7 +70,7 @@ export class PaymentService {
       })
       .toPromise();
 
-      console.log(user);
+      // console.log(user);
 
     if (user.username === '')
       return { success: false, message: 'User does not exist' };
