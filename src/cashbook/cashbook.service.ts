@@ -60,7 +60,7 @@ export class CashbookService {
   }
 
   async addCashout(data: CashbookCreateCashInOutRequest) {
-    console.log(`adding cashout`, data);
+    // console.log(`adding cashout`, data);
     return this.cashoutService.addCashOut(data);
   }
 

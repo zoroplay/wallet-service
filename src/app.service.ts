@@ -257,7 +257,7 @@ export class AppService {
               parseFloat(data.amount);
             break;
         }
-        console.log(walletBalance, data.wallet)
+        // console.log(walletBalance, data.wallet)
         
         await this.walletRepository.update(
           {
@@ -414,7 +414,7 @@ export class AppService {
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet debited");
     } catch (e) {
-      console.log(e.message);
+      // console.log(e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -605,7 +605,7 @@ export class AppService {
         offset = offset + 1;
       }
 
-      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy("transaction.created_at", "DESC")
@@ -772,7 +772,7 @@ export class AppService {
 
       return data;
     } catch (e) {
-      console.log(e);
+      // console.log(e);
       return null;
     }
   }

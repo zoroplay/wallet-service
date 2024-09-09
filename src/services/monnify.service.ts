@@ -31,7 +31,7 @@ export class MonnifyService {
 
     async verifyTransaction(param) {
         try {
-            console.log(param)
+            // console.log(param)
             const paymentSettings = await this.monnifySettings(param.clientId);
 
             const authRes = await this.authenticate(paymentSettings);
@@ -195,7 +195,7 @@ export class MonnifyService {
                     'Content-Type': 'application/json',
                 });
 
-                console.log('transfer', resp)
+                // console.log('transfer', resp)
 
 
                 return {success: resp.requestSuccessful, data: resp.data, message: resp.message};
@@ -205,7 +205,7 @@ export class MonnifyService {
             }
 
         } catch (e) {
-            console.log(e.message);
+            // console.log(e.message);
             return {success: false, message: 'Monnify Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
         }
     }
@@ -271,7 +271,7 @@ export class MonnifyService {
 
             switch (data.event) {
                 case 'SUCCESSFUL_TRANSACTION':
-                    console.log('complete transaction')
+                    // console.log('complete transaction')
                     let status = 0;
                     const paymentStatus = data.eventData.paymentStatus;
                     switch (paymentStatus) {
@@ -484,7 +484,7 @@ export class MonnifyService {
             return {success: true}
         
         } catch(e) {
-            console.log('Paystack error', e.message);
+            // console.log('Paystack error', e.message);
             return {success: false, message: "error occured"};
         }
     }

@@ -72,7 +72,7 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
-    console.log('entered fetchDepositCount');
+    // console.log('entered fetchDepositCount');
     return this.depositService.fetchDepositCount(payload);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
