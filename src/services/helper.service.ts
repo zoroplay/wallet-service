@@ -99,7 +99,7 @@ export class HelperService {
     const apiKey = keys.ApiKey;
     const authCode = keys.AuthCode;
 
-    // console.log(apiKey, authCode);
+    console.log(apiKey, authCode);
 
     if (apiKey) {
       const authres: any = await this.getAccessToken(authCode);
