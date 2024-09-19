@@ -38,7 +38,7 @@ export class WithdrawalService {
   ) {}
 
   async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-    console.log(data);
+    // console.log(data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: {
@@ -97,7 +97,7 @@ export class WithdrawalService {
 
       console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.amount}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber}:${data.amount}`,
       });
 
       return {
