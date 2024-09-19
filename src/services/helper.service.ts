@@ -108,19 +108,24 @@ export class HelperService {
         console.log("Unable to get trackier auth token");
         return;
       } else {
-        await axios
-          .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
-            headers: {
-              "x-api-key": apiKey,
-              authorization: `BEARER ${authres.data.accessToken}`,
-            },
-          })
-          .then((res) => {
-            console.log("trackier activity", res.data);
-          })
-          .catch((err) => {
-            console.log("trackier error", err.response.data);
-          });
+        // check if customer exist on trackier
+        const customer = await this.getTrackierCustomer(apiKey, authres.data.accessToken, payload.customerId)
+        // send activity
+        if (customer.success && customer.data) {
+          await axios
+            .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
+              headers: {
+                "x-api-key": apiKey,
+                authorization: `BEARER ${authres.data.accessToken}`,
+              },
+            })
+            .then((res) => {
+              console.log("trackier activity", res.data);
+            })
+            .catch((err) => {
+              console.log("trackier error", err.response.data);
+            });
+        }
       }
     }
   }
@@ -134,6 +139,20 @@ export class HelperService {
     );
 
     return resp.data;
+  }
+
+  async getTrackierCustomer(apiKey, token, customerId) {
+    const resp = await axios.get(
+      `${this.trackierUrl}/api/admin/v2/customers/${customerId}`,
+      {
+        headers: {
+          "x-api-key": apiKey,
+          authorization: `BEARER ${token}`,
+        },
+      }
+    );
+
+    return resp.data
   }
 
   async updateWallet(amount, user_id) {
