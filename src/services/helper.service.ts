@@ -120,7 +120,7 @@ export class HelperService {
               },
             })
             .then((res) => {
-              console.log("trackier activity", res.data);
+              // console.log("trackier activity suc", res.data);
             })
             .catch((err) => {
               console.log("trackier error", err.response.data);
