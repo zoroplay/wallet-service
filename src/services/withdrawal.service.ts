@@ -96,11 +96,9 @@ export class WithdrawalService {
       jobData.balance = wallet.available_balance;
 
       console.log('adding to withdrawal queue', jobData)
-      const resp = await this.withdrawalQueue.add('withdrawal-request', jobData, {
+      await this.withdrawalQueue.add('withdrawal-request', jobData, {
         jobId: `${data.userId}:${data.clientId}:${data.accountNumber}:${data.amount}`,
       });
-
-      console.log(resp);
 
       return {
         success: true,
