@@ -40,6 +40,7 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
+  WayaBankRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -360,5 +361,13 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetSystemTransaction')
   GetSystemTransaction(param: GetTransactionsRequest) {
     return this.reportingService.getSystemTransaction(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CreateVirtualAccount')
+  CreateVirtualAccount(param: WayaBankRequest) {
+    return this.paymentService.createVirtualAccount(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'WayabankAccountEnquiry')
+  WayabankAccountEnquiry(param: WayaBankRequest) {
+    return this.paymentService.wayabankAccountEnquiry(param);
   }
 }

@@ -23,6 +23,11 @@ export interface CreatePawapayRequest {
   depositId?: string | undefined;
 }
 
+export interface WayaBankRequest {
+  userId: number;
+  clientId: number;
+}
+
 export interface WayaQuickRequest {
   userId: number;
   clientId: number;
@@ -584,6 +589,15 @@ export interface Transaction {
   link?: string | undefined;
 }
 
+export interface SearchTransactionsRequest {
+  clientId: number;
+  userId: number;
+  accountNumber: string;
+  page: number;
+  size: number;
+  fromDate: string;
+}
+
 export interface VerifyBankAccountRequest {
   clientId: number;
   userId: number;
@@ -874,6 +888,10 @@ export interface WalletServiceClient {
 
   handlePawaPayActiveConf(request: EmptyRequest): Observable<CommonResponseObj>;
 
+  createVirtualAccount(request: WayaBankRequest): Observable<CommonResponseObj>;
+
+  wayabankAccountEnquiry(request: WayaBankRequest): Observable<CommonResponseObj>;
+
   handleWayaQuickInit(request: WayaQuickRequest): Observable<CommonResponseObj>;
 
   handleWayaQuickVerify(request: WayaQuickRequest): Observable<CommonResponseObj>;
@@ -1112,6 +1130,14 @@ export interface WalletServiceController {
     request: EmptyRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
+  createVirtualAccount(
+    request: WayaBankRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  wayabankAccountEnquiry(
+    request: WayaBankRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
   handleWayaQuickInit(
     request: WayaQuickRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
@@ -1301,6 +1327,8 @@ export function WalletServiceControllerMethods() {
       "handlePawaPayPredCorr",
       "handlePawaPayToolkit",
       "handlePawaPayActiveConf",
+      "createVirtualAccount",
+      "wayabankAccountEnquiry",
       "handleWayaQuickInit",
       "handleWayaQuickVerify",
       "getBalance",

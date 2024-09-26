@@ -16,6 +16,8 @@ import {
   CommonResponseObj,
   WalletTransferRequest,
   WayaQuickRequest,
+  WayaBankRequest,
+  SearhTransactionsRequest,
 } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
@@ -25,6 +27,7 @@ import * as dayjs from 'dayjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transaction } from 'src/entity/transaction.entity';
 import { WayaQuickService } from './wayaquick.service';
+import { WayaBankService } from './wayabank.service';
 
 @Injectable()
 export class PaymentService {
@@ -41,6 +44,7 @@ export class PaymentService {
     private monnifyService: MonnifyService,
     private identityService: IdentityService,
     private wayaquickService: WayaQuickService,
+    private wayabankService: WayaBankService,
     private helperService: HelperService,
   ) {}
 
@@ -50,7 +54,7 @@ export class PaymentService {
     let transactionNo = generateTrxNo();
     let link = '',
       description;
-      // console.log(param);
+    // console.log(param);
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
@@ -70,7 +74,7 @@ export class PaymentService {
       })
       .toPromise();
 
-      // console.log(user);
+    // console.log(user);
 
     if (user.username === '')
       return { success: false, message: 'User does not exist' };
@@ -126,7 +130,7 @@ export class PaymentService {
               firstName: user.username,
               lastName: user.username,
               narration: description,
-              phoneNumber: '0'+user.username
+              phoneNumber: '0' + user.username,
             },
             param.clientId,
           );
@@ -456,6 +460,86 @@ export class PaymentService {
         message: 'Error verifying account',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
+    }
+  }
+
+  async wayabankAccountEnquiry(param: WayaBankRequest) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+      if (!wallet.virtual_accountNo)
+        return {
+          success: false,
+          message: 'Virtual account not found, proceed to create',
+        };
+
+      const res = await this.wayabankService.accountEnquiry({
+        accountNumber: wallet.virtual_accountNo,
+      });
+      if (!res.success) return res;
+      if (res.success) {
+        await this.walletRepository.update(wallet.id, {
+          virtual_branchId: res.data.branchId,
+          virtual_accountNo: res.data.accountNo,
+          virtual_accountName: res.data.accountName,
+          virtual_balance: res.data.balance,
+          virtual_accountDefault: res.data.accountDefault,
+          virtual_nubanAccountNo: res.data.nubanAccountNo,
+          virtual_acctClosureFlag: res.data.acctClosureFlag,
+          virtual_acctDeleteFlag: res.data.acctDeleteFlag,
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Virtual account found and wallet updated',
+      };
+    } catch (error) {
+      return { success: false, message: 'Unable to complete transaction' };
+    }
+  }
+  async createVirtualAccount(param: WayaBankRequest) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+      const user = await firstValueFrom(
+        this.identityService.getUserDetails({
+          clientId: param.clientId,
+          userId: param.userId,
+        }),
+      );
+
+      const res = await this.wayabankService.createVirtualAccount({
+        user: user.data,
+      });
+      if (!res.success) return res;
+      if (res.success) {
+        await this.walletRepository.update(wallet.id, {
+          virtual_branchId: res.data.branchId,
+          virtual_accountNo: res.data.accountNo,
+          virtual_accountName: res.data.accountName,
+          virtual_balance: res.data.balance,
+          virtual_accountDefault: res.data.accountDefault,
+          virtual_nubanAccountNo: res.data.nubanAccountNo,
+          virtual_acctClosureFlag: res.data.acctClosureFlag,
+          virtual_acctDeleteFlag: res.data.acctDeleteFlag,
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Virtual account created and wallet updated',
+      };
+    } catch (error) {
+      return { success: false, message: 'Unable to complete transaction' };
     }
   }
 
