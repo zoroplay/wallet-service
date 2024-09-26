@@ -39,6 +39,7 @@ import { ReportingService } from './services/reporting.service';
 import { SalesReportService } from './cashbook/services/sales_report.service';
 import { SalesReport } from './cashbook/entities/sales_report.entity';
 import { WayaQuickService } from './services/wayaquick.service';
+import { WayaBankService } from './services/wayabank.service';
 
 @Module({
   imports: [
@@ -116,6 +117,7 @@ import { WayaQuickService } from './services/wayaquick.service';
     WayaQuickService,
     DepositConsumer,
     WithdrawalService,
+    WayaBankService,
     WithdrawalConsumer,
     ReportingService,
   ],
