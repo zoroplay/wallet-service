@@ -557,38 +557,38 @@ export class PaymentService {
           source: param.source,
         })
         .toPromise();
-      const actionId = uuidv4();
       const res = await this.pawapayService.createBulkPayout(
         user,
-        param.amounts,
-        actionId,
+        param.amount,
       );
 
       if (!res.success) return res;
-      const transactionNo = res.transactionNo;
-      await this.helperService.saveTransaction({
-        amount: param.amount,
-        channel: 'pawapay',
-        clientId: param.clientId,
-        toUserId: param.userId,
-        toUsername: wallet.username,
-        toUserBalance: wallet.available_balance,
-        fromUserId: 0,
-        fromUsername: 'System',
-        fromUserbalance: 0,
-        source: param.source,
-        subject: 'bulk payouts',
-        description: res.data.status,
-        transactionNo,
-      });
+      await Promise.all(
+        res.transactionRefs.map(async (_data) => {
+          return await this.helperService.saveTransaction({
+            amount: Number(_data.amount),
+            channel: 'pawapay',
+            clientId: param.clientId,
+            toUserId: param.userId,
+            toUsername: wallet.username,
+            toUserBalance: wallet.available_balance,
+            fromUserId: 0,
+            fromUsername: 'System',
+            fromUserbalance: 0,
+            source: param.source,
+            subject: 'bulk payouts',
+            description: _data.status,
+            transactionNo: _data.transactionRef,
+          });
+        }),
+      );
 
       return {
         success: true,
         message: 'Success',
-        data: { transactionRef: transactionNo },
+        data: res.transactionRefs,
       };
     } catch (error) {
-      console.log(error.message);
       return { success: false, message: error.message };
     }
   }
@@ -692,7 +692,6 @@ export class PaymentService {
         data: { transactionRef: transactionNo },
       };
     } catch (error) {
-      console.log(error.message);
       return { success: false, message: error.message };
     }
   }
@@ -779,7 +778,6 @@ export class PaymentService {
         data: res.data,
       };
     } catch (error) {
-      console.log(error.message);
       return { success: false, message: error.message };
     }
   }

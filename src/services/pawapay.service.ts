@@ -45,9 +45,8 @@ export class PawapayService {
         currency: data.currency,
         reason: 'Deposit',
       };
-
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/widget/sessions`,
+        `${process.env.PAWA_PAY_API}/widget/sessions`,
         requestBody,
         {
           headers: {
@@ -74,7 +73,7 @@ export class PawapayService {
     const sign = crypto.createSign('RSA-SHA512');
     sign.update(signatureInput);
     sign.end();
-    const signature = sign.sign(process.env.PRIVATE_KEY, 'base64');
+    const signature = sign.sign(process.env.PAWAPAY_PRIVATE_KEY, 'base64');
     const signatureHeader = `keyId="my-key-id",algorithm="rsa-sha512",headers="(request-target) content-digest",signature="${signature}"`;
     return { signature: signatureHeader, signatureInput: signatureInput };
   }
@@ -100,7 +99,6 @@ export class PawapayService {
     message?: string;
   }> {
     try {
-      // console.log('user, amount, 2345:', user, amount, 2345);
       const requestBody = {
         refundId,
         depositId,
@@ -109,41 +107,32 @@ export class PawapayService {
           {
             fieldName: 'customerId',
             fieldValue: user.email,
-            isPII: true,
           },
         ],
       };
-      // console.log(33, requestBody);
       const contentDigest = this.generateContentDigest(requestBody);
-      // console.log(55, contentDigest);
-      const { signature, signatureInput } = this.signRequest(
-        contentDigest,
-        `${process.env.PAWA_PAY_API_V1}/refunds`,
-        'POST',
-      );
-
-      console.log(77, signature, signatureInput);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/refunds`,
+        `${process.env.PAWA_PAY_API}/refunds`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             'Content-Digest': contentDigest,
-            Signature: signature,
-            'Signature-Input': signatureInput,
-            'Accept-Signature': 'ecdsa-p512-sha512',
-            'Accept-Digest': 'sha-512',
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
           },
         },
       );
-
       if (res.data.status === 'REJECTED')
-        return { success: false, message: res.data.rejectionReason };
+        return {
+          success: false,
+          message: res.data.rejectionReason.rejectionMessage,
+        };
 
       if (res.data.status === 'DUPLICATE_IGNORED')
-        return { success: false, message: res.data.rejectionReason };
+        return {
+          success: false,
+          message: res.data.rejectionReason.rejectionMessage,
+        };
 
       return {
         success: true,
@@ -171,50 +160,35 @@ export class PawapayService {
     try {
       const requestBody = {
         depositId,
-        amount: amount,
-        currency: user.currency,
-        country: user.country,
+        amount: `${amount}`,
+        currency: 'ZMW',
+        country: 'ZMB',
         correspondent: 'MTN_MOMO_ZMB',
-        payer: { type: 'MSISDN', address: { value: user.username } },
+        payer: { type: 'MSISDN', address: { value: '260763456789' } },
         statementDescription: 'Online Withdrawal',
-        customerTimestamp: Date.now(),
-        preAuthorisationCode: 'string',
+        customerTimestamp: new Date(),
+        preAuthorisationCode: user.pin,
         metadata: [
           {
             fieldName: 'customerId',
             fieldValue: user.email,
-            isPII: true,
           },
         ],
       };
-      console.log(33, requestBody);
       const contentDigest = this.generateContentDigest(requestBody);
-      console.log(55, contentDigest);
-      const { signature, signatureInput } = this.signRequest(
-        contentDigest,
-        `${process.env.PAWA_PAY_API_V1}/deposits`,
-        'POST',
-      );
-      console.log(77, signature, signatureInput);
 
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/deposits`,
+        `${process.env.PAWA_PAY_API}/deposits`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             'Content-Digest': contentDigest,
-            Signature: signature,
-            'Signature-Input': signatureInput,
-            'Accept-Signature': 'ecdsa-p512-sha512',
-            'Accept-Digest': 'sha-512',
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
           },
         },
       );
-
       if (res.data.status === 'REJECTED') {
-        console.log('res.data:', res.data);
         return { success: false, message: res.data.rejectionReason };
       }
       if (res.data.status === 'DUPLICATE_IGNORED')
@@ -247,12 +221,15 @@ export class PawapayService {
       const requestBody = {
         payoutId,
         amount: amount,
-        currency: user.currency,
-        country: user.country,
+        currency: 'ZMW',
+        country: 'ZMB',
         correspondent: 'MTN_MOMO_ZMB',
-        recipient: { type: 'MSISDN', address: { value: user.username } },
-        statementDescription: 'Online Withdrawal',
-        customerTimestamp: Date.now(),
+        recipient: {
+          type: 'MSISDN',
+          address: { value: `260${user.username}` },
+        },
+        statementDescription: 'Online Payouts',
+        customerTimestamp: new Date(),
         metadata: [
           {
             fieldName: 'customerId',
@@ -261,35 +238,30 @@ export class PawapayService {
           },
         ],
       };
-      const contentDigest = this.generateContentDigest(requestBody);
-      // console.log(55, contentDigest);
-      const { signature, signatureInput } = this.signRequest(
-        contentDigest,
-        `${process.env.PAWA_PAY_API_V1}/payouts`,
-        'POST',
-      );
 
+      const contentDigest = this.generateContentDigest(requestBody);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/payouts`,
+        `${process.env.PAWA_PAY_API}/payouts`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
             'Content-Digest': contentDigest,
-            Signature: signature,
-            'Signature-Input': signatureInput,
-            'Accept-Signature': 'ecdsa-p512-sha512',
-            'Accept-Digest': 'sha-512',
           },
         },
       );
-
       if (res.data.status === 'REJECTED')
-        return { success: false, message: res.data.rejectionReason };
+        return {
+          success: false,
+          message: res.data.rejectionReason.rejectionMessage,
+        };
 
       if (res.data.status === 'DUPLICATE_IGNORED')
-        return { success: false, message: res.data.rejectionReason };
+        return {
+          success: false,
+          message: res.data.rejectionReason.rejectionMessage,
+        };
 
       return {
         success: true,
@@ -299,7 +271,7 @@ export class PawapayService {
     } catch (e) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: e.message,
       };
     }
   }
@@ -311,49 +283,57 @@ export class PawapayService {
   }> {
     try {
       const { data }: any = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/payouts/fail-enqueued/${payoutId}`,
-
+        `${process.env.PAWA_PAY_API}/payouts/fail-enqueued/${payoutId}`,
+        {},
         {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+          },
         },
       );
-
       if (data.status === 'REJECTED')
-        return { success: false, message: data.rejectionReason };
+        return {
+          success: false,
+          message: data.rejectionReason,
+        };
 
-      if (data.status === 'FAILED')
-        return { success: false, message: data.rejectionReason };
+      if (data.status === 'DUPLICATE_IGNORED')
+        return {
+          success: false,
+          message: data.rejectionReason,
+        };
 
       return { success: true, data: data, transactionNo: data.payoutId };
     } catch (e) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: e.message,
       };
     }
   }
   async createBulkPayout(
     user: any,
     amounts: number[],
-    payoutId: string,
   ): Promise<{
     success: boolean;
     data?: any;
-    transactionNo?: string;
+    transactionRefs?: any[];
     message?: string;
   }> {
     try {
       const requestBody = amounts.map((amount) => {
+        const payoutId = uuidv4();
         return {
           payoutId,
-          amount: amount,
-          currency: user.currency,
-          country: user.country,
+          amount: `${amount}`,
+          currency: 'ZMW',
+          country: 'ZMB',
           correspondent: 'MTN_MOMO_ZMB',
-          recipient: { type: 'MSISDN', address: { value: user.username } },
-          statementDescription: 'Online Withdrawal',
-          customerTimestamp: Date.now(),
+          recipient: { type: 'MSISDN', address: { value: '260763456789' } },
+          statementDescription: 'Online Bulk Payouts',
+          customerTimestamp: new Date(),
+          preAuthorisationCode: user.pin,
           metadata: [
             {
               fieldName: 'customerId',
@@ -363,25 +343,40 @@ export class PawapayService {
           ],
         };
       });
+      let transactionRefs = requestBody.map((_body) => {
+        return {
+          transactionRef: _body.payoutId,
+          amount: _body.amount,
+        };
+      });
+      const contentDigest = this.generateContentDigest(requestBody);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/payouts/bulk`,
-        JSON.stringify([requestBody]),
+        `${process.env.PAWA_PAY_API}/payouts/bulk`,
+        requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            'Content-Digest': contentDigest,
           },
         },
       );
+      transactionRefs = transactionRefs.map((transaction, _index) => {
+        const _status = res.data.find((_, index) => index === _index);
+        return {
+          ...transaction,
+          status: _status.status,
+        };
+      });
       return {
         success: true,
         data: res.data,
-        transactionNo: payoutId,
+        transactionRefs,
       };
     } catch (e) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: e.message,
       };
     }
   }
@@ -389,7 +384,7 @@ export class PawapayService {
   async depositResendCallback(depositId) {
     try {
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/deposits/resend-callback`,
+        `${process.env.PAWA_PAY_API}/deposits/resend-callback`,
         JSON.stringify({
           depositId,
         }),
@@ -412,7 +407,7 @@ export class PawapayService {
   async payoutResendCallback(payoutId) {
     try {
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/payouts/resend-callback`,
+        `${process.env.PAWA_PAY_API}/payouts/resend-callback`,
         JSON.stringify({
           payoutId,
         }),
@@ -441,7 +436,7 @@ export class PawapayService {
   async refundResendCallback(refundId) {
     try {
       const { data } = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/refunds/resend-callback`,
+        `${process.env.PAWA_PAY_API}/refunds/resend-callback`,
         JSON.stringify({
           refundId,
         }),
@@ -470,7 +465,7 @@ export class PawapayService {
   async fetchDeposits(depositId) {
     try {
       const res = await axios.get(
-        `${process.env.PAWA_PAY_API_V1}/deposits/${depositId}`,
+        `${process.env.PAWA_PAY_API}/deposits/${depositId}`,
         {
           headers: {
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
@@ -486,8 +481,6 @@ export class PawapayService {
 
       return { success: true, data: res[0].data };
     } catch (e) {
-      console.log(127893, e.message);
-
       return {
         success: false,
         message: e.message,
@@ -498,7 +491,7 @@ export class PawapayService {
   async fetchPayouts(payoutId) {
     try {
       const res = await axios.get(
-        `${process.env.PAWA_PAY_API_V1}/payouts/${payoutId}`,
+        `${process.env.PAWA_PAY_API}/payouts/${payoutId}`,
         {
           headers: {
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
@@ -524,9 +517,10 @@ export class PawapayService {
   async fetchRefunds(refundId) {
     try {
       const { data } = await axios.get(
-        `${process.env.PAWA_PAY_API_V1}/refunds/${refundId}`,
+        `${process.env.PAWA_PAY_API}/refunds/${refundId}`,
         {
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
           },
         },
@@ -604,14 +598,14 @@ export class PawapayService {
     try {
       const res = await axios.post(
         `${process.env.PAWA_PAY_API_V1}/predict-correspondent`,
-        JSON.stringify({ msisdn: phoneNumber }),
+        { msisdn: phoneNumber },
         {
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
           },
         },
       );
-
       return { success: true, data: res.data };
     } catch (e) {
       return {
@@ -624,7 +618,7 @@ export class PawapayService {
   async fetchWalletBalances() {
     try {
       const res: any = await axios.get(
-        `${process.env.PAWA_PAY_API_V1}/wallet-balances`,
+        `${process.env.PAWA_PAY_API}/wallet-balances`,
         {
           headers: {
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
@@ -643,7 +637,7 @@ export class PawapayService {
   async fetchCountryWalletBalances(country: string) {
     try {
       const res: any = await axios.get(
-        `${process.env.PAWA_PAY_API_V1}/wallet-balances/${country}`,
+        `${process.env.PAWA_PAY_API}/wallet-balances/${country}`,
         {
           headers: {
             Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,

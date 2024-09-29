@@ -14,6 +14,13 @@ export interface HandlePinRequest {
   type: string;
 }
 
+export interface GetNetworkSalesRequest {
+  clientId: number;
+  from: string;
+  to: string;
+  product: string;
+}
+
 export interface DailyTransactionsRequest {
   userId: number;
   normalSales?: number | undefined;
@@ -557,6 +564,7 @@ export interface UpdateUserRequest {
   promoCode?: string | undefined;
   trackingToken?: string | undefined;
   parentId?: string | undefined;
+  lga?: string | undefined;
 }
 
 /** user */
@@ -705,6 +713,7 @@ export interface GetPaymentDataResponse {
   siteUrl: string;
   currency?: string | undefined;
   country?: string | undefined;
+  pin?: string | undefined;
 }
 
 export interface GetClientRequest {
@@ -1137,6 +1146,10 @@ export interface IdentityServiceClient {
   calculateNormalBonus(request: PayNormalRequest): Observable<PayNormalResponse>;
 
   payOutNormalBonus(request: PayNormalRequest): Observable<PayNormalResponse>;
+
+  getNetworkSalesReport(request: GetNetworkSalesRequest): Observable<CommonResponseObj>;
+
+  getTrackierKeys(request: SingleItemRequest): Observable<CommonResponseObj>;
 }
 
 export interface IdentityServiceController {
@@ -1425,6 +1438,14 @@ export interface IdentityServiceController {
   payOutNormalBonus(
     request: PayNormalRequest,
   ): Promise<PayNormalResponse> | Observable<PayNormalResponse> | PayNormalResponse;
+
+  getNetworkSalesReport(
+    request: GetNetworkSalesRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  getTrackierKeys(
+    request: SingleItemRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 }
 
 export function IdentityServiceControllerMethods() {
@@ -1509,6 +1530,8 @@ export function IdentityServiceControllerMethods() {
       "getNormalBonus",
       "calculateNormalBonus",
       "payOutNormalBonus",
+      "getNetworkSalesReport",
+      "getTrackierKeys",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
