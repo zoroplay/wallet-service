@@ -41,6 +41,8 @@ import {
   WalletTransferRequest,
   WithdrawRequest,
   WayaBankRequest,
+  Pitch90TransactionRequest,
+  Pitch90RegisterUrlRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -369,5 +371,13 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'WayabankAccountEnquiry')
   WayabankAccountEnquiry(param: WayaBankRequest) {
     return this.paymentService.wayabankAccountEnquiry(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90Transaction')
+  Pitch90Transaction(param: Pitch90TransactionRequest) {
+    return this.paymentService.pitch90Transaction(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90RegisterUrl')
+  Pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
+    return this.paymentService.pitch90RegisterUrl(param);
   }
 }

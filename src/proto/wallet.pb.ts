@@ -28,6 +28,19 @@ export interface WayaBankRequest {
   clientId: number;
 }
 
+export interface Pitch90TransactionRequest {
+  userId: number;
+  clientId: number;
+  amount: number;
+  action: string;
+  source: string;
+}
+
+export interface Pitch90RegisterUrlRequest {
+  action: string;
+  url: number;
+}
+
 export interface WayaQuickRequest {
   userId: number;
   clientId: number;
@@ -892,6 +905,10 @@ export interface WalletServiceClient {
 
   wayabankAccountEnquiry(request: WayaBankRequest): Observable<CommonResponseObj>;
 
+  pitch90Transaction(request: Pitch90TransactionRequest): Observable<CommonResponseObj>;
+
+  pitch90RegisterUrl(request: Pitch90RegisterUrlRequest): Observable<CommonResponseObj>;
+
   handleWayaQuickInit(request: WayaQuickRequest): Observable<CommonResponseObj>;
 
   handleWayaQuickVerify(request: WayaQuickRequest): Observable<CommonResponseObj>;
@@ -1138,6 +1155,14 @@ export interface WalletServiceController {
     request: WayaBankRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
+  pitch90Transaction(
+    request: Pitch90TransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  pitch90RegisterUrl(
+    request: Pitch90RegisterUrlRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
   handleWayaQuickInit(
     request: WayaQuickRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
@@ -1329,6 +1354,8 @@ export function WalletServiceControllerMethods() {
       "handlePawaPayActiveConf",
       "createVirtualAccount",
       "wayabankAccountEnquiry",
+      "pitch90Transaction",
+      "pitch90RegisterUrl",
       "handleWayaQuickInit",
       "handleWayaQuickVerify",
       "getBalance",
