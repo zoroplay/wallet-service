@@ -164,7 +164,7 @@ export class PawapayService {
         currency: 'ZMW',
         country: 'ZMB',
         correspondent: 'MTN_MOMO_ZMB',
-        payer: { type: 'MSISDN', address: { value: '260763456789' } },
+        payer: { type: 'MSISDN', address: { value: `254${user.username}` } },
         statementDescription: 'Online Withdrawal',
         customerTimestamp: new Date(),
         preAuthorisationCode: user.pin,
@@ -188,11 +188,18 @@ export class PawapayService {
           },
         },
       );
+      console.log(res.data);
       if (res.data.status === 'REJECTED') {
-        return { success: false, message: res.data.rejectionReason };
+        return {
+          success: false,
+          message: res.data.rejectionReason.rejectionMessage,
+        };
       }
       if (res.data.status === 'DUPLICATE_IGNORED')
-        return { success: false, message: res.data.rejectionReason };
+        return {
+          success: false,
+          message: res.data.rejectionReason.rejectionMessage,
+        };
 
       return {
         success: true,
@@ -330,7 +337,10 @@ export class PawapayService {
           currency: 'ZMW',
           country: 'ZMB',
           correspondent: 'MTN_MOMO_ZMB',
-          recipient: { type: 'MSISDN', address: { value: '260763456789' } },
+          recipient: {
+            type: 'MSISDN',
+            address: { value: `260${user.username}` },
+          },
           statementDescription: 'Online Bulk Payouts',
           customerTimestamp: new Date(),
           preAuthorisationCode: user.pin,
