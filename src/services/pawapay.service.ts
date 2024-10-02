@@ -158,13 +158,15 @@ export class PawapayService {
     message?: string;
   }> {
     try {
+      const _corr = await this.predictCorrespondent(`255${user.username}`);
+      console.log('CORRS', _corr);
       const requestBody = {
         depositId,
         amount: `${amount}`,
-        currency: 'ZMW',
-        country: 'ZMB',
-        correspondent: 'MTN_MOMO_ZMB',
-        payer: { type: 'MSISDN', address: { value: `254${user.username}` } },
+        currency: 'TZS',
+        country: _corr.data.country,
+        correspondent: _corr.data.correspondent,
+        payer: { type: 'MSISDN', address: { value: _corr.data.msisdn } },
         statementDescription: 'Online Withdrawal',
         customerTimestamp: new Date(),
         preAuthorisationCode: user.pin,
@@ -175,6 +177,8 @@ export class PawapayService {
           },
         ],
       };
+
+      console.log('REQ BODY', requestBody);
       const contentDigest = this.generateContentDigest(requestBody);
 
       const res = await axios.post(
@@ -188,7 +192,6 @@ export class PawapayService {
           },
         },
       );
-      console.log(res.data);
       if (res.data.status === 'REJECTED') {
         return {
           success: false,
@@ -207,6 +210,7 @@ export class PawapayService {
         transactionNo: res.data.depositId,
       };
     } catch (e) {
+      console.log(e);
       return {
         success: false,
         message: 'Unable to initiate deposit with paystack',
@@ -225,15 +229,16 @@ export class PawapayService {
     message?: string;
   }> {
     try {
+      const _corr = await this.predictCorrespondent(`255${user.username}`);
       const requestBody = {
         payoutId,
         amount: amount,
-        currency: 'ZMW',
-        country: 'ZMB',
-        correspondent: 'MTN_MOMO_ZMB',
+        currency: 'TZS',
+        country: _corr.data.country,
+        correspondent: _corr.data.correspondent,
         recipient: {
           type: 'MSISDN',
-          address: { value: `260${user.username}` },
+          address: { value: _corr.data.msisdn },
         },
         statementDescription: 'Online Payouts',
         customerTimestamp: new Date(),
@@ -328,18 +333,19 @@ export class PawapayService {
     transactionRefs?: any[];
     message?: string;
   }> {
+    const _corr = await this.predictCorrespondent(`255${user.username}`);
     try {
       const requestBody = amounts.map((amount) => {
         const payoutId = uuidv4();
         return {
           payoutId,
           amount: `${amount}`,
-          currency: 'ZMW',
-          country: 'ZMB',
-          correspondent: 'MTN_MOMO_ZMB',
+          currency: 'TZS',
+          country: _corr.data.country,
+          correspondent: _corr.data.correspondent,
           recipient: {
             type: 'MSISDN',
-            address: { value: `260${user.username}` },
+            address: { value: _corr.data.msisdn },
           },
           statementDescription: 'Online Bulk Payouts',
           customerTimestamp: new Date(),
@@ -616,6 +622,7 @@ export class PawapayService {
           },
         },
       );
+      console.log(res.data);
       return { success: true, data: res.data };
     } catch (e) {
       return {
