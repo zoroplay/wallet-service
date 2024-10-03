@@ -159,7 +159,6 @@ export class PawapayService {
   }> {
     try {
       const _corr = await this.predictCorrespondent(`255${user.username}`);
-      console.log('CORRS', _corr);
       const requestBody = {
         depositId,
         amount: `${amount}`,
@@ -178,7 +177,6 @@ export class PawapayService {
         ],
       };
 
-      console.log('REQ BODY', requestBody);
       const contentDigest = this.generateContentDigest(requestBody);
 
       const res = await axios.post(
@@ -210,7 +208,6 @@ export class PawapayService {
         transactionNo: res.data.depositId,
       };
     } catch (e) {
-      console.log(e);
       return {
         success: false,
         message: 'Unable to initiate deposit with paystack',
@@ -622,7 +619,6 @@ export class PawapayService {
           },
         },
       );
-      console.log(res.data);
       return { success: true, data: res.data };
     } catch (e) {
       return {
