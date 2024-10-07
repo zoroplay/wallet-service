@@ -11,6 +11,7 @@ import {
   CashbookCreateExpenseTypeRequest,
   CreateBulkPawapayRequest,
   CreatePawapayRequest,
+  CashbookIdRequest,
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
@@ -18,6 +19,7 @@ import {
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
   FetchPawapayRequest,
+  FetchLastApprovedRequest,
   FetchPlayerDepositRequest,
   FetchReportRequest,
   FetchSalesReportRequest,
@@ -36,7 +38,6 @@ import {
   PawapayToolkitRequest,
   PaymentMethodRequest,
   ProcessRetailTransaction,
-  // ResetBonusWalletRequest,
   UpdateWithdrawalRequest,
   UserTransactionRequest,
   ValidateTransactionRequest,
@@ -46,8 +47,6 @@ import {
   WalletTransferRequest,
   WithdrawRequest,
   EmptyRequest,
-  FetchLastApprovedRequest,
-  CashbookIdRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -80,8 +79,6 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
-    console.log('entered fetchDepositCount');
-    // console.log('entered fetchDepositCount');
     return this.depositService.fetchDepositCount(payload);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
@@ -170,7 +167,7 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ListBanks')
-  ListBanks(param: EmptyRequest) {
+  ListBanks() {
     return this.appService.listBanks();
   }
 
