@@ -95,8 +95,9 @@ export class WithdrawalService {
       jobData.withdrawalCode = generateTrxNo();
       jobData.balance = wallet.available_balance;
 
+      // console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.amount}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber}:${data.amount}`,
       });
 
       return {

@@ -33,7 +33,7 @@ export class WithdrawalConsumer {
     try {
       const data: any = job.data;
 
-      // console.log(data)
+      console.log(data)
       const autoDisbursement = data.autoDisbursement;
 
       // save withdrawal request

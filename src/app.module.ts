@@ -36,6 +36,7 @@ import { BullModule } from '@nestjs/bull';
 import { WithdrawalConsumer } from './consumers/withdrawal.consumer';
 import { DepositConsumer } from './consumers/deposit.consumer';
 import { ReportingService } from './services/reporting.service';
+import { PawapayService } from './services/pawapay.service';
 import { SalesReportService } from './cashbook/services/sales_report.service';
 import { SalesReport } from './cashbook/entities/sales_report.entity';
 import { WayaQuickService } from './services/wayaquick.service';
@@ -107,6 +108,7 @@ import { Pitch90SMSService } from './services/pitch90sms.service';
     OPayService,
     PaymentService,
     PaystackService,
+    PawapayService,
     HelperService,
     DepositService,
     CashbookService,
