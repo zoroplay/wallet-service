@@ -40,6 +40,8 @@ import { PawapayService } from './services/pawapay.service';
 import { SalesReportService } from './cashbook/services/sales_report.service';
 import { SalesReport } from './cashbook/entities/sales_report.entity';
 import { WayaQuickService } from './services/wayaquick.service';
+import { WayaBankService } from './services/wayabank.service';
+import { Pitch90SMSService } from './services/pitch90sms.service';
 
 @Module({
   imports: [
@@ -113,11 +115,13 @@ import { WayaQuickService } from './services/wayaquick.service';
     CashInService,
     CashOutService,
     ExpensesService,
+    Pitch90SMSService,
     ExpenseTypesService,
     SalesReportService,
     WayaQuickService,
     DepositConsumer,
     WithdrawalService,
+    WayaBankService,
     WithdrawalConsumer,
     ReportingService,
   ],

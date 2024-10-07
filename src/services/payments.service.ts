@@ -19,6 +19,9 @@ import {
   WalletTransferRequest,
   PawapayCountryRequest,
   WayaQuickRequest,
+  WayaBankRequest,
+  Pitch90RegisterUrlRequest,
+  Pitch90TransactionRequest,
 } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
@@ -30,6 +33,8 @@ import { Transaction } from 'src/entity/transaction.entity';
 import { PawapayService } from './pawapay.service';
 import { v4 as uuidv4 } from 'uuid';
 import { WayaQuickService } from './wayaquick.service';
+import { WayaBankService } from './wayabank.service';
+import { Pitch90SMSService } from './pitch90sms.service';
 
 @Injectable()
 export class PaymentService {
@@ -47,7 +52,9 @@ export class PaymentService {
     private monnifyService: MonnifyService,
     private identityService: IdentityService,
     private wayaquickService: WayaQuickService,
+    private wayabankService: WayaBankService,
     private helperService: HelperService,
+    private pitch90smsService: Pitch90SMSService,
   ) {}
 
   async inititateDeposit(
@@ -360,6 +367,94 @@ export class PaymentService {
     }
   }
 
+  async pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
+    try {
+      const res = await this.pitch90smsService.registerUrl(param);
+      if (!res) return res;
+      return {
+        success: true,
+        data: res.data,
+        message: res.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error verifying account',
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+  async pitch90Transaction(param: Pitch90TransactionRequest) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+
+      const user = await this.identityService
+        .getPaymentData({
+          clientId: param.clientId,
+          userId: param.userId,
+          source: param.source,
+        })
+        .toPromise();
+
+      let subject, transactionNo, res;
+      switch (param.action) {
+        case 'deposit':
+          res = await this.pitch90smsService.stkPush({
+            amount: param.amount,
+            user,
+          });
+          if (!res.success) return res;
+          transactionNo = res.data.ref_id;
+          subject = 'Pitch90 Deposit';
+          break;
+        case 'withdrawal':
+          res = await this.pitch90smsService.withdraw({
+            amount: param.amount,
+            user,
+          });
+          if (!res.success) return res;
+          transactionNo = res.data.ref_id;
+          subject = 'Pitch90 Withdrawal';
+          break;
+
+        default:
+          break;
+      }
+      await this.helperService.saveTransaction({
+        amount: param.amount,
+        channel: 'pawapay',
+        clientId: param.clientId,
+        toUserId: param.userId,
+        toUsername: wallet.username,
+        toUserBalance: wallet.available_balance,
+        fromUserId: 0,
+        fromUsername: 'System',
+        fromUserbalance: 0,
+        source: param.source,
+        subject,
+        description: res.data.status,
+        transactionNo,
+      });
+      return {
+        success: true,
+        message: 'Success',
+        data: { transactionRef: transactionNo },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error verifying account',
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+
   /**
    * Function: verifyPayment
    * Description: function to verify user payment
@@ -476,6 +571,86 @@ export class PaymentService {
         message: 'Error verifying account',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
+    }
+  }
+
+  async wayabankAccountEnquiry(param: WayaBankRequest) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+      if (!wallet.virtual_accountNo)
+        return {
+          success: false,
+          message: 'Virtual account not found, proceed to create',
+        };
+
+      const res = await this.wayabankService.accountEnquiry({
+        accountNumber: wallet.virtual_accountNo,
+      });
+      if (!res.success) return res;
+      if (res.success) {
+        await this.walletRepository.update(wallet.id, {
+          virtual_branchId: res.data.branchId,
+          virtual_accountNo: res.data.accountNo,
+          virtual_accountName: res.data.accountName,
+          virtual_balance: res.data.balance,
+          virtual_accountDefault: res.data.accountDefault,
+          virtual_nubanAccountNo: res.data.nubanAccountNo,
+          virtual_acctClosureFlag: res.data.acctClosureFlag,
+          virtual_acctDeleteFlag: res.data.acctDeleteFlag,
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Virtual account found and wallet updated',
+      };
+    } catch (error) {
+      return { success: false, message: 'Unable to complete transaction' };
+    }
+  }
+  async createVirtualAccount(param: WayaBankRequest) {
+    try {
+      const wallet = await this.walletRepository
+        .createQueryBuilder()
+        .where('client_id = :clientId', { clientId: param.clientId })
+        .andWhere('user_id = :user_id', { user_id: param.userId })
+        .getOne();
+      if (!wallet) return { success: false, message: 'Wallet not found' };
+      const user = await firstValueFrom(
+        this.identityService.getUserDetails({
+          clientId: param.clientId,
+          userId: param.userId,
+        }),
+      );
+
+      const res = await this.wayabankService.createVirtualAccount({
+        user: user.data,
+      });
+      if (!res.success) return res;
+      if (res.success) {
+        await this.walletRepository.update(wallet.id, {
+          virtual_branchId: res.data.branchId,
+          virtual_accountNo: res.data.accountNo,
+          virtual_accountName: res.data.accountName,
+          virtual_balance: res.data.balance,
+          virtual_accountDefault: res.data.accountDefault,
+          virtual_nubanAccountNo: res.data.nubanAccountNo,
+          virtual_acctClosureFlag: res.data.acctClosureFlag,
+          virtual_acctDeleteFlag: res.data.acctDeleteFlag,
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Virtual account created and wallet updated',
+      };
+    } catch (error) {
+      return { success: false, message: 'Unable to complete transaction' };
     }
   }
 
