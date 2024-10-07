@@ -14,15 +14,17 @@ import {
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
-  EmptyRequest,
   FetchBetRangeRequest,
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
   FetchPawapayRequest,
   FetchPlayerDepositRequest,
+  FetchReportRequest,
+  FetchSalesReportRequest,
   GetBalanceRequest,
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
+  HandleReportRequest,
   GetTransactionsRequest,
   IdRequest,
   InitiateDepositRequest,
@@ -43,6 +45,9 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
+  EmptyRequest,
+  FetchLastApprovedRequest,
+  CashbookIdRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -76,6 +81,7 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
     console.log('entered fetchDepositCount');
+    // console.log('entered fetchDepositCount');
     return this.depositService.fetchDepositCount(payload);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
@@ -195,16 +201,38 @@ export class AppController {
 
   // CashBook Service
   // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookVerifyFinalTransaction')
+  CashbookVerifyFinalTransaction(param: FetchLastApprovedRequest) {
+    return this.cashbookService.verifyFinalTransaction(param);
+  }
+  // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchLastApproved')
+  CashbookFetchLastApproved(param: FetchLastApprovedRequest) {
+    return this.cashbookService.fetchLastApproved(param);
+  }
+  // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchSalesReport')
+  CashbookFetchSalesReport(param: FetchSalesReportRequest) {
+    return this.cashbookService.fetchSalesReport(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchReport')
+  CashbookFetchReport(param: FetchReportRequest) {
+    return this.cashbookService.fetchBranchReport(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookHandleReport')
+  CashbookHandleReport(param: HandleReportRequest) {
+    return this.cashbookService.handleReport(param);
+  }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveCashIn')
   CashbookApproveCashIn(param: CashbookApproveCashInOutRequest) {
     return this.cashbookService.approveCashin(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookDeleteOneCashIn')
-  CashbookDeleteOneCashIn(param: IdRequest) {
+  CashbookDeleteOneCashIn(param: CashbookIdRequest) {
     return this.cashbookService.deleteOneCashin(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneCashIn')
-  CashbookFindOneCashIn(param: IdRequest) {
+  CashbookFindOneCashIn(param: CashbookIdRequest) {
     return this.cashbookService.findOneCashin(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookCreateCashIn')
@@ -218,11 +246,6 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllBranchCashIn')
   CashbookFindAllBranchCashIn(param: BranchRequest) {
     return this.cashbookService.findAllBranchCashin(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FindAllBranchApprovedCashinWDate')
-  FindAllBranchApprovedCashinWDate(param: BranchRequest) {
-    return this.cashbookService.findAllBranchApprovedCashinWDate(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FindAllBranchPendingCashinWDate')
@@ -241,11 +264,11 @@ export class AppController {
     return this.cashbookService.addCashout(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookDeleteOneCashOut')
-  CashbookDeleteOneCashOut(param: IdRequest) {
+  CashbookDeleteOneCashOut(param: CashbookIdRequest) {
     return this.cashbookService.deleteOneCashout(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneCashOut')
-  CashbookFindOneCashOut(param: IdRequest) {
+  CashbookFindOneCashOut(param: CashbookIdRequest) {
     return this.cashbookService.findOneCashout(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllCashOut')
@@ -271,12 +294,12 @@ export class AppController {
     return this.cashbookService.updateExpense(data);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookDeleteOneExpense')
-  CashbookDeleteOneExpense(data: IdRequest) {
+  CashbookDeleteOneExpense(data: CashbookIdRequest) {
     return this.cashbookService.deleteOneExpenses(data);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneExpense')
-  CashbookFindOneExpense(data: IdRequest) {
+  CashbookFindOneExpense(data: CashbookIdRequest) {
     return this.cashbookService.findOneExpenses(data);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllBranchExpense')

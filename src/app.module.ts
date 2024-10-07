@@ -37,6 +37,9 @@ import { WithdrawalConsumer } from './consumers/withdrawal.consumer';
 import { DepositConsumer } from './consumers/deposit.consumer';
 import { ReportingService } from './services/reporting.service';
 import { PawapayService } from './services/pawapay.service';
+import { SalesReportService } from './cashbook/services/sales_report.service';
+import { SalesReport } from './cashbook/entities/sales_report.entity';
+import { WayaQuickService } from './services/wayaquick.service';
 
 @Module({
   imports: [
@@ -88,6 +91,7 @@ import { PawapayService } from './services/pawapay.service';
       ExpenseTypes,
       CashIn,
       CashOut,
+      SalesReport,
     ]),
     IdentityModule,
     RetailModule,
@@ -110,6 +114,8 @@ import { PawapayService } from './services/pawapay.service';
     CashOutService,
     ExpensesService,
     ExpenseTypesService,
+    SalesReportService,
+    WayaQuickService,
     DepositConsumer,
     WithdrawalService,
     WithdrawalConsumer,

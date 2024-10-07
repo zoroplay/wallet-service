@@ -18,6 +18,10 @@ export class Expenses {
 
   @Index()
   @Column({ type: 'int' })
+  client_id: number;
+
+  @Index()
+  @Column({ type: 'int' })
   branch_id: number;
 
   @ManyToOne(() => ExpenseTypes, { eager: true })
@@ -28,18 +32,15 @@ export class Expenses {
   @Column({ type: 'int' })
   verified_by: number;
 
-  @Index()
   @Column({ type: 'bigint' })
   requested_amount: number;
-  @Index()
-  @Column({ type: 'bigint' })
-  approved_amount: number;
 
-  @Index()
+  @Column({ type: 'bigint' })
+  amount: number;
+
   @Column({ type: 'varchar', length: 225, nullable: false })
   branch_comment: string;
 
-  @Index()
   @Column({ type: 'varchar', length: 225, nullable: false })
   admin_comment: string;
 

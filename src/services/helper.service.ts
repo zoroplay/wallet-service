@@ -6,6 +6,7 @@ import * as dayjs from "dayjs";
 import { Transaction } from "src/entity/transaction.entity";
 import { Wallet } from "src/entity/wallet.entity";
 import { Repository } from "typeorm";
+import 'dotenv/config';
 
 @Injectable()
 export class HelperService {
@@ -59,7 +60,7 @@ export class HelperService {
     }
   }
 
-  async sendActivity(data) {
+  async sendActivity(data, keys) {
     const payload = {
       bets: 0,
       // date: dayjs().format('YYYY-MM-DD'),
@@ -95,39 +96,63 @@ export class HelperService {
     }
 
     // console.log(payload)
+    const apiKey = keys.ApiKey;
+    const authCode = keys.AuthCode;
 
-    const authres: any = await this.getAccessToken();
+    // console.log(apiKey, authCode);
 
-    if (!authres.success) {
-      console.log("Unable to get trackier auth token");
-      return;
-    } else {
-      await axios
-        .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
-          headers: {
-            "x-api-key": process.env.TRACKIER_API_KEY,
-            authorization: `BEARER ${authres.data.accessToken}`,
-          },
-        })
-        .then((res) => {
-          console.log("trackier activity", res.data);
-        })
-        .catch((err) => {
-          console.log("trackier error", err.response.data);
-        });
+    if (apiKey) {
+      const authres: any = await this.getAccessToken(authCode);
+
+      if (!authres.success) {
+        console.log("Unable to get trackier auth token");
+        return;
+      } else {
+        // check if customer exist on trackier
+        const customer = await this.getTrackierCustomer(apiKey, authres.data.accessToken, payload.customerId)
+        // send activity
+        if (customer.success && customer.data) {
+          await axios
+            .post(`${this.trackierUrl}/api/admin/v2/activities`, payload, {
+              headers: {
+                "x-api-key": apiKey,
+                authorization: `BEARER ${authres.data.accessToken}`,
+              },
+            })
+            .then((res) => {
+              // console.log("trackier activity suc", res.data);
+            })
+            .catch((err) => {
+              console.log("trackier error", err.response.data);
+            });
+        }
+      }
     }
   }
 
-  async getAccessToken() {
+  async getAccessToken(auth_code) {
     const resp = await axios.post(
       `${this.trackierUrl}/api/public/v2/oauth/access-refresh-token`,
       {
-        auth_code:
-          "$2a$04$geRYyxPlSFlL6uMVUQNgnOV0YvXQB4cr3usXLfp7b0WzZHpky61nO",
+        auth_code
       }
     );
 
     return resp.data;
+  }
+
+  async getTrackierCustomer(apiKey, token, customerId) {
+    const resp = await axios.get(
+      `${this.trackierUrl}/api/admin/v2/customers/${customerId}`,
+      {
+        headers: {
+          "x-api-key": apiKey,
+          authorization: `BEARER ${token}`,
+        },
+      }
+    );
+
+    return resp.data
   }
 
   async updateWallet(amount, user_id) {

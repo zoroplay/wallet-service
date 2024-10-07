@@ -4,7 +4,6 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import {
   FindUserRequest,
-  GetAgentUserRequest,
   GetClientRequest,
   GetPaymentDataRequest,
   GetUserDetailsRequest,
@@ -12,8 +11,9 @@ import {
   IdentityServiceClient,
   protobufPackage,
   CommonResponseObj as IdentityCommonResponseObj,
+  GetAgentUsersRequest,
+  SingleItemRequest,
 } from 'src/proto/identity.pb';
-import { CommonResponseObj } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class IdentityService {
@@ -47,5 +47,15 @@ export class IdentityService {
     userId,
   }: FindUserRequest): Promise<IdentityCommonResponseObj> {
     return firstValueFrom(this.svc.findUser({ userId }));
+  }
+
+  async getAgentUser(param: GetAgentUsersRequest) {
+    // console.log(param)
+    return await firstValueFrom(this.svc.listAgentUsers(param));
+  }
+
+  async getTrackierKeys(param: SingleItemRequest) {
+    // console.log(param)
+    return firstValueFrom(this.svc.getTrackierKeys(param));
   }
 }
