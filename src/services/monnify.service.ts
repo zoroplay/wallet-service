@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { HelperService } from './helper.service';
 import { post, get } from 'src/common/axios';
 import { generateTrxNo } from 'src/common/helpers';
+import { IdentityService } from 'src/identity/identity.service';
 
 @Injectable()
 export class MonnifyService {
@@ -22,14 +23,15 @@ export class MonnifyService {
         @InjectRepository(Withdrawal)
         private readonly withdrawalRepository: Repository<Withdrawal>,
 
-        private helperService: HelperService
+        private helperService: HelperService,
+        private identityService: IdentityService
     ) {
         // const paymentMethod = await this
     }
 
     async verifyTransaction(param) {
         try {
-            console.log(param)
+            // console.log(param)
             const paymentSettings = await this.monnifySettings(param.clientId);
 
             const authRes = await this.authenticate(paymentSettings);
@@ -102,12 +104,20 @@ export class MonnifyService {
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send deposit to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Deposit',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no
-                        })
+                        try {
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Deposit',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data);
+                            }
+                        }  catch (e) {
+                            console.log('trackier error: Monnify', e.message)
+                        }
                         
                         return {success: true, message: 'Transaction was successful', status: HttpStatus.OK};
 
@@ -119,12 +129,20 @@ export class MonnifyService {
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send reversal request to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Withdrawal Request',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no
-                        })
+                        try {
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Withdrawal Request',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data)
+                            }
+                        } catch (e) {
+                            console.log('Trackier error: Monnify Line 136', e.message)
+                        }
 
                         return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
                     }
@@ -177,7 +195,7 @@ export class MonnifyService {
                     'Content-Type': 'application/json',
                 });
 
-                console.log('transfer', resp)
+                // console.log('transfer', resp)
 
 
                 return {success: resp.requestSuccessful, data: resp.data, message: resp.message};
@@ -187,7 +205,7 @@ export class MonnifyService {
             }
 
         } catch (e) {
-            console.log(e.message);
+            // console.log(e.message);
             return {success: false, message: 'Monnify Error! unable to disburse funds', status: HttpStatus.BAD_REQUEST};
         }
     }
@@ -253,7 +271,7 @@ export class MonnifyService {
 
             switch (data.event) {
                 case 'SUCCESSFUL_TRANSACTION':
-                    console.log('complete transaction')
+                    // console.log('complete transaction')
                     let status = 0;
                     const paymentStatus = data.eventData.paymentStatus;
                     switch (paymentStatus) {
@@ -311,12 +329,20 @@ export class MonnifyService {
                         await this.helperService.updateWallet(balance, transaction.user_id);
 
                         // send deposit to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Deposit',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no
-                        })
+                        try {
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Deposit',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data)
+                            }
+                        } catch (e) {
+                            console.log('Trackier error: Monnify Line 333', e.message)
+                        }
                     } else if (paymentStatus === "REVERSED" && transaction.status === 1) {
                         // find user wallet
                         const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
@@ -325,12 +351,20 @@ export class MonnifyService {
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send reversal request to trackier
-                        await this.helperService.sendActivity({
-                            subject: 'Withdrawal Request',
-                            username: transaction.username,
-                            amount: transaction.amount,
-                            transactionId: transaction.transaction_no
-                        })
+                        try {
+                            const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+                            if (keys.success) {
+                                await this.helperService.sendActivity({
+                                    subject: 'Withdrawal Request',
+                                    username: transaction.username,
+                                    amount: transaction.amount,
+                                    transactionId: transaction.transaction_no,
+                                    clientId: data.clientId
+                                }, keys.data)
+                            }
+                        } catch (e) {
+                            console.log('Trackier error: Monnify Line 352', e.message)
+                        }
 
                         return {success: true, message: 'Transaction was reversed', status: HttpStatus.OK};
                     }
@@ -450,7 +484,7 @@ export class MonnifyService {
             return {success: true}
         
         } catch(e) {
-            console.log('Paystack error', e.message);
+            // console.log('Paystack error', e.message);
             return {success: false, message: "error occured"};
         }
     }

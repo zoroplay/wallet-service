@@ -11,18 +11,22 @@ import {
   CashbookCreateExpenseTypeRequest,
   CreateBulkPawapayRequest,
   CreatePawapayRequest,
+  CashbookIdRequest,
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
-  EmptyRequest,
   FetchBetRangeRequest,
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
   FetchPawapayRequest,
+  FetchLastApprovedRequest,
   FetchPlayerDepositRequest,
+  FetchReportRequest,
+  FetchSalesReportRequest,
   GetBalanceRequest,
   GetNetworkBalanceRequest,
   GetPaymentMethodRequest,
+  HandleReportRequest,
   GetTransactionsRequest,
   IdRequest,
   InitiateDepositRequest,
@@ -34,7 +38,6 @@ import {
   PawapayToolkitRequest,
   PaymentMethodRequest,
   ProcessRetailTransaction,
-  // ResetBonusWalletRequest,
   UpdateWithdrawalRequest,
   UserTransactionRequest,
   ValidateTransactionRequest,
@@ -75,7 +78,6 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
-    console.log('entered fetchDepositCount');
     return this.depositService.fetchDepositCount(payload);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
@@ -111,6 +113,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'DebitUser')
   DebitUser(param: DebitUserRequest) {
     return this.appService.debitUser(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
+  ResetBonusWallet(param: CreditUserRequest) {
+    return this.appService.awardBonusWinning(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'DebitAgentBalance')
@@ -164,7 +171,7 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ListBanks')
-  ListBanks(param: EmptyRequest) {
+  ListBanks() {
     return this.appService.listBanks();
   }
 
@@ -195,6 +202,28 @@ export class AppController {
 
   // CashBook Service
   // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookVerifyFinalTransaction')
+  CashbookVerifyFinalTransaction(param: FetchLastApprovedRequest) {
+    return this.cashbookService.verifyFinalTransaction(param);
+  }
+  // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchLastApproved')
+  CashbookFetchLastApproved(param: FetchLastApprovedRequest) {
+    return this.cashbookService.fetchLastApproved(param);
+  }
+  // CASH IN
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchSalesReport')
+  CashbookFetchSalesReport(param: FetchSalesReportRequest) {
+    return this.cashbookService.fetchSalesReport(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchReport')
+  CashbookFetchReport(param: FetchReportRequest) {
+    return this.cashbookService.fetchBranchReport(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookHandleReport')
+  CashbookHandleReport(param: HandleReportRequest) {
+    return this.cashbookService.handleReport(param);
+  }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveCashIn')
   CashbookApproveCashIn(param: CashbookApproveCashInOutRequest) {
     return this.cashbookService.approveCashin(param);
@@ -205,6 +234,11 @@ export class AppController {
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneCashIn')
   CashbookFindOneCashIn(param: IdRequest) {
+  CashbookDeleteOneCashIn(param: CashbookIdRequest) {
+    return this.cashbookService.deleteOneCashin(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindOneCashIn')
+  CashbookFindOneCashIn(param: CashbookIdRequest) {
     return this.cashbookService.findOneCashin(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookCreateCashIn')
@@ -293,10 +327,12 @@ export class AppController {
   CashbookCreateExpenseType(param: CashbookCreateExpenseTypeRequest) {
     return this.cashbookService.addExpensetype(param);
   }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllExpenseType')
   CashbookFindAllExpenseType() {
     return this.cashbookService.findAllExpenseTypes();
   }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')
   GetUserAccounts(param: GetBalanceRequest) {
     return this.withdrawalService.getUserBankAccounts(param);

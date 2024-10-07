@@ -35,6 +35,7 @@ import { Transaction } from "./entity/transaction.entity";
 import * as dayjs from "dayjs";
 
 import { Bank } from "./entity/bank.entity";
+import { IdentityService } from "./identity/identity.service";
 var customParseFormat = require("dayjs/plugin/customParseFormat");
 
 dayjs.extend(customParseFormat);
@@ -52,7 +53,8 @@ export class AppService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(Bank)
     private bankRepository: Repository<Bank>,
-    private helperService: HelperService
+    private helperService: HelperService,
+    private identityService: IdentityService,
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -114,6 +116,7 @@ export class AppService {
 
   async getBalance(data: GetBalanceRequest): Promise<WalletResponse> {
     try {
+
       const wallet = await this.walletRepository.findOne({
         where: {
           user_id: data.userId,
@@ -254,6 +257,8 @@ export class AppService {
               parseFloat(data.amount);
             break;
         }
+        // console.log(walletBalance, data.wallet)
+        
         await this.walletRepository.update(
           {
             user_id: data.userId,
@@ -296,12 +301,22 @@ export class AppService {
       });
 
       // send deposit to trackier
-      await this.helperService.sendActivity({
-        subject: data.subject,
-        username: data.username,
-        amount: data.amount,
-        transactionId: transactionNo,
-      });
+      try {
+        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+        if (keys.success){
+          await this.helperService.sendActivity({
+            subject: data.subject,
+            username: data.username,
+            amount: data.amount,
+            transactionId: transactionNo,
+            clientId: data.clientId,
+          },  keys.data);
+        }
+
+      } catch (e) {
+        console.log('Trackier error: Credit User', e.message)
+      }
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet credited");
     } catch (e) {
@@ -380,27 +395,36 @@ export class AppService {
       });
 
       // send deposit to trackier
-      await this.helperService.sendActivity({
-        subject: data.subject,
-        username: data.username,
-        amount: parseFloat(data.amount),
-        transactionId: transactionNo,
-      });
+      try {
+        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+        if (keys.success){
+          await this.helperService.sendActivity({
+            subject: data.subject,
+            username: data.username,
+            amount: parseFloat(data.amount),
+            transactionId: transactionNo,
+            clientId: data.clientId
+          }, keys.data);
+        }
+      } catch (e) {
+        console.log('trackier error: Debit User', e.message)
+      }
 
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet debited");
     } catch (e) {
-      console.log(e.message);
+      // console.log(e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async resetBonusWallet(data) {
+  async awardBonusWinning(data: CreditUserRequest) {
     try {
       let wallet;
       switch (data.wallet) {
         case 'sport-bonus':
-          wallet = 'sport-bonus'
+          wallet = 'sport_bonus_balance'
           break;
         case 'casino':
           wallet = 'casino_bonus_balance'
@@ -417,6 +441,8 @@ export class AppService {
           client_id: data.clientId,
         },
         {
+          balance: parseFloat(data.amount),
+          available_balance: parseFloat(data.amount),
           [wallet]: 0,
         }
       );
@@ -438,7 +464,7 @@ export class AppService {
         toUsername: data.username,
         toUserBalance: 0,
         status: 1,
-        walletType: 'Sport Bonus',
+        walletType: 'Main',
       });
       
     } catch (e) {
@@ -579,7 +605,7 @@ export class AppService {
         offset = offset + 1;
       }
 
-      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy("transaction.created_at", "DESC")
@@ -746,7 +772,7 @@ export class AppService {
 
       return data;
     } catch (e) {
-      console.log(e);
+      // console.log(e);
       return null;
     }
   }
