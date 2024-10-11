@@ -213,7 +213,7 @@ export class DepositService {
 
   async processShopDeposit(data): Promise<CommonResponseObj> {
     try {
-      console.log(data);
+      // console.log(data);
       // get withdrawal request
       const transaction = await this.transactionRepository.findOne({where: {id: data.id, status: 0}});
 
@@ -242,9 +242,9 @@ export class DepositService {
         },
       });
 
-      console.log(wallet)
+      console.log(wallet, transaction)
 
-      if (wallet.available_balance < transaction.amount) {
+      if (parseFloat(wallet.available_balance.toString()) < transaction.amount) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
