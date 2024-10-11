@@ -213,6 +213,7 @@ export class DepositService {
 
   async processShopDeposit(data): Promise<CommonResponseObj> {
     try {
+      console.log(data);
       // get withdrawal request
       const transaction = await this.transactionRepository.findOne({where: {id: data.id, status: 0}});
 
@@ -240,6 +241,8 @@ export class DepositService {
           client_id: data.clientId,
         },
       });
+
+      console.log(wallet)
 
       if (wallet.available_balance < transaction.amount) {
         return {
