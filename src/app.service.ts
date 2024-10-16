@@ -421,29 +421,31 @@ export class AppService {
 
   async awardBonusWinning(data: CreditUserRequest) {
     try {
-      let wallet;
+      let walletType: string;
       switch (data.wallet) {
         case 'sport-bonus':
-          wallet = 'sport_bonus_balance'
+          walletType = 'sport_bonus_balance'
           break;
         case 'casino':
-          wallet = 'casino_bonus_balance'
+          walletType = 'casino_bonus_balance'
           break;
         case 'virtual':
-          wallet = 'virtual_bonus_balance'
+          walletType = 'virtual_bonus_balance'
           break;
         default:
           break;
       }
+      const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
+
       await this.walletRepository.update(
         {
           user_id: data.userId,
           client_id: data.clientId,
         },
         {
-          balance: parseFloat(data.amount),
-          available_balance: parseFloat(data.amount),
-          [wallet]: 0,
+          balance: wallet.balance + parseFloat(data.amount),
+          available_balance: wallet.available_balance + parseFloat(data.amount),
+          [walletType]: 0,
         }
       );
 
