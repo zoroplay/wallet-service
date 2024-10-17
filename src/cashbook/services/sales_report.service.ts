@@ -18,10 +18,13 @@ import { CashIn } from '../entities/cashin.entity';
 import { CashOut } from '../entities/cashout.entity';
 import { Expenses } from '../entities/expenses.entity';
 import { SalesReport } from '../entities/sales_report.entity';
+import { Wallet } from 'src/entity/wallet.entity';
 
 @Injectable()
 export class SalesReportService {
   constructor(
+    @InjectRepository(Wallet)
+    private walletRepository: Repository<Wallet>,
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(CashIn)
@@ -396,6 +399,128 @@ export class SalesReportService {
       };
 
       return handleResponse(res, 'report for date fetched successfully');
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+  async fetchMonthlyShopReport({ clientId, userId }: FetchReportRequest) {
+    try {
+      const currentDate = new Date();
+
+      // Calculate the first day of the current month
+      const firstDayOfMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1,
+      );
+      console.log(
+        'URRENT DATE',
+        currentDate,
+        firstDayOfMonth,
+        'FIRST OF NONTHS',
+        clientId,
+        userId,
+      );
+      const userIds = await this.fetchUserIds(userId, clientId);
+
+      const [
+        _manager_balance,
+        _cashier_balance,
+        _total_sales,
+        _total_payouts,
+        _total_expenses,
+      ] = await Promise.all([
+        await this.walletRepository
+          .createQueryBuilder('wallets')
+          .select('SUM(wallets.available_balance)', 'sum')
+          .where('wallets.user_id = :userId', { userId })
+          .andWhere('wallets.client_id = :clientId', { clientId })
+          .andWhere('wallets.created_at BETWEEN :startDate AND :endDate', {
+            startDate: firstDayOfMonth,
+            endDate: currentDate,
+          })
+          .getRawOne(),
+        await this.walletRepository
+          .createQueryBuilder('wallets')
+          .select('SUM(wallets.available_balance)', 'sum')
+          .where('wallets.client_id = :clientId', { clientId })
+          .andWhere('wallets.user_id IN (:...userIds)', { userIds })
+          .andWhere('wallets.status = :status', { status: 1 })
+          .andWhere('wallets.created_at BETWEEN :startDate AND :endDate', {
+            startDate: firstDayOfMonth,
+            endDate: currentDate,
+          })
+          .getRawOne(),
+        await this.transactionRepository
+          .createQueryBuilder('transactions')
+          .select('SUM(transactions.amount)', 'sum')
+          .where('transactions.client_id = :clientId', { clientId })
+          .andWhere('transactions.user_id IN (:...userIds)', { userIds })
+          .andWhere('transactions.status = :status', { status: 1 })
+          .andWhere('transactions.subject = :subject', { subject: 'Deposit' })
+          .andWhere('transactions.created_at BETWEEN :startDate AND :endDate', {
+            startDate: firstDayOfMonth,
+            endDate: currentDate,
+          })
+          .getRawOne(),
+        await this.transactionRepository
+          .createQueryBuilder('transactions')
+          .select('SUM(transactions.amount)', 'sum')
+          .where('transactions.client_id = :clientId', { clientId })
+          .andWhere('transactions.user_id IN (:...userIds)', { userIds })
+          .andWhere('transactions.status = :status', { status: 1 })
+          .andWhere('transactions.subject = :subject', {
+            subject: 'Withdrawal',
+          })
+          .andWhere('transactions.created_at BETWEEN :startDate AND :endDate', {
+            startDate: firstDayOfMonth,
+            endDate: currentDate,
+          })
+          .getRawOne(),
+        await this.expensesRepository
+          .createQueryBuilder('expenses')
+          .select('SUM(expenses.amount)', 'sum')
+          .where('expenses.client_id = :clientId', { clientId })
+          .andWhere('expenses.branch_id IN (:...userIds)', { userIds })
+          .andWhere('expenses.status = :status', { status: 1 })
+          .andWhere('expenses.created_at BETWEEN :startDate AND :endDate', {
+            startDate: firstDayOfMonth,
+            endDate: currentDate,
+          })
+          .getRawOne(),
+      ]);
+      console.log(
+        _manager_balance.sum,
+        '__________',
+        _cashier_balance.sum,
+        '__________',
+        _total_sales.sum,
+        '__________',
+        _total_payouts.sum,
+        '__________',
+        _total_expenses.sum,
+      );
+      const manager_balance = _manager_balance.sum
+        ? Number(_manager_balance.sum)
+        : 0;
+      const cashier_balance = _cashier_balance.sum
+        ? Number(_cashier_balance.sum)
+        : 0;
+
+      const res = {
+        manager_balance,
+        cashier_balance,
+        branch_balance: manager_balance + cashier_balance,
+        total_sales: _total_sales.sum ? Number(_total_sales.sum) : 0,
+        total_payouts: _total_payouts.sum ? Number(_total_payouts.sum) : 0,
+        total_expenses: _total_expenses.sum ? Number(_total_expenses.sum) : 0,
+      };
+
+      return handleResponse(res, 'report for month fetched successfully');
     } catch (error) {
       return handleError(
         `Error! Something went wrong: ${error.message}`,

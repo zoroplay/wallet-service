@@ -241,7 +241,7 @@ export class DepositService {
         },
       });
 
-      if (wallet.available_balance < transaction.amount) {
+      if (parseFloat(wallet.available_balance.toString()) < transaction.amount) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
