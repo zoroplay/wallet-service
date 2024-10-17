@@ -56,10 +56,10 @@ export class PawapayService {
         },
       );
       return { success: true, data: res.data, depositId };
-    } catch (e) {
+    } catch (error) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: error.message,
       };
     }
   }
@@ -207,10 +207,10 @@ export class PawapayService {
         data: res.data,
         transactionNo: res.data.depositId,
       };
-    } catch (e) {
+    } catch (error) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: error.message,
       };
     }
   }
@@ -409,10 +409,10 @@ export class PawapayService {
       );
 
       return { success: true, data: res.data };
-    } catch (e) {
+    } catch (error) {
       return {
         success: false,
-        message: 'Unable to fetch deposits from paystack',
+        message: error.message,
       };
     }
   }
@@ -438,10 +438,10 @@ export class PawapayService {
         return { success: false, message: res.data.rejectionReason };
 
       return { success: true, data: res.data };
-    } catch (e) {
+    } catch (error) {
       return {
         success: false,
-        message: 'Unable to fetch payouts from paystack',
+        message: error.message,
       };
     }
   }
@@ -467,10 +467,10 @@ export class PawapayService {
         return { success: false, message: data.rejectionReason };
 
       return { success: true, data };
-    } catch (e) {
+    } catch (error) {
       return {
         success: false,
-        message: 'Unable to fetch refunds from paystack',
+        message: error.message,
       };
     }
   }
