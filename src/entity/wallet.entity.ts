@@ -44,6 +44,11 @@ export class Wallet {
 
   @Column({ type: 'tinyint', default: 0 })
   status: number;
+
+  @Index()
+  @CreateDateColumn()
+  created_at: string;
+
   @Column({ type: 'varchar', length: 20, nullable: true })
   virtual_branchId: string;
 

@@ -845,6 +845,10 @@ export interface WalletServiceClient {
     request: HandleReportRequest,
   ): Observable<LastApprovedResponseObj>;
 
+  cashbookFetchMonthlyShopReport(
+    request: FetchReportRequest,
+  ): Observable<CommonResponseObj>;
+
   cashbookApproveExpense(
     request: CashbookApproveExpenseRequest,
   ): Observable<ExpenseSingleResponse>;
@@ -1155,6 +1159,13 @@ export interface WalletServiceController {
     | Promise<LastApprovedResponseObj>
     | Observable<LastApprovedResponseObj>
     | LastApprovedResponseObj;
+
+  cashbookFetchMonthlyShopReport(
+    request: FetchReportRequest,
+  ):
+    | Promise<CommonResponseObj>
+    | Observable<CommonResponseObj>
+    | CommonResponseObj;
 
   cashbookApproveExpense(
     request: CashbookApproveExpenseRequest,
@@ -1682,6 +1693,7 @@ export function WalletServiceControllerMethods() {
       'cashbookFetchSalesReport',
       'cashbookFetchReport',
       'cashbookHandleReport',
+      'cashbookFetchMonthlyShopReport',
       'cashbookApproveExpense',
       'cashbookCreateExpense',
       'cashbookFindAllExpense',
