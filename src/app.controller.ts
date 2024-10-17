@@ -9,6 +9,8 @@ import {
   CashbookCreateExpenseRequest,
   // CashbookCreateExpenseCategoryRequest,
   CashbookCreateExpenseTypeRequest,
+  CreateBulkPawapayRequest,
+  CreatePawapayRequest,
   CashbookIdRequest,
   CreateWalletRequest,
   CreditUserRequest,
@@ -16,6 +18,7 @@ import {
   FetchBetRangeRequest,
   FetchDepositCountRequest,
   FetchDepositRangeRequest,
+  FetchPawapayRequest,
   FetchLastApprovedRequest,
   FetchPlayerDepositRequest,
   FetchReportRequest,
@@ -30,6 +33,9 @@ import {
   ListDepositRequests,
   ListWithdrawalRequests,
   OpayWebhookRequest,
+  PawapayCountryRequest,
+  PawapayPredCorrRequest,
+  PawapayToolkitRequest,
   PaymentMethodRequest,
   ProcessRetailTransaction,
   UpdateWithdrawalRequest,
@@ -40,6 +46,9 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
+  Pitch90TransactionRequest,
+  WayaBankRequest,
+  Pitch90RegisterUrlRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -72,7 +81,6 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
-    // console.log('entered fetchDepositCount');
     return this.depositService.fetchDepositCount(payload);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchPlayerDeposit')
@@ -108,11 +116,6 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'DebitUser')
   DebitUser(param: DebitUserRequest) {
     return this.appService.debitUser(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
-  ResetBonusWallet(param: CreditUserRequest) {
-    return this.appService.awardBonusWinning(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'DebitAgentBalance')
@@ -248,6 +251,11 @@ export class AppController {
     return this.cashbookService.findAllBranchCashin(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FindAllBranchPendingCashinWDate')
+  FindAllBranchPendingCashinWDate(param: BranchRequest) {
+    return this.cashbookService.findAllBranchPendingCashinWDate(param);
+  }
+
   // CASH OUT
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookApproveCashOut')
   CashbookApproveCashOut(param: CashbookApproveCashInOutRequest) {
@@ -311,12 +319,10 @@ export class AppController {
   CashbookCreateExpenseType(param: CashbookCreateExpenseTypeRequest) {
     return this.cashbookService.addExpensetype(param);
   }
-
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFindAllExpenseType')
   CashbookFindAllExpenseType() {
     return this.cashbookService.findAllExpenseTypes();
   }
-
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetUserAccounts')
   GetUserAccounts(param: GetBalanceRequest) {
     return this.withdrawalService.getUserBankAccounts(param);
@@ -364,5 +370,53 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetSystemTransaction')
   GetSystemTransaction(param: GetTransactionsRequest) {
     return this.reportingService.getSystemTransaction(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandleCreatePawaPay')
+  HandleCreatePawaPay(param: CreatePawapayRequest) {
+    return this.paymentService.createRequest(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandleCreateBulkPawaPay')
+  HandleCreateBulkPawaPay(param: CreateBulkPawapayRequest) {
+    return this.paymentService.createBulkPayout(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandleFetchPawaPay')
+  HandleFetchPawaPay(param: FetchPawapayRequest) {
+    return this.paymentService.getRequests(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayBalances')
+  HandlePawaPayBalances() {
+    return this.paymentService.fetchWalletBalances();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayCountryBalances')
+  HandlePawaPayCountryBalances(param: PawapayCountryRequest) {
+    return this.paymentService.fetchCountryWalletBalances(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayPredCorr')
+  HandlePawaPayPredCorr(param: PawapayPredCorrRequest) {
+    return this.paymentService.predictCorrespondent(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayToolkit')
+  HandlePawaPayToolkit(param: PawapayToolkitRequest) {
+    return this.paymentService.fetchToolkit(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayActiveConf')
+  HandlePawaPayActiveConf() {
+    return this.paymentService.fetchActiveConf();
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CreateVirtualAccount')
+  CreateVirtualAccount(param: WayaBankRequest) {
+    return this.paymentService.createVirtualAccount(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'WayabankAccountEnquiry')
+  WayabankAccountEnquiry(param: WayaBankRequest) {
+    return this.paymentService.wayabankAccountEnquiry(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90Transaction')
+  Pitch90Transaction(param: Pitch90TransactionRequest) {
+    return this.paymentService.pitch90Transaction(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90RegisterUrl')
+  Pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
+    return this.paymentService.pitch90RegisterUrl(param);
   }
 }

@@ -23,6 +23,24 @@ export interface CreatePawapayRequest {
   depositId?: string | undefined;
 }
 
+export interface WayaBankRequest {
+  userId: number;
+  clientId: number;
+}
+
+export interface Pitch90TransactionRequest {
+  userId: number;
+  clientId: number;
+  amount: number;
+  action: string;
+  source: string;
+}
+
+export interface Pitch90RegisterUrlRequest {
+  action: string;
+  url: number;
+}
+
 export interface WayaQuickRequest {
   userId: number;
   clientId: number;
@@ -581,6 +599,15 @@ export interface Transaction {
   status: number;
   createdAt: string;
   link?: string | undefined;
+}
+
+export interface SearchTransactionsRequest {
+  clientId: number;
+  userId: number;
+  accountNumber: string;
+  page: number;
+  size: number;
+  fromDate: string;
 }
 
 export interface VerifyBankAccountRequest {

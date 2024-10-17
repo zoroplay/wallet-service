@@ -49,6 +49,39 @@ export class Wallet {
   @CreateDateColumn()
   created_at: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  virtual_branchId: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  virtual_accountNo: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  virtual_accountName: string;
+
+  @Column({
+    type: 'decimal',
+    precision: 20,
+    scale: 2,
+    default: 0,
+    nullable: true,
+  })
+  virtual_balance: number;
+
+  @Column({ type: 'boolean', default: false })
+  virtual_accountDefault: boolean;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  virtual_nubanAccountNo: string;
+
+  @Column({ type: 'boolean', default: false })
+  virtual_acctClosureFlag: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  virtual_acctDeleteFlag: boolean;
+  @Index()
+  @CreateDateColumn()
+  created_at: string;
+
   @Index()
   @UpdateDateColumn()
   updated_at: string;
