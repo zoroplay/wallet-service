@@ -463,7 +463,6 @@ export class PaymentService {
     payload: WalletTransferRequest,
   ): Promise<CommonResponseObj> {
     try {
-      console.log(payload)
       const {
         clientId,
         fromUserId,
