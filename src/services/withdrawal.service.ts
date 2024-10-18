@@ -20,6 +20,7 @@ import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { PaymentService } from './payments.service';
 
 @Injectable()
 export class WithdrawalService {
@@ -33,7 +34,7 @@ export class WithdrawalService {
 
     @InjectQueue('withdrawal')
     private readonly withdrawalQueue: Queue,
-
+    private paymentService: PaymentService,
     private readonly identityService: IdentityService,
   ) {}
 
@@ -239,6 +240,14 @@ export class WithdrawalService {
           username: withdrawalRequest.username,
         };
 
+        const user = await this.identityService
+          .getPaymentData({
+            clientId: data.clientId,
+            userId: data.userId,
+            source: 'mobile',
+          })
+          .toPromise();
+
         if (data.userRole === 'Sales Agent') {
           const settings = await this.identityService.getWithdrawalSettings({
             clientId: data.clientId,
@@ -252,7 +261,20 @@ export class WithdrawalService {
               respData.amount - respData.withdrawalCharge;
           }
         }
+        await this.paymentService.walletTransfer({
+          clientId: data.clientId,
+          toUserId: data.userId,
+          toUsername: user.username,
+          fromUsername: withdrawalRequest.username,
+          fromUserId: withdrawalRequest.id,
+          amount: withdrawalRequest.amount,
+          action: 'withdrawal',
+        });
 
+        await this.withdrawalRepository.update(
+          { id: withdrawalRequest.id },
+          { withdrawal_code: null },
+        );
         return {
           success: true,
           status: HttpStatus.OK,

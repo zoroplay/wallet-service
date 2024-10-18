@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
-import { SearchTransactionsRequest } from 'src/proto/wallet.pb';
 import { Repository } from 'typeorm';
 
 @Injectable()
