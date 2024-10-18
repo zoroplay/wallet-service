@@ -261,20 +261,7 @@ export class WithdrawalService {
               respData.amount - respData.withdrawalCharge;
           }
         }
-        await this.paymentService.walletTransfer({
-          clientId: data.clientId,
-          toUserId: data.userId,
-          toUsername: user.username,
-          fromUsername: withdrawalRequest.username,
-          fromUserId: withdrawalRequest.id,
-          amount: withdrawalRequest.amount,
-          action: 'withdrawal',
-        });
 
-        await this.withdrawalRepository.update(
-          { id: withdrawalRequest.id },
-          { withdrawal_code: null },
-        );
         return {
           success: true,
           status: HttpStatus.OK,
@@ -338,6 +325,20 @@ export class WithdrawalService {
       await this.withdrawalQueue.add('shop-withdrawal', payload, {
         jobId: `shop-withdrawal:${withdrawReqeust.id}`,
       });
+      await this.paymentService.walletTransfer({
+        clientId: payload.clientId,
+        toUserId: payload.userId,
+        toUsername: payload.username,
+        fromUsername: withdrawReqeust.username,
+        fromUserId: withdrawReqeust.id,
+        amount: withdrawReqeust.amount,
+        action: 'withdrawal',
+      });
+
+      await this.withdrawalRepository.update(
+        { id: withdrawReqeust.id },
+        { withdrawal_code: null },
+      );
 
       return {
         success: true,
