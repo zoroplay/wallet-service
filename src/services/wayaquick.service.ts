@@ -25,7 +25,6 @@ export class WayaQuickService {
 
       const res = await this.wayaQuickClient.initializePayment(paymentData);
 
-      console.log('res:-', res, '______-----__:-');
       if (!res.status)
         return {
           success: false,
@@ -36,7 +35,7 @@ export class WayaQuickService {
     } catch (e) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: 'Unable to initiate deposit with wayaquick',
       };
     }
   }
@@ -54,7 +53,7 @@ export class WayaQuickService {
     } catch (e) {
       return {
         success: false,
-        message: 'Unable to initiate deposit with paystack',
+        message: 'Unable to initiate deposit with wayaquick',
       };
     }
   }

@@ -38,7 +38,7 @@ export class WithdrawalService {
   ) {}
 
   async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-    // console.log(data);
+    console.log(data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: {
@@ -55,7 +55,7 @@ export class WithdrawalService {
           data: null,
         };
 
-      if (wallet.available_balance < data.amount)
+      if (parseFloat(wallet.available_balance.toString()) < data.amount)
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
