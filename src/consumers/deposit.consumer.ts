@@ -35,8 +35,7 @@ export class DepositConsumer {
       //update request status
       const senderBalance = fromWallet.available_balance - data.amount;
       // credit receiver balance
-      const receiverBalance =
-        Number(toWallet.available_balance) + Number(data.amount);
+      const receiverBalance = parseFloat(toWallet.available_balance.toString()) + parseFloat(data.amount.toString(  ));
 
       //update wallets
       await this.walletRepository.update(
