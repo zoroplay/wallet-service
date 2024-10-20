@@ -208,7 +208,9 @@ export class WithdrawalConsumer extends WorkerHost {
           status: 1,
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.log('error processing shop withdrawal', e.message)
+    }
   }
 
   private async saveUserBankAccount(data) {
