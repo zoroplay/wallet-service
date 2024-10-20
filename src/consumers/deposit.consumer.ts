@@ -1,13 +1,14 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { IdentityService } from 'src/identity/identity.service';
 import { Repository } from 'typeorm';
 
 @Processor('deposit')
-export class DepositConsumer {
+export class DepositConsumer extends WorkerHost {
+
   constructor(
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
@@ -15,10 +16,17 @@ export class DepositConsumer {
     private readonly transactionRepository: Repository<Transaction>,
 
     private readonly identityService: IdentityService,
-  ) {}
+  ) {
+    super()
+  }
 
-  @Process('shop-deposit')
-  async processShopWithdrawal(job: Job<unknown>) {
+  async process(job: Job, token?: string): Promise<any> {
+    if(job.name === 'shop-deposit') {
+      await this.processShopDeposit(job)
+    }   
+  }
+
+  async processShopDeposit(job: Job<unknown>) {
     try {
       console.log(`Processing deposit job ${job.id} of type ${job.name}...`);
 

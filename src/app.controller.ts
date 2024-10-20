@@ -421,7 +421,7 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
-  awardBonusWinning(param: CreditUserRequest) {
+  AwardBonusWinning(param: CreditUserRequest) {
     return this.appService.awardBonusWinning(param);
   }
 }
