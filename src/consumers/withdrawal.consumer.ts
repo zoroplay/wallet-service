@@ -32,7 +32,7 @@ export class WithdrawalConsumer extends WorkerHost {
 
   async process(job: Job, token?: string): Promise<any> {
     console.log(job)
-    
+
     if (job.name === 'withdrawal-request') {
       await this.processWithdrawal(job)
     } else if (job.name === 'shop-withdrawal') {
@@ -129,6 +129,7 @@ export class WithdrawalConsumer extends WorkerHost {
 
 
   async processShopWithdrawal(job: Job<unknown>) {
+    console.log(`Processing shop withdrawal job ${job.id}`);
     try {
       const data: any = job.data;
       //update request status
