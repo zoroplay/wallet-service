@@ -456,7 +456,7 @@ export class AppService {
         transactionNo,
         amount: 0,
         description: 'Bonus has been completed',
-        subject: 'Bonus Expired',
+        subject: 'Bonus Winnings',
         channel: 'Internal',
         source: 'internal',
         fromUserId: 0,

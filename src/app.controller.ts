@@ -419,4 +419,9 @@ export class AppController {
   Pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
     return this.paymentService.pitch90RegisterUrl(param);
   }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
+  awardBonusWinning(param: CreditUserRequest) {
+    return this.appService.awardBonusWinning(param);
+  }
 }
