@@ -31,6 +31,8 @@ export class WithdrawalConsumer extends WorkerHost {
   }
 
   async process(job: Job, token?: string): Promise<any> {
+    console.log(job)
+    
     if (job.name === 'withdrawal-request') {
       await this.processWithdrawal(job)
     } else if (job.name === 'shop-withdrawal') {
