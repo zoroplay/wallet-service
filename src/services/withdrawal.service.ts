@@ -6,7 +6,9 @@ import { generateTrxNo } from 'src/common/helpers';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import {
+  CommonResponseArray,
   CommonResponseObj,
+  FetchUsersWithdrawalRequest,
   GetUserAccountsResponse,
   ListWithdrawalRequestResponse,
   ListWithdrawalRequests,
@@ -120,6 +122,45 @@ export class WithdrawalService {
     }
   }
 
+  async fetchUsersWithdrawal(
+    data: FetchUsersWithdrawalRequest,
+  ): Promise<CommonResponseArray> {
+    try {
+      const withdrawal = await this.withdrawalRepository.find({
+        where: {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+      });
+      const _withdrawal = await Promise.all(
+        withdrawal.map(async (_withdrawal_) => {
+          const { account_name, account_number, bank_code, bank_name, ...all } =
+            _withdrawal_;
+          const created_at = dayjs(new Date(_withdrawal_.created_at)).format(
+            'YYYY-MM-DD HH:mm:ss',
+          );
+          return {
+            ...all,
+            created_at,
+          };
+        }),
+      );
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        message: 'Successful',
+        data: _withdrawal,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Unable to process request',
+        data: null,
+      };
+    }
+  }
+
   async listWithdrawalRequest(
     data: ListWithdrawalRequests,
   ): Promise<ListWithdrawalRequestResponse> {
@@ -167,7 +208,6 @@ export class WithdrawalService {
         data: requests,
       };
     } catch (e) {
-      console.log(e);
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
