@@ -143,6 +143,8 @@ export class WithdrawalConsumer extends WorkerHost {
 
       let balance = data.balance - data.amount;
 
+      console.log('cashier balance', balance)
+
       await this.walletRepository.update(
         {
           user_id: data.userId,
