@@ -420,7 +420,7 @@ export class AppService {
   }
 
   async awardBonusWinning(data: CreditUserRequest) {
-    console.log('awarding bonus', data);
+    // console.log('awarding bonus', data);
 
     try {
       let walletType: string;
