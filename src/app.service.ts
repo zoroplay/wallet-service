@@ -440,6 +440,8 @@ export class AppService {
 
       const balance = wallet.available_balance + parseFloat(data.amount);
 
+      console.log('new balance is ', balance)
+
       await this.walletRepository.update(
         {
           user_id: data.userId,
@@ -458,7 +460,7 @@ export class AppService {
         clientId: data.clientId,
         transactionNo,
         amount: data.amount,
-        description: 'Bonus has been completed',
+        description: data.description,
         subject: 'Bonus Winnings',
         channel: 'Internal',
         source: 'internal',
