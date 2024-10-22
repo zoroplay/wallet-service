@@ -425,9 +425,6 @@ export class AppService {
     try {
       let walletType: string;
       switch (data.wallet) {
-        case 'sport-bonus':
-          walletType = 'sport_bonus_balance'
-          break;
         case 'casino':
           walletType = 'casino_bonus_balance'
           break;
@@ -435,6 +432,7 @@ export class AppService {
           walletType = 'virtual_bonus_balance'
           break;
         default:
+          walletType = 'sport_bonus_balance'
           break;
       }
 
