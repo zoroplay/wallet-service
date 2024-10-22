@@ -437,15 +437,15 @@ export class AppService {
       }
 
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
-
+      const balance = wallet.balance + parseFloat(data.amount);
       await this.walletRepository.update(
         {
           user_id: data.userId,
           client_id: data.clientId,
         },
         {
-          balance: wallet.balance + parseFloat(data.amount),
-          available_balance: wallet.available_balance + parseFloat(data.amount),
+          balance,
+          available_balance: balance,
           [walletType]: 0,
         }
       );
@@ -455,7 +455,7 @@ export class AppService {
       await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo,
-        amount: 0,
+        amount: data.amount,
         description: 'Bonus has been completed',
         subject: 'Bonus Winnings',
         channel: 'Internal',
@@ -465,7 +465,7 @@ export class AppService {
         fromUserBalance: 0,
         toUserId: data.userId,
         toUsername: data.username,
-        toUserBalance: 0,
+        toUserBalance: balance,
         status: 1,
         walletType: 'Main',
       });
