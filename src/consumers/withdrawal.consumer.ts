@@ -141,7 +141,7 @@ export class WithdrawalConsumer extends WorkerHost {
         },
       );
 
-      let balance = parseFloat(data.balance) - parseFloat(data.amount);
+      let balance = parseFloat(data.balance) + parseFloat(data.amount);
 
       await this.walletRepository.update(
         {

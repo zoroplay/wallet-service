@@ -420,7 +420,7 @@ export class AppService {
   }
 
   async awardBonusWinning(data: CreditUserRequest) {
-    // console.log('awarding bonus', data);
+    console.log('awarding bonus', data);
 
     try {
       let walletType: string;
@@ -437,7 +437,9 @@ export class AppService {
       }
 
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
-      const balance = wallet.balance + parseFloat(data.amount);
+
+      const balance = wallet.available_balance + parseFloat(data.amount);
+
       await this.walletRepository.update(
         {
           user_id: data.userId,
