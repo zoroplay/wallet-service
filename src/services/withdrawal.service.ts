@@ -301,7 +301,7 @@ export class WithdrawalService {
         },
       });
 
-      if (wallet.available_balance < payload.amount) {
+      if (wallet.available_balance < withdrawReqeust.amount) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
@@ -310,7 +310,7 @@ export class WithdrawalService {
       }
       // add user balance to payload
       payload.balance = wallet.available_balance;
-      payload.amount = payload.amount;
+      payload.amount = withdrawReqeust.amount;
 
       // add request to queue
       await this.withdrawalQueue.add('shop-withdrawal', payload, {
