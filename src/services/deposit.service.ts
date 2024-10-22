@@ -12,8 +12,8 @@ import {
 } from 'src/proto/wallet.pb';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class DepositService {

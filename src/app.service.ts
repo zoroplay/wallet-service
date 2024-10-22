@@ -420,12 +420,11 @@ export class AppService {
   }
 
   async awardBonusWinning(data: CreditUserRequest) {
+    console.log('awarding bonus', data);
+
     try {
       let walletType: string;
       switch (data.wallet) {
-        case 'sport-bonus':
-          walletType = 'sport_bonus_balance'
-          break;
         case 'casino':
           walletType = 'casino_bonus_balance'
           break;
@@ -433,9 +432,15 @@ export class AppService {
           walletType = 'virtual_bonus_balance'
           break;
         default:
+          walletType = 'sport_bonus_balance'
           break;
       }
+
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
+
+      const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
+
+      console.log('new balance is ', balance)
 
       await this.walletRepository.update(
         {
@@ -443,8 +448,8 @@ export class AppService {
           client_id: data.clientId,
         },
         {
-          balance: wallet.balance + parseFloat(data.amount),
-          available_balance: wallet.available_balance + parseFloat(data.amount),
+          balance,
+          available_balance: balance,
           [walletType]: 0,
         }
       );
@@ -454,9 +459,9 @@ export class AppService {
       await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo,
-        amount: 0,
-        description: 'Bonus has been completed',
-        subject: 'Bonus Expired',
+        amount: data.amount,
+        description: data.description,
+        subject: 'Bonus Winnings',
         channel: 'Internal',
         source: 'internal',
         fromUserId: 0,
@@ -464,12 +469,13 @@ export class AppService {
         fromUserBalance: 0,
         toUserId: data.userId,
         toUsername: data.username,
-        toUserBalance: 0,
+        toUserBalance: balance,
         status: 1,
         walletType: 'Main',
       });
       
     } catch (e) {
+      console.log('Error awarding bonus', e.message);
       return {
         success: false,
         message: "Unable to complete transactions",

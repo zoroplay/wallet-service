@@ -25,7 +25,7 @@ import {
 } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, Not, Repository } from 'typeorm';
 import { MonnifyService } from './monnify.service';
 import * as dayjs from 'dayjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -772,6 +772,7 @@ export class PaymentService {
       {
         created_at: LessThanOrEqual(now),
         status: 0,
+        channel: Not('sbengine')
       },
       {
         status: 2,
@@ -832,6 +833,7 @@ export class PaymentService {
       return { success: false, message: error.message };
     }
   }
+  
   async createRequest(param) {
     try {
       const wallet = await this.walletRepository

@@ -49,6 +49,7 @@ import {
   Pitch90TransactionRequest,
   WayaBankRequest,
   Pitch90RegisterUrlRequest,
+  FetchUsersWithdrawalRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -422,5 +423,13 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90RegisterUrl')
   Pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
     return this.paymentService.pitch90RegisterUrl(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FetchUsersWithdrawal')
+  FetchUsersWithdrawal(param: FetchUsersWithdrawalRequest) {
+    return this.withdrawalService.fetchUsersWithdrawal(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
+  AwardBonusWinning(param: CreditUserRequest) {
+    return this.appService.awardBonusWinning(param);
   }
 }

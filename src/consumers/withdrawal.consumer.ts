@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
-import { Process, Processor } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { generateTrxNo } from 'src/common/helpers';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
@@ -12,7 +12,8 @@ import { PaymentService } from 'src/services/payments.service';
 import { Repository } from 'typeorm';
 
 @Processor('withdrawal')
-export class WithdrawalConsumer {
+export class WithdrawalConsumer extends WorkerHost {
+  
   constructor(
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
@@ -25,9 +26,20 @@ export class WithdrawalConsumer {
 
     private readonly helperService: HelperService,
     private readonly paymentService: PaymentService,
-  ) {}
+  ) {
+    super();
+  }
 
-  @Process('withdrawal-request')
+  async process(job: Job, token?: string): Promise<any> {
+    if (job.name === 'withdrawal-request') {
+      await this.processWithdrawal(job)
+    } else if (job.name === 'shop-withdrawal') {
+      await this.processShopWithdrawal(job)
+    }
+  }
+
+
+
   async processWithdrawal(job: Job<unknown>) {
     console.log(`Processing withdrawal job ${job.id} of type ${job.name}...`);
     try {
@@ -50,7 +62,7 @@ export class WithdrawalConsumer {
 
       await this.withdrawalRepository.save(withdrawal);
 
-      const balance = data.balance - data.amount;
+      const balance = parseFloat(data.balance) - parseFloat(data.amount);
 
       await this.walletRepository.update(
         {
@@ -113,8 +125,9 @@ export class WithdrawalConsumer {
     }
   }
 
-  @Process('shop-withdrawal')
+
   async processShopWithdrawal(job: Job<unknown>) {
+    console.log(`Processing shop withdrawal job ${job.id}`);
     try {
       const data: any = job.data;
       //update request status
@@ -128,7 +141,7 @@ export class WithdrawalConsumer {
         },
       );
 
-      let balance = data.balance - data.amount;
+      let balance = parseFloat(data.balance) + parseFloat(data.amount);
 
       await this.walletRepository.update(
         {
@@ -163,7 +176,7 @@ export class WithdrawalConsumer {
       //check if withdrawal commission is available
       if (data.withdrawalCharge > 0) {
         // add commission to user balance
-        balance = balance + data.withdrawalCharge;
+        balance = parseFloat(balance.toString()) + parseFloat(data.withdrawalCharge);
 
         await this.walletRepository.update(
           {
@@ -193,7 +206,9 @@ export class WithdrawalConsumer {
           status: 1,
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.log('error processing shop withdrawal', e.message)
+    }
   }
 
   private async saveUserBankAccount(data) {

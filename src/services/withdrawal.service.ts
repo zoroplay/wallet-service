@@ -6,7 +6,9 @@ import { generateTrxNo } from 'src/common/helpers';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import {
+  CommonResponseArray,
   CommonResponseObj,
+  FetchUsersWithdrawalRequest,
   GetUserAccountsResponse,
   ListWithdrawalRequestResponse,
   ListWithdrawalRequests,
@@ -39,7 +41,7 @@ export class WithdrawalService {
   ) {}
 
   async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-    console.log(data);
+    // console.log(data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: {
@@ -98,7 +100,7 @@ export class WithdrawalService {
 
       // console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.clientId}:${data.accountNumber}:${data.amount}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}`,
       });
 
       return {
@@ -112,6 +114,45 @@ export class WithdrawalService {
       };
     } catch (e) {
       console.log(e.message);
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Unable to process request',
+        data: null,
+      };
+    }
+  }
+
+  async fetchUsersWithdrawal(
+    data: FetchUsersWithdrawalRequest,
+  ): Promise<CommonResponseArray> {
+    try {
+      const withdrawal = await this.withdrawalRepository.find({
+        where: {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+      });
+      const _withdrawal = await Promise.all(
+        withdrawal.map(async (_withdrawal_) => {
+          const { account_name, account_number, bank_code, bank_name, ...all } =
+            _withdrawal_;
+          const created_at = dayjs(new Date(_withdrawal_.created_at)).format(
+            'YYYY-MM-DD HH:mm:ss',
+          );
+          return {
+            ...all,
+            created_at,
+          };
+        }),
+      );
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        message: 'Successful',
+        data: _withdrawal,
+      };
+    } catch (e) {
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -168,7 +209,6 @@ export class WithdrawalService {
         data: requests,
       };
     } catch (e) {
-      console.log(e);
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -310,7 +350,7 @@ export class WithdrawalService {
         },
       });
 
-      if (wallet.available_balance < payload.amount) {
+      if (wallet.available_balance < withdrawReqeust.amount) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
@@ -319,7 +359,7 @@ export class WithdrawalService {
       }
       // add user balance to payload
       payload.balance = wallet.available_balance;
-      payload.amount = payload.amount;
+      payload.amount = withdrawReqeust.amount;
 
       // add request to queue
       await this.withdrawalQueue.add('shop-withdrawal', payload, {
