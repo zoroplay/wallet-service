@@ -20,8 +20,9 @@ import { Between, Repository } from 'typeorm';
 import { IdentityService } from 'src/identity/identity.service';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { PaymentService } from './payments.service';
 
 @Injectable()
 export class WithdrawalService {
@@ -35,7 +36,7 @@ export class WithdrawalService {
 
     @InjectQueue('withdrawal')
     private readonly withdrawalQueue: Queue,
-
+    private paymentService: PaymentService,
     private readonly identityService: IdentityService,
   ) {}
 
@@ -279,6 +280,14 @@ export class WithdrawalService {
           username: withdrawalRequest.username,
         };
 
+        const user = await this.identityService
+          .getPaymentData({
+            clientId: data.clientId,
+            userId: data.userId,
+            source: 'mobile',
+          })
+          .toPromise();
+
         if (data.userRole === 'Sales Agent') {
           const settings = await this.identityService.getWithdrawalSettings({
             clientId: data.clientId,
@@ -356,6 +365,20 @@ export class WithdrawalService {
       await this.withdrawalQueue.add('shop-withdrawal', payload, {
         jobId: `shop-withdrawal:${withdrawReqeust.id}`,
       });
+      await this.paymentService.walletTransfer({
+        clientId: payload.clientId,
+        toUserId: payload.userId,
+        toUsername: payload.username,
+        fromUsername: withdrawReqeust.username,
+        fromUserId: withdrawReqeust.id,
+        amount: withdrawReqeust.amount,
+        action: 'withdrawal',
+      });
+
+      await this.withdrawalRepository.update(
+        { id: withdrawReqeust.id },
+        { withdrawal_code: null },
+      );
 
       return {
         success: true,
