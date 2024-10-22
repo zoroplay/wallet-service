@@ -130,7 +130,6 @@ export class WithdrawalConsumer extends WorkerHost {
     console.log(`Processing shop withdrawal job ${job.id}`);
     try {
       const data: any = job.data;
-      console.log(data);
       //update request status
       await this.withdrawalRepository.update(
         {
@@ -143,8 +142,6 @@ export class WithdrawalConsumer extends WorkerHost {
       );
 
       let balance = parseFloat(data.balance) - parseFloat(data.amount);
-
-      console.log('cashier balance', balance)
 
       await this.walletRepository.update(
         {
