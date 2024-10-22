@@ -438,7 +438,7 @@ export class AppService {
 
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
 
-      const balance = wallet.available_balance + parseFloat(data.amount);
+      const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
 
       console.log('new balance is ', balance)
 
