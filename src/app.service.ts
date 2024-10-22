@@ -420,6 +420,8 @@ export class AppService {
   }
 
   async awardBonusWinning(data: CreditUserRequest) {
+    console.log('awarding bonus', data);
+
     try {
       let walletType: string;
       switch (data.wallet) {
@@ -435,6 +437,7 @@ export class AppService {
         default:
           break;
       }
+
       const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
 
       await this.walletRepository.update(
@@ -470,6 +473,7 @@ export class AppService {
       });
       
     } catch (e) {
+      console.log('Error awarding bonus', e.message);
       return {
         success: false,
         message: "Unable to complete transactions",
