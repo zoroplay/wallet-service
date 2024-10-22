@@ -176,7 +176,7 @@ export class WithdrawalConsumer extends WorkerHost {
       //check if withdrawal commission is available
       if (data.withdrawalCharge > 0) {
         // add commission to user balance
-        balance = balance + data.withdrawalCharge;
+        balance = parseFloat(balance.toString()) + parseFloat(data.withdrawalCharge);
 
         await this.walletRepository.update(
           {
