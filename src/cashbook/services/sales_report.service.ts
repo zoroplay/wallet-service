@@ -189,6 +189,59 @@ export class SalesReportService {
     }
   }
 
+  async currentReport({ clientId, userId }: FetchReportRequest) {
+    try {
+      const userIds = await this.fetchUserIds(userId, clientId);
+      const date = new Date();
+      const startDate = startOfDay(date);
+      const endDate = endOfDay(date);
+      const [onlineSales, onlinePayouts] = await Promise.all([
+        await this.transactionRepository
+          .createQueryBuilder('transactions')
+          .select('SUM(transactions.amount)', 'sum')
+          .where('transactions.client_id = :clientId', { clientId })
+          .andWhere('transactions.user_id IN (:...userIds)', { userIds })
+          .andWhere('transactions.status = :status', { status: 1 })
+          .andWhere('transactions.subject = :subject', { subject: 'Deposit' })
+          .andWhere('transactions.created_at BETWEEN :startDate AND :endDate', {
+            startDate,
+            endDate,
+          })
+          .getRawOne(),
+        await this.transactionRepository
+          .createQueryBuilder('transactions')
+          .select('SUM(transactions.amount)', 'sum')
+          .where('transactions.client_id = :clientId', { clientId })
+          .andWhere('transactions.user_id IN (:...userIds)', { userIds })
+          .andWhere('transactions.status = :status', { status: 1 })
+          .andWhere('transactions.subject = :subject', {
+            subject: 'Withdrawal',
+          })
+          .andWhere('transactions.created_at BETWEEN :startDate AND :endDate', {
+            startDate,
+            endDate,
+          })
+          .getRawOne(),
+      ]);
+
+      const credit = onlineSales.sum ? Number(onlineSales.sum) : 0;
+      const debit = onlinePayouts.sum ? Number(onlinePayouts.sum) : 0;
+
+      const res = {
+        balance: credit - debit,
+        deposit: credit,
+        withdrawal: debit,
+      };
+
+      return handleResponse(res, 'report for today fetched successfully');
+    } catch (error) {
+      return handleError(
+        `Error! Something went wrong: ${error.message}`,
+        null,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
   async fetchReport({ clientId, userId, date }: FetchReportRequest) {
     try {
       const userIds = await this.fetchUserIds(userId, clientId);

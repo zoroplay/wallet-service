@@ -133,4 +133,7 @@ export class CashbookService {
   async fetchMonthlyShopReport(data: FetchReportRequest) {
     return this.salesReportService.fetchMonthlyShopReport(data);
   }
+  async currentReport(data: FetchReportRequest) {
+    return this.salesReportService.currentReport(data);
+  }
 }
