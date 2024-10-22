@@ -424,4 +424,8 @@ export class AppController {
   FetchUsersWithdrawal(param: FetchUsersWithdrawalRequest) {
     return this.withdrawalService.fetchUsersWithdrawal(param);
   }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'AwardBonusWinning')
+  AwardBonusWinning(param: CreditUserRequest) {
+    return this.appService.awardBonusWinning(param);
+  }
 }

@@ -32,7 +32,7 @@ import { ExpenseTypesService } from './cashbook/services/expense_type.service';
 import { ExpenseTypes } from './cashbook/entities/expense_type.entity';
 import { RetailModule } from './retail/retail.module';
 import { WithdrawalService } from './services/withdrawal.service';
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { WithdrawalConsumer } from './consumers/withdrawal.consumer';
 import { DepositConsumer } from './consumers/deposit.consumer';
 import { ReportingService } from './services/reporting.service';
@@ -46,11 +46,7 @@ import { Pitch90SMSService } from './services/pitch90sms.service';
 @Module({
   imports: [
     BullModule.forRoot({
-      limiter: {
-        max: 10,
-        duration: 1000,
-      },
-      redis: {
+      connection: {
         host: process.env.REDIS_HOST,
         port: parseInt(process.env.REDIS_PORT),
       },

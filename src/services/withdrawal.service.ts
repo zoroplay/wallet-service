@@ -20,8 +20,8 @@ import { Between, Repository } from 'typeorm';
 import { IdentityService } from 'src/identity/identity.service';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class WithdrawalService {
@@ -40,7 +40,7 @@ export class WithdrawalService {
   ) {}
 
   async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-    console.log(data);
+    // console.log(data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: {
@@ -99,7 +99,7 @@ export class WithdrawalService {
 
       // console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.clientId}:${data.accountNumber}:${data.amount}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}`,
       });
 
       return {
@@ -341,7 +341,7 @@ export class WithdrawalService {
         },
       });
 
-      if (wallet.available_balance < payload.amount) {
+      if (wallet.available_balance < withdrawReqeust.amount) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
@@ -350,7 +350,7 @@ export class WithdrawalService {
       }
       // add user balance to payload
       payload.balance = wallet.available_balance;
-      payload.amount = payload.amount;
+      payload.amount = withdrawReqeust.amount;
 
       // add request to queue
       await this.withdrawalQueue.add('shop-withdrawal', payload, {
