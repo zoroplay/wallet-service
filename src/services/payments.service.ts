@@ -732,6 +732,7 @@ export class PaymentService {
         subject: 'Funds Transfer',
         description: description || 'Inter account transfer',
         transactionNo: generateTrxNo(),
+        status: 1,
       });
 
       return {

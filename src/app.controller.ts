@@ -219,6 +219,10 @@ export class AppController {
   CashbookFetchReport(param: FetchReportRequest) {
     return this.cashbookService.fetchBranchReport(param);
   }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CurrentReport')
+  CurrentReport(param: FetchReportRequest) {
+    return this.cashbookService.currentReport(param);
+  }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CashbookFetchMonthlyShopReport')
   CashbookFetchMonthlyShopReport(param: FetchReportRequest) {
     return this.cashbookService.fetchMonthlyShopReport(param);
