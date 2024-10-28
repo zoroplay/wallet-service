@@ -440,8 +440,6 @@ export class AppService {
 
       const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
 
-      console.log('new balance is ', balance)
-
       await this.walletRepository.update(
         {
           user_id: data.userId,
