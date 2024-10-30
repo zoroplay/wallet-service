@@ -113,7 +113,7 @@ export class PaymentService {
             reference: transactionNo,
             callback_url: user.callbackUrl + '/payment-verification/paystack',
             currency: user.currency,
-          });
+          }, param.clientId);
 
           description = 'Online Deposit (Pawapay)';
           if (!res.success) return res as any;
@@ -802,6 +802,7 @@ export class PaymentService {
         user,
         amounts: param.amount,
         operator: param.operator,
+        clientId: param.clientId
       });
 
       if (!res.success) return res;
@@ -863,6 +864,7 @@ export class PaymentService {
             amount: param.amount,
             depositId: actionId,
             operator: param.operator,
+            clientId: param.clientId
           });
           if (!res.success) return res;
           subject = 'deposit';
@@ -875,6 +877,7 @@ export class PaymentService {
             amount: param.amount,
             operator: param.operator,
             payoutId: actionId,
+            clientId: param.clientId,
           });
 
           if (!res.success) return res;
@@ -883,7 +886,7 @@ export class PaymentService {
 
           break;
         case 'cancel-payouts':
-          res = await this.pawapayService.cancelPayout(actionId);
+          res = await this.pawapayService.cancelPayout(actionId, param.clientId);
           if (!res.success) return res;
           transactionNo = res.transactionNo;
           await this.transactionRepository.update(
@@ -906,6 +909,7 @@ export class PaymentService {
             param.amount,
             actionId,
             param.depositId,
+            param.clientId
           );
           if (!res.success) return res;
           subject = 'refunds';
@@ -978,7 +982,7 @@ export class PaymentService {
       let data;
       switch (action) {
         case 'deposit':
-          data = await this.pawapayService.depositResendCallback(actionId);
+          data = await this.pawapayService.depositResendCallback(actionId, );
           break;
         case 'payouts':
           data = await this.pawapayService.payoutResendCallback(actionId);

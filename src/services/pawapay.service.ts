@@ -28,13 +28,15 @@ export class PawapayService {
     private helperService: HelperService,
   ) {}
 
-  async generatePaymentLink(data): Promise<{
+  async generatePaymentLink(data, clientId): Promise<{
     success: boolean;
     data?: any;
     depositId?: string;
     message?: string;
   }> {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const depositId = uuidv4();
       const requestBody = {
         depositId,
@@ -46,12 +48,12 @@ export class PawapayService {
         reason: 'Deposit',
       };
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/widget/sessions`,
+        `${settings.base_url}/widget/sessions`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -92,6 +94,7 @@ export class PawapayService {
     amount: number,
     refundId: string,
     depositId: string,
+    clientId: number,
   ): Promise<{
     success: boolean;
     data?: any;
@@ -99,6 +102,8 @@ export class PawapayService {
     message?: string;
   }> {
     try {
+      const settings = await this.pawapaySettings(clientId)
+
       const requestBody = {
         refundId,
         depositId,
@@ -152,11 +157,13 @@ export class PawapayService {
     amount,
     operator,
     depositId,
+    clientId,
   }: {
     user: any;
     amount: number;
     operator: string;
     depositId: string;
+    clientId: number
   }): Promise<{
     success: boolean;
     data?: any;
@@ -164,6 +171,8 @@ export class PawapayService {
     message?: string;
   }> {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const _corr = await this.predictCorrespondent(`255${user.username}`);
 
       const requestBody = {
@@ -187,13 +196,13 @@ export class PawapayService {
 
       const contentDigest = this.generateContentDigest(requestBody);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/deposits`,
+        `${settings.base_url}/deposits`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             'Content-Digest': contentDigest,
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -228,11 +237,13 @@ export class PawapayService {
     amount,
     payoutId,
     operator,
+    clientId
   }: {
     user: any;
     amount: number;
     payoutId: string;
     operator: string;
+    clientId: number;
   }): Promise<{
     success: boolean;
     data?: any;
@@ -240,6 +251,8 @@ export class PawapayService {
     message?: string;
   }> {
     try {
+      const settings = await this.pawapaySettings(clientId)
+
       const _corr = await this.predictCorrespondent(`255${user.username}`);
       const requestBody = {
         payoutId,
@@ -266,12 +279,12 @@ export class PawapayService {
 
       const contentDigest = this.generateContentDigest(requestBody);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/payouts`,
+        `${settings.base_url}/payouts`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
             'Content-Digest': contentDigest,
           },
         },
@@ -300,20 +313,23 @@ export class PawapayService {
       };
     }
   }
-  async cancelPayout(payoutId: string): Promise<{
+
+  async cancelPayout(payoutId: string, clientId: number): Promise<{
     success: boolean;
     data?: any;
     transactionNo?: string;
     message?: string;
   }> {
     try {
+      const settings = await this.pawapaySettings(clientId)
+
       const { data }: any = await axios.post(
-        `${process.env.PAWA_PAY_API}/payouts/fail-enqueued/${payoutId}`,
+        `${settings.base_url}/payouts/fail-enqueued/${payoutId}`,
         {},
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -337,20 +353,26 @@ export class PawapayService {
       };
     }
   }
+
+
   async createBulkPayout({
     user,
     amounts,
     operator,
+    clientId
   }: {
     user: any;
     operator: string;
     amounts: number[];
+    clientId: number;
   }): Promise<{
     success: boolean;
     data?: any;
     transactionRefs?: any[];
     message?: string;
   }> {
+    const settings = await this.pawapaySettings(clientId)
+
     const _corr = await this.predictCorrespondent(`255${user.username}`);
     try {
       const requestBody = amounts.map((amount) => {
@@ -385,12 +407,12 @@ export class PawapayService {
       });
       const contentDigest = this.generateContentDigest(requestBody);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/payouts/bulk`,
+        `${settings.base_url}/payouts/bulk`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
             'Content-Digest': contentDigest,
           },
         },
@@ -668,6 +690,7 @@ export class PawapayService {
       };
     }
   }
+
   async fetchCountryWalletBalances(country: string) {
     try {
       const res: any = await axios.get(
