@@ -772,7 +772,7 @@ export class PaymentService {
       {
         created_at: LessThanOrEqual(now),
         status: 0,
-        channel: Not('sbengine')
+        channel: Not('sbengine'),
       },
       {
         status: 2,
@@ -798,10 +798,11 @@ export class PaymentService {
           source: param.source,
         })
         .toPromise();
-      const res = await this.pawapayService.createBulkPayout(
+      const res = await this.pawapayService.createBulkPayout({
         user,
-        param.amount,
-      );
+        amounts: param.amount,
+        operator: param.operator,
+      });
 
       if (!res.success) return res;
       await Promise.all(
@@ -833,7 +834,7 @@ export class PaymentService {
       return { success: false, message: error.message };
     }
   }
-  
+
   async createRequest(param) {
     try {
       const wallet = await this.walletRepository
@@ -857,22 +858,24 @@ export class PaymentService {
       const actionId = uuidv4();
       switch (param.action) {
         case 'deposit':
-          res = await this.pawapayService.createDeposit(
+          res = await this.pawapayService.createDeposit({
             user,
-            param.amount,
-            actionId,
-          );
+            amount: param.amount,
+            depositId: actionId,
+            operator: param.operator,
+          });
           if (!res.success) return res;
           subject = 'deposit';
           transactionNo = res.transactionNo;
 
           break;
         case 'payouts':
-          res = await this.pawapayService.createPayout(
+          res = await this.pawapayService.createPayout({
             user,
-            param.amount,
-            actionId,
-          );
+            amount: param.amount,
+            operator: param.operator,
+            payoutId: actionId,
+          });
 
           if (!res.success) return res;
           subject = 'payouts';

@@ -147,11 +147,17 @@ export class PawapayService {
     }
   }
 
-  async createDeposit(
-    user: any,
-    amount: number,
-    depositId: string,
-  ): Promise<{
+  async createDeposit({
+    user,
+    amount,
+    operator,
+    depositId,
+  }: {
+    user: any;
+    amount: number;
+    operator: string;
+    depositId: string;
+  }): Promise<{
     success: boolean;
     data?: any;
     transactionNo?: string;
@@ -159,12 +165,13 @@ export class PawapayService {
   }> {
     try {
       const _corr = await this.predictCorrespondent(`255${user.username}`);
+
       const requestBody = {
         depositId,
         amount: `${amount}`,
         currency: 'TZS',
         country: 'TZA',
-        correspondent: 'VODACOM_TZA',
+        correspondent: operator,
         payer: { type: 'MSISDN', address: { value: `255${user.username}` } },
         statementDescription: 'Online Withdrawal',
         customerTimestamp: new Date(),
@@ -173,12 +180,12 @@ export class PawapayService {
           {
             fieldName: 'customerId',
             fieldValue: user.email,
+            isPII: true,
           },
         ],
       };
 
       const contentDigest = this.generateContentDigest(requestBody);
-
       const res = await axios.post(
         `${process.env.PAWA_PAY_API}/deposits`,
         requestBody,
@@ -208,6 +215,7 @@ export class PawapayService {
         transactionNo: res.data.depositId,
       };
     } catch (error) {
+      console.log('error:', error);
       return {
         success: false,
         message: error.message,
@@ -215,11 +223,17 @@ export class PawapayService {
     }
   }
 
-  async createPayout(
-    user: any,
-    amount: number,
-    payoutId: string,
-  ): Promise<{
+  async createPayout({
+    user,
+    amount,
+    payoutId,
+    operator,
+  }: {
+    user: any;
+    amount: number;
+    payoutId: string;
+    operator: string;
+  }): Promise<{
     success: boolean;
     data?: any;
     transactionNo?: string;
@@ -234,7 +248,7 @@ export class PawapayService {
         // country: _corr.data.country,
         // correspondent: _corr.data.correspondent,
         country: 'TZA',
-        correspondent: 'VODACOM_TZA',
+        correspondent: operator,
         recipient: {
           type: 'MSISDN',
           address: { value: `255${user.username}` },
@@ -323,10 +337,15 @@ export class PawapayService {
       };
     }
   }
-  async createBulkPayout(
-    user: any,
-    amounts: number[],
-  ): Promise<{
+  async createBulkPayout({
+    user,
+    amounts,
+    operator,
+  }: {
+    user: any;
+    operator: string;
+    amounts: number[];
+  }): Promise<{
     success: boolean;
     data?: any;
     transactionRefs?: any[];
@@ -341,7 +360,7 @@ export class PawapayService {
           amount: `${amount}`,
           currency: 'TZS',
           country: 'TZA',
-          correspondent: 'VODACOM_TZA',
+          correspondent: operator,
           recipient: {
             type: 'MSISDN',
             address: { value: `255${user.username}` },
