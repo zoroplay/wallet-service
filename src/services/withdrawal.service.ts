@@ -108,7 +108,7 @@ export class WithdrawalService {
         status: HttpStatus.OK,
         message: 'Successful',
         data: {
-          balance: 0,
+          balance: jobData.balance,
           code: jobData.withdrawalCode,
         },
       };
@@ -249,7 +249,6 @@ export class WithdrawalService {
   async validateWithdrawalCode(
     data: ValidateTransactionRequest,
   ): Promise<CommonResponseObj> {
-
     try {
       // find withdrawal request
       const withdrawalRequest = await this.withdrawalRepository.findOne({
@@ -279,8 +278,6 @@ export class WithdrawalService {
           withdrawalFinalAmount: 0,
           username: withdrawalRequest.username,
         };
-
-  
 
         return {
           success: true,
@@ -330,13 +327,13 @@ export class WithdrawalService {
         },
       });
 
-      if (wallet.available_balance < withdrawReqeust.amount) {
-        return {
-          success: false,
-          status: HttpStatus.BAD_REQUEST,
-          message: 'You do not have enough funds to complete this request',
-        };
-      }
+      // if (wallet.available_balance < withdrawReqeust.amount) {
+      //   return {
+      //     success: false,
+      //     status: HttpStatus.BAD_REQUEST,
+      //     message: 'You do not have enough funds to complete this request',
+      //   };
+      // }
       // add user balance to payload
       payload.balance = wallet.available_balance;
       payload.amount = withdrawReqeust.amount;
