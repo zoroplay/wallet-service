@@ -18,10 +18,10 @@ export class PaymentMethod {
     @Column({ type: "varchar", length: 150, nullable: true })
     base_url: string;
 
-    @Column({ type: "varchar", length: 150, nullable: true })
+    @Column({ type: "longtext", length: 150, nullable: true })
     secret_key: string;
 
-    @Column({ type: "varchar", length: 150, nullable: true })
+    @Column({ type: "longtext", length: 150, nullable: true })
     public_key: string;
 
     @Column({ type: "varchar", length: 150, nullable: true })
