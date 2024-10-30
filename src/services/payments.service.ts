@@ -22,6 +22,8 @@ import {
   WayaBankRequest,
   Pitch90RegisterUrlRequest,
   Pitch90TransactionRequest,
+  PawapayToolkitRequest,
+  FetchPawapayRequest,
 } from 'src/proto/wallet.pb';
 import { HelperService } from 'src/services/helper.service';
 import { PaystackService } from 'src/services/paystack.service';
@@ -108,12 +110,15 @@ export class PaymentService {
 
           break;
         case 'pawapay':
-          const res = await this.pawapayService.generatePaymentLink({
-            amount: param.amount,
-            reference: transactionNo,
-            callback_url: user.callbackUrl + '/payment-verification/paystack',
-            currency: user.currency,
-          }, param.clientId);
+          const res = await this.pawapayService.generatePaymentLink(
+            {
+              amount: param.amount,
+              reference: transactionNo,
+              callback_url: user.callbackUrl + '/payment-verification/paystack',
+              currency: user.currency,
+            },
+            param.clientId,
+          );
 
           description = 'Online Deposit (Pawapay)';
           if (!res.success) return res as any;
@@ -802,7 +807,7 @@ export class PaymentService {
         user,
         amounts: param.amount,
         operator: param.operator,
-        clientId: param.clientId
+        clientId: param.clientId,
       });
 
       if (!res.success) return res;
@@ -864,7 +869,7 @@ export class PaymentService {
             amount: param.amount,
             depositId: actionId,
             operator: param.operator,
-            clientId: param.clientId
+            clientId: param.clientId,
           });
           if (!res.success) return res;
           subject = 'deposit';
@@ -886,7 +891,10 @@ export class PaymentService {
 
           break;
         case 'cancel-payouts':
-          res = await this.pawapayService.cancelPayout(actionId, param.clientId);
+          res = await this.pawapayService.cancelPayout(
+            actionId,
+            param.clientId,
+          );
           if (!res.success) return res;
           transactionNo = res.transactionNo;
           await this.transactionRepository.update(
@@ -909,7 +917,7 @@ export class PaymentService {
             param.amount,
             actionId,
             param.depositId,
-            param.clientId
+            param.clientId,
           );
           if (!res.success) return res;
           subject = 'refunds';
@@ -945,21 +953,21 @@ export class PaymentService {
     }
   }
 
-  async getRequests({ action, actionId }) {
+  async getRequests({ action, actionId, clientId }: FetchPawapayRequest) {
     try {
       let data;
       switch (action) {
         case 'deposit':
-          data = await this.pawapayService.fetchDeposits(actionId);
+          data = await this.pawapayService.fetchDeposits(actionId, clientId);
           if (!data.success) return data;
           break;
         case 'payouts':
-          data = await this.pawapayService.fetchPayouts(actionId);
+          data = await this.pawapayService.fetchPayouts(actionId, clientId);
           if (!data.success) return data;
 
           break;
         case 'refunds':
-          data = await this.pawapayService.fetchRefunds(actionId);
+          data = await this.pawapayService.fetchRefunds(actionId, clientId);
           if (!data.success) return data;
 
           break;
@@ -977,18 +985,27 @@ export class PaymentService {
     }
   }
 
-  async resendCallback({ action, actionId }) {
+  async resendCallback({ action, actionId, clientId }: FetchPawapayRequest) {
     try {
       let data;
       switch (action) {
         case 'deposit':
-          data = await this.pawapayService.depositResendCallback(actionId, );
+          data = await this.pawapayService.depositResendCallback(
+            actionId,
+            clientId,
+          );
           break;
         case 'payouts':
-          data = await this.pawapayService.payoutResendCallback(actionId);
+          data = await this.pawapayService.payoutResendCallback(
+            actionId,
+            clientId,
+          );
           break;
         case 'refunds':
-          data = await this.pawapayService.payoutResendCallback(actionId);
+          data = await this.pawapayService.payoutResendCallback(
+            actionId,
+            clientId,
+          );
           break;
         default:
           return { success: false, message: 'Invalid action' };
@@ -1003,15 +1020,15 @@ export class PaymentService {
     }
   }
 
-  async fetchToolkit({ action }) {
+  async fetchToolkit({ action, clientId }: PawapayToolkitRequest) {
     try {
       let res;
       switch (action) {
         case 'availability':
-          res = await this.pawapayService.fetchAvailability();
+          res = await this.pawapayService.fetchAvailability(clientId);
           break;
         case 'public-key':
-          res = await this.pawapayService.fetchPublicKey();
+          res = await this.pawapayService.fetchPublicKey(clientId);
           break;
         default:
           return {
@@ -1031,18 +1048,24 @@ export class PaymentService {
     }
   }
 
-  async predictCorrespondent(param: any) {
-    return this.pawapayService.predictCorrespondent(param.phoneNumber);
+  async predictCorrespondent(param) {
+    return this.pawapayService.predictCorrespondent(
+      param.phoneNumber,
+      param.clientId,
+    );
   }
-  async fetchActiveConf() {
-    return this.pawapayService.fetchActiveConf();
+  async fetchActiveConf(clientId) {
+    return this.pawapayService.fetchActiveConf(clientId);
   }
 
-  async fetchWalletBalances() {
-    return this.pawapayService.fetchWalletBalances();
+  async fetchWalletBalances(clientId) {
+    return this.pawapayService.fetchWalletBalances(clientId);
   }
 
   async fetchCountryWalletBalances(param: PawapayCountryRequest) {
-    return this.pawapayService.fetchCountryWalletBalances(param.country);
+    return this.pawapayService.fetchCountryWalletBalances(
+      param.country,
+      param.clientId,
+    );
   }
 }

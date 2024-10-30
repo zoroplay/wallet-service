@@ -28,7 +28,10 @@ export class PawapayService {
     private helperService: HelperService,
   ) {}
 
-  async generatePaymentLink(data, clientId): Promise<{
+  async generatePaymentLink(
+    data,
+    clientId,
+  ): Promise<{
     success: boolean;
     data?: any;
     depositId?: string;
@@ -102,7 +105,7 @@ export class PawapayService {
     message?: string;
   }> {
     try {
-      const settings = await this.pawapaySettings(clientId)
+      const settings = await this.pawapaySettings(clientId);
 
       const requestBody = {
         refundId,
@@ -117,13 +120,13 @@ export class PawapayService {
       };
       const contentDigest = this.generateContentDigest(requestBody);
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/refunds`,
+        `${settings.base_url}/refunds`,
         requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             'Content-Digest': contentDigest,
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -163,7 +166,7 @@ export class PawapayService {
     amount: number;
     operator: string;
     depositId: string;
-    clientId: number
+    clientId: number;
   }): Promise<{
     success: boolean;
     data?: any;
@@ -172,8 +175,6 @@ export class PawapayService {
   }> {
     try {
       const settings = await this.pawapaySettings(clientId);
-
-      const _corr = await this.predictCorrespondent(`255${user.username}`);
 
       const requestBody = {
         depositId,
@@ -237,7 +238,7 @@ export class PawapayService {
     amount,
     payoutId,
     operator,
-    clientId
+    clientId,
   }: {
     user: any;
     amount: number;
@@ -251,9 +252,8 @@ export class PawapayService {
     message?: string;
   }> {
     try {
-      const settings = await this.pawapaySettings(clientId)
+      const settings = await this.pawapaySettings(clientId);
 
-      const _corr = await this.predictCorrespondent(`255${user.username}`);
       const requestBody = {
         payoutId,
         amount: amount,
@@ -314,14 +314,17 @@ export class PawapayService {
     }
   }
 
-  async cancelPayout(payoutId: string, clientId: number): Promise<{
+  async cancelPayout(
+    payoutId: string,
+    clientId: number,
+  ): Promise<{
     success: boolean;
     data?: any;
     transactionNo?: string;
     message?: string;
   }> {
     try {
-      const settings = await this.pawapaySettings(clientId)
+      const settings = await this.pawapaySettings(clientId);
 
       const { data }: any = await axios.post(
         `${settings.base_url}/payouts/fail-enqueued/${payoutId}`,
@@ -354,12 +357,11 @@ export class PawapayService {
     }
   }
 
-
   async createBulkPayout({
     user,
     amounts,
     operator,
-    clientId
+    clientId,
   }: {
     user: any;
     operator: string;
@@ -371,9 +373,8 @@ export class PawapayService {
     transactionRefs?: any[];
     message?: string;
   }> {
-    const settings = await this.pawapaySettings(clientId)
+    const settings = await this.pawapaySettings(clientId);
 
-    const _corr = await this.predictCorrespondent(`255${user.username}`);
     try {
       const requestBody = amounts.map((amount) => {
         const payoutId = uuidv4();
@@ -437,16 +438,18 @@ export class PawapayService {
     }
   }
 
-  async depositResendCallback(depositId) {
+  async depositResendCallback(depositId, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/deposits/resend-callback`,
+        `${settings.base_url}/deposits/resend-callback`,
         JSON.stringify({
           depositId,
         }),
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -460,16 +463,18 @@ export class PawapayService {
     }
   }
 
-  async payoutResendCallback(payoutId) {
+  async payoutResendCallback(payoutId, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API}/payouts/resend-callback`,
+        `${settings.base_url}/payouts/resend-callback`,
         JSON.stringify({
           payoutId,
         }),
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -489,16 +494,18 @@ export class PawapayService {
     }
   }
 
-  async refundResendCallback(refundId) {
+  async refundResendCallback(refundId, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const { data } = await axios.post(
-        `${process.env.PAWA_PAY_API}/refunds/resend-callback`,
+        `${settings.base_url}/refunds/resend-callback`,
         JSON.stringify({
           refundId,
         }),
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -518,13 +525,15 @@ export class PawapayService {
     }
   }
 
-  async fetchDeposits(depositId) {
+  async fetchDeposits(depositId, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const res = await axios.get(
-        `${process.env.PAWA_PAY_API}/deposits/${depositId}`,
+        `${settings.base_url}/deposits/${depositId}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -544,16 +553,15 @@ export class PawapayService {
     }
   }
 
-  async fetchPayouts(payoutId) {
+  async fetchPayouts(payoutId, clientId) {
     try {
-      const res = await axios.get(
-        `${process.env.PAWA_PAY_API}/payouts/${payoutId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
-          },
+      const settings = await this.pawapaySettings(clientId);
+
+      const res = await axios.get(`${settings.base_url}/payouts/${payoutId}`, {
+        headers: {
+          Authorization: `Bearer ${settings.secret_key}`,
         },
-      );
+      });
 
       if (res[0].status === 'REJECTED')
         return { success: false, message: 'REJECTED' };
@@ -570,14 +578,16 @@ export class PawapayService {
     }
   }
 
-  async fetchRefunds(refundId) {
+  async fetchRefunds(refundId, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const { data } = await axios.get(
-        `${process.env.PAWA_PAY_API}/refunds/${refundId}`,
+        `${settings.base_url}/refunds/${refundId}`,
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -596,11 +606,13 @@ export class PawapayService {
     }
   }
 
-  async fetchAvailability() {
+  async fetchAvailability(clientId) {
     try {
-      const res = await axios.get(`${process.env.PAWA_PAY_API}/availability`, {
+      const settings = await this.pawapaySettings(clientId);
+
+      const res = await axios.get(`${settings.base_url}/availability`, {
         headers: {
-          Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+          Authorization: `Bearer ${settings.secret_key}`,
         },
       });
 
@@ -613,11 +625,13 @@ export class PawapayService {
     }
   }
 
-  async fetchActiveConf() {
+  async fetchActiveConf(clientId) {
     try {
-      const res = await axios.get(`${process.env.PAWA_PAY_API}/active-conf`, {
+      const settings = await this.pawapaySettings(clientId);
+
+      const res = await axios.get(`${settings.base_url}/active-conf`, {
         headers: {
-          Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+          Authorization: `Bearer ${settings.secret_key}`,
         },
       });
 
@@ -630,16 +644,15 @@ export class PawapayService {
     }
   }
 
-  async fetchPublicKey() {
+  async fetchPublicKey(clientId) {
+    const settings = await this.pawapaySettings(clientId);
+
     try {
-      const { data } = await axios.get(
-        `${process.env.PAWA_PAY_API}/public-key/http`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
-          },
+      const { data } = await axios.get(`${settings.base_url}/public-key/http`, {
+        headers: {
+          Authorization: `Bearer ${settings.secret_key}`,
         },
-      );
+      });
 
       return { success: true, data };
     } catch (e) {
@@ -650,15 +663,17 @@ export class PawapayService {
     }
   }
 
-  async predictCorrespondent(phoneNumber: string) {
+  async predictCorrespondent(phoneNumber: string, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const res = await axios.post(
-        `${process.env.PAWA_PAY_API_V1}/predict-correspondent`,
+        `${settings.base_url}/predict-correspondent`,
         { msisdn: phoneNumber },
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
@@ -671,16 +686,15 @@ export class PawapayService {
     }
   }
 
-  async fetchWalletBalances() {
+  async fetchWalletBalances(clientId) {
     try {
-      const res: any = await axios.get(
-        `${process.env.PAWA_PAY_API}/wallet-balances`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
-          },
+      const settings = await this.pawapaySettings(clientId);
+
+      const res: any = await axios.get(`${settings.base_url}/wallet-balances`, {
+        headers: {
+          Authorization: `Bearer ${settings.secret_key}`,
         },
-      );
+      });
 
       return { success: true, data: res.data.balances };
     } catch (e) {
@@ -691,13 +705,15 @@ export class PawapayService {
     }
   }
 
-  async fetchCountryWalletBalances(country: string) {
+  async fetchCountryWalletBalances(country: string, clientId) {
     try {
+      const settings = await this.pawapaySettings(clientId);
+
       const res: any = await axios.get(
-        `${process.env.PAWA_PAY_API}/wallet-balances/${country}`,
+        `${settings.base_url}/wallet-balances/${country}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAWA_PAY_API_TOKEN}`,
+            Authorization: `Bearer ${settings.secret_key}`,
           },
         },
       );
