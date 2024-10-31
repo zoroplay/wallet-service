@@ -249,6 +249,7 @@ export class WithdrawalService {
   async validateWithdrawalCode(
     data: ValidateTransactionRequest,
   ): Promise<CommonResponseObj> {
+
     try {
       // find withdrawal request
       const withdrawalRequest = await this.withdrawalRepository.findOne({
@@ -278,6 +279,7 @@ export class WithdrawalService {
           withdrawalFinalAmount: 0,
           username: withdrawalRequest.username,
         };
+
 
         return {
           success: true,
