@@ -201,7 +201,7 @@ export class PaymentService {
     }
   }
 
-  async   updateWithdrawalStatus({
+  async updateWithdrawalStatus({
     clientId,
     withdrawalId,
     action,
@@ -212,13 +212,11 @@ export class PaymentService {
       const wRequest = await this.withdrawalRepository.findOne({
         where: { id: withdrawalId },
       });
-      console.log(wRequest)
       if (wRequest) {
         if (action === 'approve') {
           const paymentMethod = await this.paymentMethodRepository.findOne({
             where: { for_disbursement: 1 },
           });
-          console.log(paymentMethod)
           if (paymentMethod) {
             let resp: any = {
               success: false,
