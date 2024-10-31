@@ -173,55 +173,59 @@ export class DepositService {
     }
   }
 
-  async validateDepositCode ({clientId, code}: ValidateTransactionRequest): Promise<CommonResponseObj> {
-    
+  async validateDepositCode({
+    clientId,
+    code,
+  }: ValidateTransactionRequest): Promise<CommonResponseObj> {
     const transaction = await this.transactionRepository.findOne({
-        where: {
-            client_id: clientId,
-            transaction_no: code,
-            tranasaction_type: 'credit'
-        }
-    })
+      where: {
+        client_id: clientId,
+        transaction_no: code,
+        tranasaction_type: 'credit',
+      },
+    });
 
     if (transaction && transaction.status === 0) {
-        return {
-            success: true,
-            message: "Transaction found",
-            data: transaction,
-            status: HttpStatus.OK
-        }
-    } else if(transaction && transaction.status === 1) {
-        return {
-            success: false,
-            message: "Code has already been used",
-            status: HttpStatus.BAD_REQUEST
-        }
-    } else if(transaction && transaction.status === 2) {
+      return {
+        success: true,
+        message: 'Transaction found',
+        data: transaction,
+        status: HttpStatus.OK,
+      };
+    } else if (transaction && transaction.status === 1) {
       return {
         success: false,
-        message: "Code has expired",
-        status: HttpStatus.BAD_REQUEST
-      }
+        message: 'Code has already been used',
+        status: HttpStatus.BAD_REQUEST,
+      };
+    } else if (transaction && transaction.status === 2) {
+      return {
+        success: false,
+        message: 'Code has expired',
+        status: HttpStatus.BAD_REQUEST,
+      };
     } else {
-        return {
-            success: false,
-            message: "Transaction not found",
-            status: HttpStatus.NOT_FOUND
-        }
+      return {
+        success: false,
+        message: 'Transaction not found',
+        status: HttpStatus.NOT_FOUND,
+      };
     }
   }
 
   async processShopDeposit(data): Promise<CommonResponseObj> {
     try {
       // get withdrawal request
-      const transaction = await this.transactionRepository.findOne({where: {id: data.id, status: 0}});
+      const transaction = await this.transactionRepository.findOne({
+        where: { id: data.id, status: 0 },
+      });
 
       if (!transaction) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
-          message: 'Deposit request already processed'
-        }
+          message: 'Deposit request already processed',
+        };
       }
 
       // check if the authorizing agent and the withdrawer are the same person
@@ -229,8 +233,8 @@ export class DepositService {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
-          message: 'You cannot process your own request'
-        }
+          message: 'You cannot process your own request',
+        };
       }
 
       // get user wallet
@@ -241,12 +245,14 @@ export class DepositService {
         },
       });
 
-      if (parseFloat(wallet.available_balance.toString()) < transaction.amount) {
+      if (
+        parseFloat(wallet.available_balance.toString()) < transaction.amount
+      ) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
-          message: 'You do not have enough funds to complete this request'
-        }
+          message: 'You do not have enough funds to complete this request',
+        };
       }
       // acreate deposit job data
       const jobData = {
@@ -257,30 +263,30 @@ export class DepositService {
         toUserId: transaction.user_id,
         toUsername: transaction.username,
         role: data.userRole,
-        transactionCode: transaction.transaction_no
-      }
+        transactionCode: transaction.transaction_no,
+      };
 
       // console.log(jobData)
 
       // add request to queue
       await this.depositQueue.add('shop-deposit', jobData, {
-        jobId: `shop-deposit:${transaction.id}`
+        jobId: `shop-deposit:${transaction.id}`,
       });
 
       return {
         success: true,
         status: HttpStatus.OK,
-        message: "Transaction has been processed",
+        message: 'Transaction has been processed',
         data: {
-          balance: wallet.available_balance - transaction.amount
-        }
-      }
+          balance: wallet.available_balance - transaction.amount,
+        },
+      };
     } catch (e) {
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'An error occured while processing your request.'
-      }
+        message: 'An error occured while processing your request.',
+      };
     }
   }
 }

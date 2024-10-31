@@ -108,7 +108,7 @@ export class WithdrawalService {
         status: HttpStatus.OK,
         message: 'Successful',
         data: {
-          balance: 0,
+          balance: jobData.balance,
           code: jobData.withdrawalCode,
         },
       };
@@ -280,7 +280,6 @@ export class WithdrawalService {
           username: withdrawalRequest.username,
         };
 
-  
 
         return {
           success: true,
@@ -334,7 +333,7 @@ export class WithdrawalService {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
-          message: 'You do not have enough funds to complete this request',
+          message: 'You do not have enough funds to proceess this request',
         };
       }
       // add user balance to payload

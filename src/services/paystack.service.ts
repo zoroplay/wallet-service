@@ -192,14 +192,12 @@ export class PaystackService {
         paymentSettings.secret_key,
       );
       if (initRes.success) {
-        // do transfer with paystack transfer api
         const resp: any = await this.doTransfer(
           withdrawal.amount,
           withdrawal.withdrawal_code,
           initRes.data.recipient_code,
           paymentSettings.secret_key,
         );
-        // console.log(resp);
         return {
           success: resp.success,
           data: resp.data,
@@ -237,7 +235,6 @@ export class PaystackService {
         'Content-Type': 'application/json',
       },
     };
-
     const resp: any = await new Promise((resolve, reject) => {
       const req = https
         .request(options, (res) => {
@@ -248,7 +245,6 @@ export class PaystackService {
           });
 
           res.on('end', () => {
-            // console.log(JSON.parse(data))
             resolve(JSON.parse(data));
           });
         })

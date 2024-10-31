@@ -389,8 +389,8 @@ export class AppController {
     return this.paymentService.getRequests(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayBalances')
-  HandlePawaPayBalances() {
-    return this.paymentService.fetchWalletBalances();
+  HandlePawaPayBalances(param: PawapayCountryRequest) {
+    return this.paymentService.fetchWalletBalances(param.clientId);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayCountryBalances')
   HandlePawaPayCountryBalances(param: PawapayCountryRequest) {
@@ -405,8 +405,8 @@ export class AppController {
     return this.paymentService.fetchToolkit(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandlePawaPayActiveConf')
-  HandlePawaPayActiveConf() {
-    return this.paymentService.fetchActiveConf();
+  HandlePawaPayActiveConf(param: PawapayCountryRequest) {
+    return this.paymentService.fetchActiveConf(param.clientId);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreateVirtualAccount')
   CreateVirtualAccount(param: WayaBankRequest) {
