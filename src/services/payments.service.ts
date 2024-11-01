@@ -276,24 +276,24 @@ export class PaymentService {
               },
             );
             //return funds to user wallet
-            const wallet = await this.walletRepository.findOne({
+            const _wallet = await this.walletRepository.findOne({
               where: {
                 client_id: clientId,
                 user_id: wRequest.user_id,
               },
             });
 
-            const balance =
-              parseFloat(wallet.available_balance.toString()) +
+            const _balance =
+              parseFloat(_wallet.available_balance.toString()) +
               parseFloat(wRequest.amount.toString());
 
             // update user balance
             await this.walletRepository.update(
               {
-                id: wallet.id,
+                id: _wallet.id,
               },
               {
-                available_balance: balance,
+                available_balance: _balance,
               },
             );
 
@@ -301,9 +301,9 @@ export class PaymentService {
               amount: wRequest.amount,
               channel: 'internal',
               clientId,
-              toUserId: wallet.user_id,
-              toUsername: wallet.username,
-              toUserBalance: balance,
+              toUserId: _wallet.user_id,
+              toUsername: _wallet.username,
+              toUserBalance: _balance,
               fromUserId: 0,
               fromUsername: 'System',
               fromUserbalance: 0,
