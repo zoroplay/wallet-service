@@ -127,12 +127,23 @@ export class WithdrawalService {
     data: FetchUsersWithdrawalRequest,
   ): Promise<CommonResponseArray> {
     try {
-      const withdrawal = await this.withdrawalRepository.find({
-        where: {
-          user_id: data.userId,
-          client_id: data.clientId,
-        },
-      });
+      let withdrawal;
+      if (data.pending) {
+        withdrawal = await this.withdrawalRepository.find({
+          where: {
+            user_id: data.userId,
+            client_id: data.clientId,
+            status: 0,
+          },
+        });
+      } else {
+        withdrawal = await this.withdrawalRepository.find({
+          where: {
+            user_id: data.userId,
+            client_id: data.clientId,
+          },
+        });
+      }
       const _withdrawal = await Promise.all(
         withdrawal.map(async (_withdrawal_) => {
           const { account_name, account_number, bank_code, bank_name, ...all } =
@@ -249,7 +260,6 @@ export class WithdrawalService {
   async validateWithdrawalCode(
     data: ValidateTransactionRequest,
   ): Promise<CommonResponseObj> {
-
     try {
       // find withdrawal request
       const withdrawalRequest = await this.withdrawalRepository.findOne({
@@ -279,7 +289,6 @@ export class WithdrawalService {
           withdrawalFinalAmount: 0,
           username: withdrawalRequest.username,
         };
-
 
         return {
           success: true,
