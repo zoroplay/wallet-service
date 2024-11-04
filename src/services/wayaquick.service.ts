@@ -15,9 +15,9 @@ export class WayaQuickService {
 
   async generatePaymentLink(paymentData, client_id) {
     const paymentSettings = await this.getSettings(client_id);
-    console.log(paymentData);
     try {
-      this.wayaQuickClient = new WayaQuickRestClient(
+      console.log(paymentData, 5665766, client_id);
+      this.wayaQuickClient = await new WayaQuickRestClient(
         paymentSettings.merchant_id,
         paymentSettings.public_key,
         'PRODUCTION',
