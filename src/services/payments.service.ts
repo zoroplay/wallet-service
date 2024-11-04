@@ -153,7 +153,7 @@ export class PaymentService {
           description = 'Online Deposit (Wayaquick)';
           const wRes: any = await this.wayaquickService.generatePaymentLink(
             {
-              amount: param.amount,
+              amount: `${param.amount.toFixed(2)}`,
               email: user.email || `${user.username}@${user.siteUrl}`,
               firstName: user.username,
               lastName: user.username,
