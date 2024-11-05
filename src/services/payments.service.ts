@@ -395,44 +395,44 @@ export class PaymentService {
     }
   }
 
-  async wayaquickVerifyPayment(param: WayaQuickRequest) {
-    try {
-      const transaction = await this.transactionRepository.findOneBy({
-        transaction_no: param.transactionId,
-        user_id: param.userId,
-        client_id: param.clientId,
-        channel: 'wayaquick',
-      });
+  // async wayaquickVerifyPayment(param: WayaQuickRequest) {
+  //   try {
+  //     const transaction = await this.transactionRepository.findOneBy({
+  //       transaction_no: param.transactionId,
+  //       user_id: param.userId,
+  //       client_id: param.clientId,
+  //       channel: 'wayaquick',
+  //     });
 
-      if (!transaction) {
-        return {
-          success: false,
-          message: 'transaction id doesn`t exist',
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-      const transact = await this.wayaquickService.verifyTransaction(param);
+  //     if (!transaction) {
+  //       return {
+  //         success: false,
+  //         message: 'transaction id doesn`t exist',
+  //         status: HttpStatus.BAD_REQUEST,
+  //       };
+  //     }
+  //     const transact = await this.wayaquickService.verifyTransaction(param);
 
-      if (!transact.success) {
-        return {
-          success: false,
-          message: transact.message,
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-      return {
-        success: true,
-        message: 'Success',
-        data: transact.data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
+  //     if (!transact.success) {
+  //       return {
+  //         success: false,
+  //         message: transact.message,
+  //         status: HttpStatus.BAD_REQUEST,
+  //       };
+  //     }
+  //     return {
+  //       success: true,
+  //       message: 'Success',
+  //       data: transact.data,
+  //     };
+  //   } catch (error) {
+  //     return {
+  //       success: false,
+  //       message: 'Error verifying account',
+  //       status: HttpStatus.INTERNAL_SERVER_ERROR,
+  //     };
+  //   }
+  // }
 
   async pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
     try {
@@ -536,6 +536,8 @@ export class PaymentService {
             return this.paystackService.verifyTransaction(param);
           case 'monnify':
             return this.monnifyService.verifyTransaction(param);
+          case 'wayaquick':
+            return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
             break;
           default:

@@ -77,7 +77,7 @@ export class PaystackService {
           tranasaction_type: 'credit',
         },
       });
-      // if tranaction not found.
+
       if (!transaction)
         return {
           success: false,
@@ -178,7 +178,7 @@ export class PaystackService {
     try {
       const paymentSettings = await this.paystackSettings(client_id);
 
-      console.log(paymentSettings)
+      console.log(paymentSettings);
       // return false if paystack settings is not available
       if (!paymentSettings)
         return {
