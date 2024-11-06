@@ -52,9 +52,8 @@ export class WayaQuickService {
   }
 
   async verifyTransaction(param: VerifyDepositRequest) {
-    console.log("verify wayaquick param", param)
     try {
-      const res = await this.wayaQuickClient.verifyPayment(
+      const res = await WayaQuickRestClient.verifyPayment(
         param.transactionRef,
       );
 
