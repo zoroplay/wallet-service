@@ -183,7 +183,7 @@ export class PawapayService {
         country: 'TZA',
         correspondent: operator,
         payer: { type: 'MSISDN', address: { value: `255${user.username}` } },
-        statementDescription: 'Online Withdrawal',
+        statementDescription: 'Online Deposit',
         customerTimestamp: new Date(),
         preAuthorisationCode: user.pin,
         metadata: [

@@ -64,7 +64,7 @@ export class WayaQuickService {
           tranasaction_type: 'credit',
         },
       });
-
+      console.log('transaction, res:', transaction, res);
       if (!transaction)
         return {
           success: false,
