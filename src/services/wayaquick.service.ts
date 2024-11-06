@@ -52,12 +52,12 @@ export class WayaQuickService {
   }
 
   async verifyTransaction(param: VerifyDepositRequest) {
+    console.log("verify wayaquick param", param)
     try {
       const res = await this.wayaQuickClient.verifyPayment(
         param.transactionRef,
       );
 
-      console.log("verify wayaquick res", res)
 
       const transaction = await this.transactionRepository.findOne({
         where: {
@@ -66,6 +66,7 @@ export class WayaQuickService {
           tranasaction_type: 'credit',
         },
       });
+
       console.log('transaction, res:', transaction, res);
 
       if (!transaction)
@@ -157,6 +158,7 @@ export class WayaQuickService {
 
       return { success: true, data: res.data };
     } catch (e) {
+      console.log(e.message);
       return {
         success: false,
         message: 'Unable to initiate deposit with wayaquick',
