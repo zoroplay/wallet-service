@@ -53,7 +53,15 @@ export class WayaQuickService {
 
   async verifyTransaction(param: VerifyDepositRequest) {
     try {
-      const res = await WayaQuickRestClient.verifyPayment(
+      const paymentSettings = await this.getSettings(param.clientId);
+
+      this.wayaQuickClient = await new WayaQuickRestClient(
+        paymentSettings.merchant_id,
+        paymentSettings.public_key,
+        'PRODUCTION',
+      );
+
+      const res = await this.wayaQuickClient.verifyPayment(
         param.transactionRef,
       );
 
