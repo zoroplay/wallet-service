@@ -338,13 +338,6 @@ export class WithdrawalService {
         },
       });
 
-      // if (wallet.available_balance < withdrawReqeust.amount) {
-      //   return {
-      //     success: false,
-      //     status: HttpStatus.BAD_REQUEST,
-      //     message: 'You do not have enough funds to proceess this request',
-      //   };
-      // }
       // add user balance to payload
       payload.balance = wallet.available_balance;
       payload.amount = withdrawReqeust.amount;

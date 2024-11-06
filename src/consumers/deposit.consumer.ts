@@ -81,6 +81,16 @@ export class DepositConsumer extends WorkerHost {
           balance: senderBalance,
         },
       );
+      //update transaction credit record
+      await this.transactionRepository.update(
+        {
+          transaction_no: data.transactionCode,
+          tranasaction_type: 'credit',
+        },
+        {
+          balance: receiverBalance,
+        },
+      );
 
       if (data.userRole === 'Sales Agent') {
         // const settings = await this.identityService.getWithdrawalSettings({clientId: data.clientId, userId: data.userId})
