@@ -57,6 +57,8 @@ export class WayaQuickService {
         param.transactionRef,
       );
 
+      console.log("verify wayaquick res", res)
+
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: param.clientId,
