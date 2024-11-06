@@ -53,44 +53,49 @@ export class WayaQuickService {
 
   async verifyTransaction(param: VerifyDepositRequest) {
     try {
+      // get wayaquick payment settings
       const paymentSettings = await this.getSettings(param.clientId);
 
+      // initialize wayaquck client
       this.wayaQuickClient = await new WayaQuickRestClient(
         paymentSettings.merchant_id,
         paymentSettings.public_key,
         'PRODUCTION',
       );
 
+      // verify transaction with wayaquick
       const res = await this.wayaQuickClient.verifyPayment(
         param.transactionRef,
       );
-
-
-      const transaction = await this.transactionRepository.findOne({
-        where: {
-          client_id: param.clientId,
-          transaction_no: param.transactionRef,
-          tranasaction_type: 'credit',
-        },
-      });
-
-      console.log('transaction, res:', transaction, res);
-
-      if (!transaction)
-        return {
-          success: false,
-          message: 'Transaction not found',
-          status: HttpStatus.NOT_FOUND,
-        };
-
+      // if transaction is valid with wayaquick, proceed
       if (res.status) {
-        if (transaction.status === 1)
+        // fetch transaction internally
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: param.clientId,
+            transaction_no: param.transactionRef,
+            tranasaction_type: 'credit',
+          },
+        });
+
+        console.log('transaction, res:', transaction, res);
+
+        if (!transaction) // if not transaction, return error
+          return {
+            success: false,
+            message: 'Transaction not found',
+            status: HttpStatus.NOT_FOUND,
+          };
+
+      
           // if transaction is already successful, return success message
+        if (transaction.status === 1)
           return {
             success: true,
             message: 'Transaction was successful',
             status: HttpStatus.OK,
           };
+        // if transaction has been settled, return message
         if (transaction.status === 2)
           return {
             success: false,
@@ -150,7 +155,7 @@ export class WayaQuickService {
       } else {
         await this.transactionRepository.update(
           {
-            transaction_no: transaction.transaction_no,
+            transaction_no: param.transactionRef,
           },
           {
             status: 2,
@@ -162,13 +167,11 @@ export class WayaQuickService {
           status: HttpStatus.BAD_REQUEST,
         };
       }
-
-      return { success: true, data: res.data };
     } catch (e) {
       console.log(e.message);
       return {
         success: false,
-        message: 'Unable to initiate deposit with wayaquick',
+        message: 'Error occured while verifying transaction',
       };
     }
   }
