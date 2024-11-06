@@ -78,7 +78,7 @@ export class WayaQuickService {
           },
         });
 
-        console.log('transaction, res:', transaction, res);
+        // console.log('transaction, res:', transaction, res);
 
         if (!transaction) // if not transaction, return error
           return {
