@@ -69,7 +69,7 @@ export class WayaQuickService {
       );
       console.log('wayaquick response', res)
       // if transaction is valid with wayaquick, proceed
-      if (res.status) {
+      if (res.status && res.data.Status === 'APPROVED') {
         // fetch transaction internally
         const transaction = await this.transactionRepository.findOne({
           where: {
