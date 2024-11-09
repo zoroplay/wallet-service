@@ -67,7 +67,6 @@ export class WayaQuickService {
       const res = await this.wayaQuickClient.verifyPayment(
         param.transactionRef,
       );
-      console.log('wayaquick response', res)
       // if transaction is valid with wayaquick, proceed
       if (res.status && res.data.Status === 'SUCCESSFUL') {
         // fetch transaction internally
