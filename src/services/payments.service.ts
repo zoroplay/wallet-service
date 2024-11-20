@@ -728,9 +728,9 @@ export class PaymentService {
       const senderBalance = fromWallet.available_balance - amount;
       // credit receiver balance
       const receiverBalance =
-        Number(toWallet.available_balance) + Number(amount);
+        parseFloat(toWallet.available_balance.toString()) + parseFloat(amount.toFixed());
 
-      //update wallets
+      //update send balance
       await this.walletRepository.update(
         {
           user_id: fromUserId,
@@ -739,7 +739,7 @@ export class PaymentService {
           available_balance: senderBalance,
         },
       );
-
+      // update receiver balance
       await this.walletRepository.update(
         {
           user_id: toUserId,

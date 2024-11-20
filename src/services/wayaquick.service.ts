@@ -122,6 +122,7 @@ export class WayaQuickService {
             },
             {
               status: 1,
+              balance
             },
           );
 
@@ -168,7 +169,7 @@ export class WayaQuickService {
         };
       }
     } catch (e) {
-      console.log(e.message);
+      // console.log(e.message);
       return {
         success: false,
         message: 'Error occured while verifying transaction',

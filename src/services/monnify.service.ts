@@ -88,7 +88,7 @@ export class MonnifyService {
                     await this.transactionRepository.update({
                         transaction_no: transaction.transaction_no,
                     }, {
-                        status
+                        status,
                     });
 
                     if (status === 1 && transaction.status === 1) // if transaction is already successful, return success message
@@ -101,11 +101,18 @@ export class MonnifyService {
                         const wallet = await this.walletRepository.findOne({where: {user_id: transaction.user_id}});
 
                         const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(transaction.amount.toString())
+                        // update transaction status to completed - 1
+                        await this.transactionRepository.update({
+                            transaction_no: transaction.transaction_no,
+                        }, {
+                            balance,
+                        });
                         // fund user wallet
                         await this.helperService.updateWallet(balance, transaction.user_id);
                         // send deposit to trackier
                         try {
                             const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
                             if (keys.success) {
                                 await this.helperService.sendActivity({
                                     subject: 'Deposit',
@@ -131,6 +138,7 @@ export class MonnifyService {
                         // send reversal request to trackier
                         try {
                             const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
                             if (keys.success) {
                                 await this.helperService.sendActivity({
                                     subject: 'Withdrawal Request',
