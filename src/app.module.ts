@@ -42,9 +42,13 @@ import { SalesReport } from './cashbook/entities/sales_report.entity';
 import { WayaQuickService } from './services/wayaquick.service';
 import { WayaBankService } from './services/wayabank.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST,

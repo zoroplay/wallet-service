@@ -153,7 +153,7 @@ export class PaymentService {
           description = 'Online Deposit (Wayaquick)';
           const wRes: any = await this.wayaquickService.generatePaymentLink(
             {
-              amount: param.amount,
+              amount: `${param.amount.toFixed(2)}`,
               email: user.email || `${user.username}@${user.siteUrl}`,
               firstName: user.username,
               lastName: user.username,
@@ -213,109 +213,171 @@ export class PaymentService {
         where: { id: withdrawalId },
       });
       if (wRequest) {
-        if (action === 'approve') {
-          const paymentMethod = await this.paymentMethodRepository.findOne({
-            where: { for_disbursement: 1 },
-          });
-          if (paymentMethod) {
-            let resp: any = {
-              success: false,
-              message:
-                'Unable to disburse funds with ' + paymentMethod.provider,
-              status: HttpStatus.NOT_IMPLEMENTED,
-            };
-            switch (paymentMethod.provider) {
-              case 'paystack':
-                resp = await this.paystackService.disburseFunds(
-                  wRequest,
-                  clientId,
+        switch (action) {
+          case 'approve':
+            const paymentMethod = await this.paymentMethodRepository.findOne({
+              where: { for_disbursement: 1 },
+            });
+            if (paymentMethod) {
+              let resp: any = {
+                success: false,
+                message:
+                  'Unable to disburse funds with ' + paymentMethod.provider,
+                status: HttpStatus.NOT_IMPLEMENTED,
+              };
+              switch (paymentMethod.provider) {
+                case 'paystack':
+                  resp = await this.paystackService.disburseFunds(
+                    wRequest,
+                    clientId,
+                  );
+                  break;
+                case 'mgurush':
+                  break;
+                case 'monnify':
+                  break;
+                case 'flutterwave':
+                  break;
+                default:
+                  break;
+              }
+              // update withdrawal request
+              if (resp.success)
+                await this.withdrawalRepository.update(
+                  {
+                    id: withdrawalId,
+                  },
+                  {
+                    status: 1,
+                    updated_by: updatedBy,
+                  },
                 );
-                break;
-              case 'mgurush':
-                break;
-              case 'monnify':
-                break;
-              case 'flutterwave':
-                break;
-              default:
-                break;
+
+              // return response
+              return resp;
+            } else {
+              return {
+                success: false,
+                message:
+                  'No payment method has been setup for auto disbursement',
+                status: HttpStatus.NOT_IMPLEMENTED,
+              };
             }
-            // update withdrawal request
-            if (resp.success)
-              await this.withdrawalRepository.update(
-                {
-                  id: withdrawalId,
-                },
-                {
-                  status: 1,
-                  updated_by: updatedBy,
-                },
-              );
+            break;
+          case 'cancel':
+            await this.withdrawalRepository.update(
+              {
+                id: withdrawalId,
+              },
+              {
+                status: 3,
+                comment,
+                updated_by: updatedBy,
+              },
+            );
+            //return funds to user wallet
+            const _wallet = await this.walletRepository.findOne({
+              where: {
+                client_id: clientId,
+                user_id: wRequest.user_id,
+              },
+            });
 
-            // return response
-            return resp;
-          } else {
+            const _balance =
+              parseFloat(_wallet.available_balance.toString()) +
+              parseFloat(wRequest.amount.toString());
+
+            // update user balance
+            await this.walletRepository.update(
+              {
+                id: _wallet.id,
+              },
+              {
+                available_balance: _balance,
+              },
+            );
+
+            await this.helperService.saveTransaction({
+              amount: wRequest.amount,
+              channel: 'internal',
+              clientId,
+              toUserId: _wallet.user_id,
+              toUsername: _wallet.username,
+              toUserBalance: _balance,
+              fromUserId: 0,
+              fromUsername: 'System',
+              fromUserbalance: 0,
+              source: 'internal',
+              subject: 'Cancelled Request',
+              description: comment || 'Withdrawal request was cancelled',
+              transactionNo: generateTrxNo(),
+              status: 1,
+            });
             return {
-              success: false,
-              message: 'No payment method has been setup for auto disbursement',
-              status: HttpStatus.NOT_IMPLEMENTED,
+              success: true,
+              message: 'Withdrawal request caancelled',
+              status: HttpStatus.CREATED,
             };
-          }
-        } else {
-          // update withdrawal status
-          await this.withdrawalRepository.update(
-            {
-              id: withdrawalId,
-            },
-            {
-              status: 2,
-              comment,
-              updated_by: updatedBy,
-            },
-          );
-          //return funds to user wallet
-          const wallet = await this.walletRepository.findOne({
-            where: {
-              client_id: clientId,
-              user_id: wRequest.user_id,
-            },
-          });
 
-          const balance =
-            parseFloat(wallet.available_balance.toString()) +
-            parseFloat(wRequest.amount.toString());
+            break;
 
-          // update user balance
-          await this.walletRepository.update(
-            {
-              id: wallet.id,
-            },
-            {
-              available_balance: balance,
-            },
-          );
+          default:
+            // update withdrawal status
+            await this.withdrawalRepository.update(
+              {
+                id: withdrawalId,
+              },
+              {
+                status: 2,
+                comment,
+                updated_by: updatedBy,
+              },
+            );
+            //return funds to user wallet
+            const wallet = await this.walletRepository.findOne({
+              where: {
+                client_id: clientId,
+                user_id: wRequest.user_id,
+              },
+            });
 
-          await this.helperService.saveTransaction({
-            amount: wRequest.amount,
-            channel: 'internal',
-            clientId,
-            toUserId: wallet.user_id,
-            toUsername: wallet.username,
-            toUserBalance: balance,
-            fromUserId: 0,
-            fromUsername: 'System',
-            fromUserbalance: 0,
-            source: 'internal',
-            subject: 'Rejected Request',
-            description: comment || 'Withdrawal request was cancelled',
-            transactionNo: generateTrxNo(),
-            status: 1,
-          });
-          return {
-            success: true,
-            message: 'Withdrawal request updated',
-            status: HttpStatus.CREATED,
-          };
+            const balance =
+              parseFloat(wallet.available_balance.toString()) +
+              parseFloat(wRequest.amount.toString());
+
+            // update user balance
+            await this.walletRepository.update(
+              {
+                id: wallet.id,
+              },
+              {
+                available_balance: balance,
+              },
+            );
+
+            await this.helperService.saveTransaction({
+              amount: wRequest.amount,
+              channel: 'internal',
+              clientId,
+              toUserId: wallet.user_id,
+              toUsername: wallet.username,
+              toUserBalance: balance,
+              fromUserId: 0,
+              fromUsername: 'System',
+              fromUserbalance: 0,
+              source: 'internal',
+              subject: 'Rejected Request',
+              description: comment || 'Withdrawal request was cancelled',
+              transactionNo: generateTrxNo(),
+              status: 1,
+            });
+            return {
+              success: true,
+              message: 'Withdrawal request updated',
+              status: HttpStatus.CREATED,
+            };
+
+            break;
         }
       } else {
         return {
@@ -328,45 +390,6 @@ export class PaymentService {
       return {
         success: false,
         message: 'Unable to request status',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
-
-  async wayaquickVerifyPayment(param: WayaQuickRequest) {
-    try {
-      const transaction = await this.transactionRepository.findOneBy({
-        transaction_no: param.transactionId,
-        user_id: param.userId,
-        client_id: param.clientId,
-        channel: 'wayaquick',
-      });
-
-      if (!transaction) {
-        return {
-          success: false,
-          message: 'transaction id doesn`t exist',
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-      const transact = await this.wayaquickService.verifyTransaction(param);
-
-      if (!transact.success) {
-        return {
-          success: false,
-          message: transact.message,
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-      return {
-        success: true,
-        message: 'Success',
-        data: transact.data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
@@ -389,6 +412,7 @@ export class PaymentService {
       };
     }
   }
+
   async pitch90Transaction(param: Pitch90TransactionRequest) {
     try {
       const wallet = await this.walletRepository
@@ -474,6 +498,8 @@ export class PaymentService {
             return this.paystackService.verifyTransaction(param);
           case 'monnify':
             return this.monnifyService.verifyTransaction(param);
+          case 'wayaquick':
+            return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
             break;
           default:
@@ -702,9 +728,9 @@ export class PaymentService {
       const senderBalance = fromWallet.available_balance - amount;
       // credit receiver balance
       const receiverBalance =
-        Number(toWallet.available_balance) + Number(amount);
+        parseFloat(toWallet.available_balance.toString()) + parseFloat(amount.toFixed());
 
-      //update wallets
+      //update send balance
       await this.walletRepository.update(
         {
           user_id: fromUserId,
@@ -713,7 +739,7 @@ export class PaymentService {
           available_balance: senderBalance,
         },
       );
-
+      // update receiver balance
       await this.walletRepository.update(
         {
           user_id: toUserId,

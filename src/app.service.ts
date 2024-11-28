@@ -320,7 +320,7 @@ export class AppService {
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet credited");
     } catch (e) {
-      // console.log('credit error', e.message);
+      console.log('credit error', e.message);
       return handleError(e.message, null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
