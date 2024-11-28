@@ -18,7 +18,7 @@ export class Pitch90SMSService {
   ) {}
 
   async stkPush({ amount, user }) {
-    const url = process.env.PITCH_90_API;
+    const url = `${process.env.PITCH_90_API}/wallet/stkpush`;
     const salt = process.env.PITCH_90_SMS_SALT;
     
     console.log(url, salt);
@@ -32,7 +32,7 @@ export class Pitch90SMSService {
       }
        console.log(payload)
       const { data } = await axios.post(
-        `${url}/wallet/stkpush`,
+        url,
         payload,
       );
 
