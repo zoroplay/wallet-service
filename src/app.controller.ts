@@ -60,6 +60,7 @@ import { MonnifyService } from './services/monnify.service';
 import { CashbookService } from './cashbook/cashbook.service';
 import { WithdrawalService } from './services/withdrawal.service';
 import { ReportingService } from './services/reporting.service';
+import { FlutterwaveService } from './services/flutterwave.service';
 
 @Controller()
 export class AppController {
@@ -73,12 +74,19 @@ export class AppController {
     private cashbookService: CashbookService,
     private withdrawalService: WithdrawalService,
     private reportingService: ReportingService,
+    private flutterwaveService: FlutterwaveService
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
   FetchBetRange(payload: FetchBetRangeRequest) {
     return this.depositService.fetchBetRange(payload);
   }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'flutterwave')
+  CreatePayment(payload: InitiateDepositRequest) {
+    return this.flutterwaveService.createPayment(payload)
+  }
+
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
