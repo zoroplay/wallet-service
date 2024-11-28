@@ -18,18 +18,26 @@ export class Pitch90SMSService {
   ) {}
 
   async stkPush({ amount, user }) {
+    const url = process.env.PITCH_90_API;
+    const salt = process.env.PITCH_90_SMS_SALT;
+    
+    console.log(url, salt);
     try {
+      const payload = {
+        amount: `${amount}`,
+        salt,
+        username: user.username,
+        msisdn: '0' + user.username,
+        account: '0' + user.username,
+      }
+       console.log(payload)
       const { data } = await axios.post(
-        `${process.env.PITCH_90_API}/wallet/stkpush`,
-        {
-          amount: `${amount}`,
-          salt: process.env.PITCH_90_SMS_SALT,
-          username: user.username,
-          msisdn: '0' + user.username,
-          account: '0' + user.username,
-        },
-        { httpsAgent: agent },
+        `${url}/wallet/stkpush`,
+        payload,
       );
+
+      console.log(data);
+
       if (data.status === 'Fail') {
         return { success: false, message: data.error_desc };
       }
@@ -66,6 +74,7 @@ export class Pitch90SMSService {
       };
     }
   }
+
   async registerUrl({ action, url }) {
     try {
       let response;
@@ -121,4 +130,5 @@ export class Pitch90SMSService {
       };
     }
   }
+
 }
