@@ -27,8 +27,8 @@ export class Pitch90SMSService {
         amount: `${amount}`,
         salt,
         username: user.username,
-        msisdn: '0' + user.username,
-        account: '0' + user.username,
+        msisdn: '254' + user.username,
+        account: '254' + user.username,
       }
        console.log(payload)
       const { data } = await axios.post(
