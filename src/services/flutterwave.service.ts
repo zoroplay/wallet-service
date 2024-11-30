@@ -1,6 +1,5 @@
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { get, post } from 'src/common/axios'; // Replace with your axios wrapper
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
@@ -10,6 +9,7 @@ import * as crypto from 'crypto';
 import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 
 @Injectable()
 export class FlutterwaveService {
@@ -40,7 +40,7 @@ export class FlutterwaveService {
 
   async createPayment(data) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(data);
+      const paymentSettings = await this.flutterwaveSettings(data.client_id);
       if (!paymentSettings)
         return {
           success: false,
@@ -52,31 +52,44 @@ export class FlutterwaveService {
         ...data,
       };
 
-      const response = await post(this.apiUrl, payload, {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      });
+      try {
+        const response = await axios.post(this.apiUrl, payload, {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (response.status !== 'success') {
+        if (!response.data) {
+          return {
+            success: false,
+            message: 'Payment initiation failed',
+          };
+        }
+
         return {
-          success: false,
-          message: 'Payment initiation failed',
+          success: true,
+          message: 'Payment initiated successfully',
+          data: response.data,
         };
+      } catch (error) {
+        console.error('Error creating payment:', error);
+        throw new BadRequestException(
+          'Failed to create payment',
+          error.message,
+        );
       }
-
-      return {
-        success: true,
-        message: 'Payment initiated successfully',
-        data: response.data,
-      };
     } catch (error) {
-      console.error('Error creating payment:', error);
-      throw new BadRequestException('Failed to create payment', error.message);
+      console.error('Error in createPayment method:', error);
+      throw new BadRequestException('Error in payment process', error.message);
     }
   }
 
-  async verifyTransaction(transactionRef: string, client_id: number) {
+  async verifyTransaction(tx_ref: string, client_id: number) {
     try {
+      const baseUrl = process.env.FLUTTERWAVE_VERIFY_URL as string;
+      const apiKey = process.env.FLUTTERWAVE_PUB_KEY as string;
+
       const paymentSettings = await this.flutterwaveSettings(client_id);
       if (!paymentSettings)
         return {
@@ -84,12 +97,13 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      const resp = await get(
-        `${paymentSettings.base_url}/v3/transactions/${transactionRef}/verify`,
-        {
-          Authorization: `Bearer ${paymentSettings.secret_key}`,
+      const verifyUrl = `${baseUrl}/transactions/verify_by_reference?tx_ref=${tx_ref}`;
+
+      const resp = await axios.get(verifyUrl, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
         },
-      );
+      });
 
       const data = resp.data;
 
@@ -97,7 +111,7 @@ export class FlutterwaveService {
         const transaction = await this.transactionRepository.findOne({
           where: {
             client_id,
-            transaction_no: transactionRef,
+            transaction_no: tx_ref,
             tranasaction_type: 'credit',
           },
         });
@@ -165,12 +179,14 @@ export class FlutterwaveService {
         reference: withdrawal.withdrawal_code,
       };
 
-      const resp = await post(
+      const resp = await axios.post(
         `${paymentSettings.base_url}/v3/transfers`,
-        payload,
         {
-          Authorization: `Bearer ${paymentSettings.secret_key}`,
-          'Content-Type': 'application/json',
+          payload,
+          headers: {
+            Authorization: `Bearer ${paymentSettings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
         },
       );
 
