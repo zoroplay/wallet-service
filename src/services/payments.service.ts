@@ -18,10 +18,7 @@ import {
   CommonResponseObj,
   WalletTransferRequest,
   PawapayCountryRequest,
-  WayaQuickRequest,
   WayaBankRequest,
-  Pitch90RegisterUrlRequest,
-  Pitch90TransactionRequest,
   PawapayToolkitRequest,
   FetchPawapayRequest,
 } from 'src/proto/wallet.pb';
@@ -64,7 +61,7 @@ export class PaymentService {
   ): Promise<InitiateDepositResponse> {
     let transactionNo = generateTrxNo();
     let link = '',
-      description;
+      description, status = 0;
     // console.log(param);
     // find user wallet
     // find wallet
@@ -169,6 +166,21 @@ export class PaymentService {
           transactionNo = wRes.data.tranId;
 
           break;
+        case 'stkpush':
+          const stkRes = await this.pitch90smsService.stkPush({
+            amount: param.amount,
+            user,
+            clientId: param.clientId
+          });
+
+          if (!res.success) return stkRes;
+
+          status = 1;
+
+          transactionNo = stkRes.data.ref_id;
+
+          description = 'Online Deposit (StkPush)';
+          break;
         default:
           description = 'Shop Deposit';
           break;
@@ -184,6 +196,7 @@ export class PaymentService {
         fromUserId: 0,
         fromUsername: 'System',
         fromUserbalance: 0,
+        status,
         source: param.source,
         subject: 'Deposit',
         description,
@@ -216,7 +229,7 @@ export class PaymentService {
         switch (action) {
           case 'approve':
             const paymentMethod = await this.paymentMethodRepository.findOne({
-              where: { for_disbursement: 1 },
+              where: { for_disbursement: 1, client_id: clientId },
             });
             if (paymentMethod) {
               let resp: any = {
@@ -232,7 +245,11 @@ export class PaymentService {
                     clientId,
                   );
                   break;
-                case 'mgurush':
+                case 'stkpush':
+                  resp = await this.pitch90smsService.withdraw(
+                    wRequest,
+                    clientId,
+                  );
                   break;
                 case 'monnify':
                   break;
@@ -241,7 +258,7 @@ export class PaymentService {
                 default:
                   break;
               }
-              // update withdrawal request
+              // update withdrawal request status
               if (resp.success)
                 await this.withdrawalRepository.update(
                   {
@@ -263,7 +280,6 @@ export class PaymentService {
                 status: HttpStatus.NOT_IMPLEMENTED,
               };
             }
-            break;
           case 'cancel':
             await this.withdrawalRepository.update(
               {
@@ -318,8 +334,6 @@ export class PaymentService {
               message: 'Withdrawal request caancelled',
               status: HttpStatus.CREATED,
             };
-
-            break;
 
           default:
             // update withdrawal status
@@ -377,7 +391,6 @@ export class PaymentService {
               status: HttpStatus.CREATED,
             };
 
-            break;
         }
       } else {
         return {
@@ -395,94 +408,6 @@ export class PaymentService {
     }
   }
 
-  async pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
-    try {
-      const res = await this.pitch90smsService.registerUrl(param);
-      if (!res) return res;
-      return {
-        success: true,
-        data: res.data,
-        message: res.message,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
-
-  async pitch90Transaction(param: Pitch90TransactionRequest) {
-    try {
-      const wallet = await this.walletRepository
-        .createQueryBuilder()
-        .where('client_id = :clientId', { clientId: param.clientId })
-        .andWhere('user_id = :user_id', { user_id: param.userId })
-        .getOne();
-
-      if (!wallet) return { success: false, message: 'Wallet not found' };
-
-      const user = await this.identityService
-        .getPaymentData({
-          clientId: param.clientId,
-          userId: param.userId,
-          source: param.source,
-        })
-        .toPromise();
-
-      let subject, transactionNo, res;
-      switch (param.action) {
-        case 'deposit':
-          res = await this.pitch90smsService.stkPush({
-            amount: param.amount,
-            user,
-          });
-          if (!res.success) return res;
-          transactionNo = res.data.ref_id;
-          subject = 'Pitch90 Deposit';
-          break;
-        case 'withdrawal':
-          res = await this.pitch90smsService.withdraw({
-            amount: param.amount,
-            user,
-          });
-          if (!res.success) return res;
-          transactionNo = res.data.ref_id;
-          subject = 'Pitch90 Withdrawal';
-          break;
-
-        default:
-          break;
-      }
-      await this.helperService.saveTransaction({
-        amount: param.amount,
-        channel: 'pawapay',
-        clientId: param.clientId,
-        toUserId: param.userId,
-        toUsername: wallet.username,
-        toUserBalance: wallet.available_balance,
-        fromUserId: 0,
-        fromUsername: 'System',
-        fromUserbalance: 0,
-        source: param.source,
-        subject,
-        description: res.data.status,
-        transactionNo,
-      });
-      return {
-        success: true,
-        message: 'Success',
-        data: { transactionRef: transactionNo },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
 
   /**
    * Function: verifyPayment

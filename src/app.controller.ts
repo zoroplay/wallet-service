@@ -46,10 +46,10 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
-  Pitch90TransactionRequest,
   WayaBankRequest,
-  Pitch90RegisterUrlRequest,
   FetchUsersWithdrawalRequest,
+  StkTransactionRequest,
+  StkRegisterUrlRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -60,6 +60,7 @@ import { MonnifyService } from './services/monnify.service';
 import { CashbookService } from './cashbook/cashbook.service';
 import { WithdrawalService } from './services/withdrawal.service';
 import { ReportingService } from './services/reporting.service';
+import { Pitch90SMSService } from './services/pitch90sms.service';
 
 @Controller()
 export class AppController {
@@ -73,6 +74,7 @@ export class AppController {
     private cashbookService: CashbookService,
     private withdrawalService: WithdrawalService,
     private reportingService: ReportingService,
+    private pitch90Service: Pitch90SMSService
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -416,13 +418,21 @@ export class AppController {
   WayabankAccountEnquiry(param: WayaBankRequest) {
     return this.paymentService.wayabankAccountEnquiry(param);
   }
-  @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90Transaction')
-  Pitch90Transaction(param: Pitch90TransactionRequest) {
-    return this.paymentService.pitch90Transaction(param);
+  @GrpcMethod(WALLET_SERVICE_NAME, 'stkDepositNotification')
+  stkDepositNotification(param: StkTransactionRequest) {
+    return this.pitch90Service.stkDepositNotification(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'stkWithdrawalNotification')
+  stkWithdrawalNotification(param: StkTransactionRequest) {
+    return this.pitch90Service.stkWithdrawalNotification(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'stkStatusNotification')
+  stkStatusNotification(param: StkTransactionRequest) {
+    return this.pitch90Service.stkStatusNotification(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90RegisterUrl')
-  Pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
-    return this.paymentService.pitch90RegisterUrl(param);
+  Pitch90RegisterUrl(param: StkRegisterUrlRequest) {
+    return this.pitch90Service.registerUrl(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchUsersWithdrawal')
   FetchUsersWithdrawal(param: FetchUsersWithdrawalRequest) {

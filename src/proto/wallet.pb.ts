@@ -37,17 +37,19 @@ export interface WayaBankRequest {
   clientId: number;
 }
 
-export interface Pitch90TransactionRequest {
-  userId: number;
+export interface StkTransactionRequest {
   clientId: number;
-  amount: number;
-  action: string;
-  source: string;
+  amount: string;
+  msisdn: string;
+  trxCode: string;
+  trxDate: string;
+  refId: string;
 }
 
-export interface Pitch90RegisterUrlRequest {
+export interface StkRegisterUrlRequest {
   action: string;
-  url: number;
+  url: string;
+  clientId: number;
 }
 
 export interface WayaQuickRequest {
@@ -921,9 +923,13 @@ export interface WalletServiceClient {
 
   wayabankAccountEnquiry(request: WayaBankRequest): Observable<CommonResponseObj>;
 
-  pitch90Transaction(request: Pitch90TransactionRequest): Observable<CommonResponseObj>;
+  stkDepositNotification(request: StkTransactionRequest): Observable<CommonResponseObj>;
 
-  pitch90RegisterUrl(request: Pitch90RegisterUrlRequest): Observable<CommonResponseObj>;
+  stkWithdrawNotification(request: StkTransactionRequest): Observable<CommonResponseObj>;
+
+  stkStatusNotification(request: StkTransactionRequest): Observable<CommonResponseObj>;
+
+  stkRegisterUrl(request: StkRegisterUrlRequest): Observable<CommonResponseObj>;
 
   handleWayaQuickInit(request: WayaQuickRequest): Observable<CommonResponseObj>;
 
@@ -1181,12 +1187,20 @@ export interface WalletServiceController {
     request: WayaBankRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
-  pitch90Transaction(
-    request: Pitch90TransactionRequest,
+  stkDepositNotification(
+    request: StkTransactionRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
-  pitch90RegisterUrl(
-    request: Pitch90RegisterUrlRequest,
+  stkWithdrawNotification(
+    request: StkTransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  stkStatusNotification(
+    request: StkTransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  stkRegisterUrl(
+    request: StkRegisterUrlRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
   handleWayaQuickInit(
@@ -1386,8 +1400,10 @@ export function WalletServiceControllerMethods() {
       "handlePawaPayActiveConf",
       "createVirtualAccount",
       "wayabankAccountEnquiry",
-      "pitch90Transaction",
-      "pitch90RegisterUrl",
+      "stkDepositNotification",
+      "stkWithdrawNotification",
+      "stkStatusNotification",
+      "stkRegisterUrl",
       "handleWayaQuickInit",
       "handleWayaQuickVerify",
       "fetchUsersWithdrawal",
