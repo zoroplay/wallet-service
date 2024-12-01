@@ -46,8 +46,8 @@ export class Pitch90SMSService {
         // find user wallet
         const wallet = await this.walletRepository.findOne({where: {username: user.username}});
         // update user wallet
-        wallet.available_balance = parseFloat(wallet.available_balance.toFixed()) + parseFloat(amount);
-        wallet.balance = parseFloat(wallet.available_balance.toFixed()) + parseFloat(amount);
+        wallet.available_balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
+        wallet.balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
         this.walletRepository.save(wallet);
 
         return { success: true, data, message: data.message };
@@ -75,8 +75,8 @@ export class Pitch90SMSService {
         return {status: 'Fail', ref_id: data.ref_id, error_desc: "User not found"};
       }
       // update user wallet
-      wallet.available_balance = parseFloat(wallet.available_balance.toFixed()) + parseFloat(data.amount);
-      wallet.balance = parseFloat(wallet.available_balance.toFixed()) + parseFloat(data.amount);
+      wallet.available_balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
+      wallet.balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
       this.walletRepository.save(wallet);
       // save transaction details
       await this.helperService.saveTransaction({
@@ -160,7 +160,7 @@ export class Pitch90SMSService {
 
         const balance = wallet.available_balance;
         // update user wallet
-        wallet.available_balance = parseFloat(wallet.available_balance.toFixed()) - parseFloat(data.amount);
+        wallet.available_balance = parseFloat(wallet.available_balance.toString()) - parseFloat(data.amount);
         wallet.balance = balance - parseFloat(data.amount);
         this.walletRepository.save(wallet);
         // save transaction details
