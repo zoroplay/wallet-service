@@ -31,9 +31,10 @@ export class Pitch90SMSService {
         msisdn: '254' + user.username,
         account: '254' + user.username,
       }
+      const url = `${settings.base_url}/wallet/stkpush`;
 
       const { data } = await axios.post(
-        `${settings.base_url}/wallet/stkpush`,
+        url,
         payload,
       );
 
