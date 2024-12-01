@@ -141,12 +141,12 @@ export class Pitch90SMSService {
 
   async stkWithdrawalNotification (data) {
     console.log('stk withdraw data:', data);
-    const username = data.msisdn.substr(3);
+    const username = data.msisdn.substring(3);
     try {
         // find user wallet
         const wallet = await this.walletRepository.findOne({where: {username}});
         // return error if not foumd
-        if (wallet) {
+        if (!wallet) {
           console.log('wallet not found');
           return {status: 'Fail', ref_id: data.ref_id, error_desc: "User not found"};
         }
