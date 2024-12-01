@@ -69,7 +69,7 @@ export class Pitch90SMSService {
 
   async stkDepositNotification(data: StkTransactionRequest) {
     console.log('stk deposit data:', data);
-    const username = data.msisdn.substring(3);
+    const username = data.msisdn.substring(2);
     console.log(username)
     try {
       // find user wallet
