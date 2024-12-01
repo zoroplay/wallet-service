@@ -73,10 +73,12 @@ export class Pitch90SMSService {
     try {
       // find user wallet
       const wallet = await this.walletRepository.findOne({where: {username}});
+
+      const transaction = await this.transactionRepository.findOne({where: {transaction_no: data.refId, tranasaction_type: 'credit'}});
       // return error if not foumd
-      if (!wallet) {
-        console.log('wallet not found');
-        return {status: 'Fail', ref_id: data.refId, error_desc: "User not found"};
+      if (!transaction) {
+        console.log('t not found');
+        return {status: 'Fail', ref_id: data.refId, error_desc: "transaction not found"};
       }
 
       const balance =
