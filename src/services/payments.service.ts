@@ -209,7 +209,7 @@ export class PaymentService {
         data: { transactionRef: transactionNo, link },
       };
     } catch (e) {
-      // console.log(e.message);
+      console.log(e.message);
       return { success: false, message: 'Unable to complete transaction' };
     }
   }

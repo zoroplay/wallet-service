@@ -37,6 +37,8 @@ export class Pitch90SMSService {
         payload,
       );
 
+      console.log(data)
+
       if (data.status === 'Fail') {
         return { success: false, message: data.error_desc };
       } else {
@@ -51,7 +53,7 @@ export class Pitch90SMSService {
       }
 
     } catch (error) {
-      // console.log(1234, error.message);
+      console.log(1234, error.message);
       return {
         success: false,
         message: error.message,
