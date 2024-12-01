@@ -167,7 +167,7 @@ export class PaymentService {
 
           break;
         case 'stkpush':
-          const stkRes = await this.pitch90smsService.stkPush({
+          const stkRes = await this.pitch90smsService.deposit({
             amount: param.amount,
             user,
             clientId: param.clientId
