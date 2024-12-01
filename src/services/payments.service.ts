@@ -175,8 +175,6 @@ export class PaymentService {
 
           if (!stkRes.success) return stkRes;
 
-          status = 1;
-
           transactionNo = stkRes.data.ref_id;
 
           description = 'Online Deposit (StkPush)';

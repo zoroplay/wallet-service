@@ -7,6 +7,8 @@ import { Repository } from 'typeorm';
 import { Wallet } from 'src/entity/wallet.entity';
 import { HelperService } from './helper.service';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
+import { Transaction } from 'src/entity/transaction.entity';
+import { StkTransactionRequest } from 'src/proto/wallet.pb';
 
 
 @Injectable()
@@ -16,6 +18,9 @@ export class Pitch90SMSService {
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
     @InjectRepository(Wallet)
     private readonly walletRepository: Repository<Wallet>,
+
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
 
     private helperService: HelperService
   ) {}
@@ -44,11 +49,11 @@ export class Pitch90SMSService {
         return { success: false, message: data.error_desc };
       } else {
         // find user wallet
-        const wallet = await this.walletRepository.findOne({where: {username: user.username}});
-        // update user wallet
-        wallet.available_balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
-        wallet.balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
-        this.walletRepository.save(wallet);
+        // const wallet = await this.walletRepository.findOne({where: {username: user.username}});
+        // // update user wallet
+        // wallet.available_balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
+        // wallet.balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
+        // this.walletRepository.save(wallet);
 
         return { success: true, data, message: data.message };
       }
@@ -62,7 +67,7 @@ export class Pitch90SMSService {
     }
   }
 
-  async stkDepositNotification(data) {
+  async stkDepositNotification(data: StkTransactionRequest) {
     console.log('stk deposit data:', data);
     const username = data.msisdn.substr(3);
 
@@ -72,35 +77,31 @@ export class Pitch90SMSService {
       // return error if not foumd
       if (wallet) {
         console.log('wallet not found');
-        return {status: 'Fail', ref_id: data.ref_id, error_desc: "User not found"};
+        return {status: 'Fail', ref_id: data.refId, error_desc: "User not found"};
       }
-      // update user wallet
-      wallet.available_balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
-      wallet.balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
-      this.walletRepository.save(wallet);
-      // save transaction details
-      await this.helperService.saveTransaction({
-        amount: data.amount,
-        channel: 'ussd',
-        clientId: data.clientId,
-        toUserId: wallet.user_id,
-        toUsername: wallet.username,
-        toUserBalance: wallet.available_balance,
-        fromUserId: 0,
-        fromUsername: 'System',
-        fromUserbalance: 0,
-        status: 1,
-        source: 'stkpush',
-        subject: 'Deposit',
-        description: 'Ussd Deposit',
-        transactionNo: data.ref_id,
-      });
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(data.amount.toString());
+      // fund user wallet
+      await this.helperService.updateWallet(balance, wallet.user_id);
+
+      // update transaction status to completed - 1
+      await this.transactionRepository.update(
+        {
+          transaction_no: data.refId,
+        },
+        {
+          status: 1,
+          balance,
+        },
+      );
 
 
-      return {status: 'Success', ref_id: data.ref_id};
+      return {status: 'Success', ref_id: data.refId};
 
     } catch (e) {
-      return {status: 'Fail', ref_id: data.ref_id, error_desc: `Error processing request: ${e.message}`}
+      return {status: 'Fail', ref_id: data.refId, error_desc: `Error processing request: ${e.message}`}
     }
   }
 
