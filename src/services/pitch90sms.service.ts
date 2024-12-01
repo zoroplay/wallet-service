@@ -22,7 +22,7 @@ export class Pitch90SMSService {
 
   async stkPush({ amount, user, clientId }) {
     const settings = await this.getSettings(clientId);
-    
+    console.log('setings', settings);
     try {
       const payload = {
         amount: `${amount}`,

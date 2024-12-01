@@ -173,7 +173,7 @@ export class PaymentService {
             clientId: param.clientId
           });
 
-          if (!res.success) return stkRes;
+          if (!stkRes.success) return stkRes;
 
           status = 1;
 
