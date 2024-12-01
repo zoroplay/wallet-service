@@ -69,8 +69,8 @@ export class Pitch90SMSService {
 
   async stkDepositNotification(data: StkTransactionRequest) {
     console.log('stk deposit data:', data);
-    const username = data.msisdn.substr(3);
-
+    const username = data.msisdn.substring(3);
+    
     try {
       // find user wallet
       const wallet = await this.walletRepository.findOne({where: {username}});
@@ -101,6 +101,7 @@ export class Pitch90SMSService {
       return {status: 'Success', ref_id: data.refId};
 
     } catch (e) {
+      console.log('Error in deposit', e.message);
       return {status: 'Fail', ref_id: data.refId, error_desc: `Error processing request: ${e.message}`}
     }
   }
