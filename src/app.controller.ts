@@ -432,7 +432,6 @@ export class AppController {
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90RegisterUrl')
   Pitch90RegisterUrl(param: StkRegisterUrlRequest) {
-    console.log('register url', param)
     return this.pitch90Service.registerUrl(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchUsersWithdrawal')
