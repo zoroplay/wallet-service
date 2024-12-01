@@ -252,7 +252,7 @@ export class Pitch90SMSService {
   private async getSettings(client_id: number) {
     return await this.paymentMethodRepository.findOne({
       where: {
-        provider: 'paystack',
+        provider: 'stkpush',
         client_id,
       },
     });
