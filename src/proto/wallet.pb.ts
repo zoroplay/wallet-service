@@ -12,6 +12,73 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
+export interface VerifyKoraPayTransactionRequest {
+  reference: string;
+  clientId: number;
+}
+
+export interface VerifyTransactionResponse {
+  message: string;
+}
+
+export interface CreateKaraPaymentRequest {
+  amount: number;
+  redirectUrl: string;
+  currency: string;
+  reference: string;
+  notificationUrl: string;
+  narration: string;
+  channels: string[];
+  defaultChannel: string;
+  metadata: { [key: string]: string };
+  customer: Customer | undefined;
+  merchantBearsCost: boolean;
+}
+
+export interface CreateKaraPaymentRequest_MetadataEntry {
+  key: string;
+  value: string;
+}
+
+export interface Customer {
+  email: string;
+  name: string;
+}
+
+export interface KorapayPaymentResponse {
+  message: string;
+  paymentLink: string;
+}
+
+export interface VerifyFlutterWaveTransactionRequest {
+  txRef: string;
+  clientId: number;
+}
+
+export interface CreateFlutterWavePaymentRequest {
+  txRef: string;
+  amount: string;
+  currency: string;
+  redirectUrl: string;
+  customer: Customers | undefined;
+}
+
+export interface Customers {
+  email: string;
+  phoneNumber: string;
+  name: string;
+}
+
+export interface CreatePaymentResponse {
+  message: string;
+  data: { [key: string]: string };
+}
+
+export interface CreatePaymentResponse_DataEntry {
+  key: string;
+  value: string;
+}
+
 export interface PawapayToolkitRequest {
   action: string;
   clientId: number;
@@ -43,17 +110,19 @@ export interface WayaBankRequest {
   clientId: number;
 }
 
-export interface Pitch90TransactionRequest {
-  userId: number;
+export interface StkTransactionRequest {
   clientId: number;
-  amount: number;
-  action: string;
-  source: string;
+  amount: string;
+  msisdn: string;
+  trxCode: string;
+  trxDate: string;
+  refId: string;
 }
 
-export interface Pitch90RegisterUrlRequest {
+export interface StkRegisterUrlRequest {
   action: string;
-  url: number;
+  url: string;
+  clientId: number;
 }
 
 export interface WayaQuickRequest {
@@ -927,9 +996,13 @@ export interface WalletServiceClient {
 
   wayabankAccountEnquiry(request: WayaBankRequest): Observable<CommonResponseObj>;
 
-  pitch90Transaction(request: Pitch90TransactionRequest): Observable<CommonResponseObj>;
+  stkDepositNotification(request: StkTransactionRequest): Observable<CommonResponseObj>;
 
-  pitch90RegisterUrl(request: Pitch90RegisterUrlRequest): Observable<CommonResponseObj>;
+  stkWithdrawNotification(request: StkTransactionRequest): Observable<CommonResponseObj>;
+
+  stkStatusNotification(request: StkTransactionRequest): Observable<CommonResponseObj>;
+
+  stkRegisterUrl(request: StkRegisterUrlRequest): Observable<CommonResponseObj>;
 
   handleWayaQuickInit(request: WayaQuickRequest): Observable<CommonResponseObj>;
 
@@ -1012,6 +1085,14 @@ export interface WalletServiceClient {
   processShopWithdrawal(request: ProcessRetailTransaction): Observable<CommonResponseObj>;
 
   debitAgentBalance(request: DebitUserRequest): Observable<CommonResponseObj>;
+
+  initiateFlutterWaveDeposit(request: CreateFlutterWavePaymentRequest): Observable<CreatePaymentResponse>;
+
+  verifyFlutterwaveTransaction(request: VerifyFlutterWaveTransactionRequest): Observable<VerifyTransactionResponse>;
+
+  initializeKoraPayDeposit(request: CreateKaraPaymentRequest): Observable<KorapayPaymentResponse>;
+
+  verifyTransaction(request: VerifyKoraPayTransactionRequest): Observable<VerifyTransactionResponse>;
 }
 
 export interface WalletServiceController {
@@ -1187,12 +1268,20 @@ export interface WalletServiceController {
     request: WayaBankRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
-  pitch90Transaction(
-    request: Pitch90TransactionRequest,
+  stkDepositNotification(
+    request: StkTransactionRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
-  pitch90RegisterUrl(
-    request: Pitch90RegisterUrlRequest,
+  stkWithdrawNotification(
+    request: StkTransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  stkStatusNotification(
+    request: StkTransactionRequest,
+  ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  stkRegisterUrl(
+    request: StkRegisterUrlRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
   handleWayaQuickInit(
@@ -1344,6 +1433,22 @@ export interface WalletServiceController {
   debitAgentBalance(
     request: DebitUserRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
+
+  initiateFlutterWaveDeposit(
+    request: CreateFlutterWavePaymentRequest,
+  ): Promise<CreatePaymentResponse> | Observable<CreatePaymentResponse> | CreatePaymentResponse;
+
+  verifyFlutterwaveTransaction(
+    request: VerifyFlutterWaveTransactionRequest,
+  ): Promise<VerifyTransactionResponse> | Observable<VerifyTransactionResponse> | VerifyTransactionResponse;
+
+  initializeKoraPayDeposit(
+    request: CreateKaraPaymentRequest,
+  ): Promise<KorapayPaymentResponse> | Observable<KorapayPaymentResponse> | KorapayPaymentResponse;
+
+  verifyTransaction(
+    request: VerifyKoraPayTransactionRequest,
+  ): Promise<VerifyTransactionResponse> | Observable<VerifyTransactionResponse> | VerifyTransactionResponse;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1392,8 +1497,10 @@ export function WalletServiceControllerMethods() {
       "handlePawaPayActiveConf",
       "createVirtualAccount",
       "wayabankAccountEnquiry",
-      "pitch90Transaction",
-      "pitch90RegisterUrl",
+      "stkDepositNotification",
+      "stkWithdrawNotification",
+      "stkStatusNotification",
+      "stkRegisterUrl",
       "handleWayaQuickInit",
       "handleWayaQuickVerify",
       "fetchUsersWithdrawal",
@@ -1434,6 +1541,10 @@ export function WalletServiceControllerMethods() {
       "validateWithdrawalCode",
       "processShopWithdrawal",
       "debitAgentBalance",
+      "initiateFlutterWaveDeposit",
+      "verifyFlutterwaveTransaction",
+      "initializeKoraPayDeposit",
+      "verifyTransaction",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

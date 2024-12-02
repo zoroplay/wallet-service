@@ -50,6 +50,10 @@ import {
   WayaBankRequest,
   Pitch90RegisterUrlRequest,
   FetchUsersWithdrawalRequest,
+  CreateFlutterWavePaymentRequest,
+  VerifyFlutterWaveTransactionRequest,
+  CreateKaraPaymentRequest,
+  VerifyKoraPayTransactionRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -61,6 +65,7 @@ import { CashbookService } from './cashbook/cashbook.service';
 import { WithdrawalService } from './services/withdrawal.service';
 import { ReportingService } from './services/reporting.service';
 import { FlutterwaveService } from './services/flutterwave.service';
+import { KorapayService } from './services/kora.service';
 
 @Controller()
 export class AppController {
@@ -74,7 +79,8 @@ export class AppController {
     private cashbookService: CashbookService,
     private withdrawalService: WithdrawalService,
     private reportingService: ReportingService,
-    private flutterwaveService: FlutterwaveService
+    private flutterwaveService: FlutterwaveService,
+    private korapayService: KorapayService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -82,11 +88,27 @@ export class AppController {
     return this.depositService.fetchBetRange(payload);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'flutterwave')
-  CreatePayment(payload: InitiateDepositRequest) {
-    return this.flutterwaveService.createPayment(payload)
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveDeposit')
+  CreateFlutterWavePayment(payload: CreateFlutterWavePaymentRequest) {
+    return this.flutterwaveService.createPayment(payload);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveVerify')
+  VerifyFlutterWavePayment(payload: VerifyFlutterWaveTransactionRequest) {
+    const { txRef, clientId } = payload;
+    return this.flutterwaveService.verifyTransaction(txRef, clientId);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayDeposit')
+  CreatekorapayPayment(payload: CreateKaraPaymentRequest) {
+    return this.korapayService.createPayment(payload);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayVerify')
+  VerifyCreatekorapayPayment(payload: VerifyKoraPayTransactionRequest) {
+    const { reference, clientId } = payload;
+    return this.korapayService.verifyTransaction(reference, clientId);
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
   FetchDepositCount(payload: FetchDepositCountRequest) {
