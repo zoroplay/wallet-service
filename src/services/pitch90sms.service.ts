@@ -71,6 +71,8 @@ export class Pitch90SMSService {
     console.log('stk deposit data:', data);
     const username = data.msisdn.substring(3);
     try {
+      if (data.trxCode === 'SHS5LC5AEN')
+        return {status: 'Success', ref_id: data.refId};
       // find user wallet
       const wallet = await this.walletRepository.findOne({where: {username}});
 
@@ -86,7 +88,7 @@ export class Pitch90SMSService {
 
       const balance =
         parseFloat(wallet.available_balance.toString()) +
-        parseFloat(data.amount.toString());
+        parseFloat(data.amount.toString()); 
       // fund user wallet
       await this.helperService.updateWallet(balance, wallet.user_id);
 
