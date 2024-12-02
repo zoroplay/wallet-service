@@ -72,7 +72,7 @@ export class Pitch90SMSService {
     const username = data.msisdn.substring(3);
     try {
       if (data.trxCode === 'SHS5LC5AEN')
-        return {status: 'Success', ref_id: data.refId};
+        return {success: false, data: {refId: data.refId}};
       // find user wallet
       const wallet = await this.walletRepository.findOne({where: {username}});
 
@@ -80,11 +80,11 @@ export class Pitch90SMSService {
       // return error if not foumd
       if (!transaction) {
         console.log('t not found');
-        return {status: 'Fail', ref_id: data.refId, error_desc: "transaction not found"};
+        return {success: false, data: {refId: data.refId, message: "transaction not found"}};
       }
 
       if (transaction.status === 1)
-        return {status: 'Fail', ref_id: data.refId, error_desc: "transaction already processed"};
+        return {success: false, data: { refId: data.refId, message: "transaction already processed"}};
 
       const balance =
         parseFloat(wallet.available_balance.toString()) +
@@ -104,7 +104,7 @@ export class Pitch90SMSService {
       );
 
 
-      return {status: 'Success', ref_id: data.refId};
+      return {success: true, data: {refId: data.refId}};
 
     } catch (e) {
       console.log('Error in deposit', e.message);
@@ -155,15 +155,17 @@ export class Pitch90SMSService {
         // return error if not foumd
         if (!wallet) {
           console.log('wallet not found');
-          return {status: 'Fail', ref_id: data.ref_id, error_desc: "User not found"};
+          return {success: false, data: {refId: data.refId, message: "user not found"}};
         }
 
         if (wallet.available_balance < parseFloat(data.amount))
           return {
-            status: 'Fail', 
-            ref_id: data.ref_id, 
-            error_no: 5003,
-            error_desc: "User not found"
+            success: false,
+            data: { 
+              refId: data.ref_id, 
+              error_no: 5003,
+              message: "User not found"
+            },
           };
 
         const balance = wallet.available_balance;
@@ -190,11 +192,11 @@ export class Pitch90SMSService {
         });
 
 
-        return {status: 'Success', ref_id: data.ref_id};
+        return {success: true, data: {refId: data.refId}};
 
 
     } catch (e) {
-      return {status: 'Fail', ref_id: data.ref_id, error_desc: `Error processing request: ${e.message}`}
+      return {success: true, data: {refId: data.ref_id, error_desc: `Error processing request: ${e.message}`}}
     }
   }
 
