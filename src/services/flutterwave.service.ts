@@ -10,6 +10,7 @@ import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { IdentityService } from 'src/identity/identity.service';
 
 @Injectable()
 export class FlutterwaveService {
@@ -25,6 +26,7 @@ export class FlutterwaveService {
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private readonly configService: ConfigService,
+    private identityService: IdentityService,
 
     private helperService: HelperService,
   ) {
@@ -38,9 +40,9 @@ export class FlutterwaveService {
     });
   }
 
-  async createPayment(data) {
+  async createPayment(data, client_id) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(data.client_id);
+      const paymentSettings = await this.flutterwaveSettings(client_id);
       if (!paymentSettings)
         return {
           success: false,
@@ -85,19 +87,19 @@ export class FlutterwaveService {
     }
   }
 
-  async verifyTransaction(tx_ref: string, client_id: number) {
+  async verifyTransaction(param) {
     try {
       const baseUrl = process.env.FLUTTERWAVE_VERIFY_URL as string;
       const apiKey = process.env.FLUTTERWAVE_PUB_KEY as string;
 
-      const paymentSettings = await this.flutterwaveSettings(client_id);
+      const paymentSettings = await this.flutterwaveSettings(param.client_id);
       if (!paymentSettings)
         return {
           success: false,
           message: 'Flutterwave has not been configured for client',
         };
 
-      const verifyUrl = `${baseUrl}/transactions/verify_by_reference?tx_ref=${tx_ref}`;
+      const verifyUrl = `${baseUrl}/transactions/verify_by_reference?tx_ref=${param.tx_ref}`;
 
       const resp = await axios.get(verifyUrl, {
         headers: {
@@ -110,8 +112,8 @@ export class FlutterwaveService {
       if (data.status === 'success') {
         const transaction = await this.transactionRepository.findOne({
           where: {
-            client_id,
-            transaction_no: tx_ref,
+            client_id: param.clientId,
+            transaction_no: param.tx_ref,
             tranasaction_type: 'credit',
           },
         });
@@ -209,46 +211,186 @@ export class FlutterwaveService {
 
   async handleWebhook(data) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(data.client_id);
-      const hash = crypto
-        .createHmac('sha256', paymentSettings.secret_key)
-        .update(JSON.stringify(data.body))
-        .digest('hex');
+      const isValid = this.verifySignature(data);
 
-      if (hash !== data.signature) {
-        return { success: false, message: 'Invalid webhook signature' };
+      if (!isValid) {
+        throw new BadRequestException('Invalid webhook signature');
       }
 
-      const { event, data: eventData } = data.body;
-
-      if (event === 'charge.completed' && eventData.status === 'successful') {
-        const transaction = await this.transactionRepository.findOne({
-          where: { transaction_no: eventData.tx_ref },
-        });
-
-        if (transaction && transaction.status === 0) {
-          const wallet = await this.walletRepository.findOne({
-            where: { user_id: transaction.user_id },
-          });
-
-          const balance =
-            parseFloat(wallet.available_balance.toString()) +
-            parseFloat(transaction.amount.toString());
-
-          await this.helperService.updateWallet(balance, transaction.user_id);
-          await this.transactionRepository.update(
-            { transaction_no: transaction.transaction_no },
-            { status: 1, balance },
-          );
-        }
+      switch (data.event) {
+        case 'charge.completed':
+          await this.handleChargeCompleted(data);
+          break;
+        case 'transfer.success':
+          await this.handleTransferSuccess(data);
+          break;
+        case 'transfer.failed':
+          await this.handleTransferFailed(data);
+          break;
+        case 'transfer.reversed':
+          await this.handleTransferReversed(data);
+          break;
+        default:
+          console.log(`Unhandled event type: ${event}`);
       }
 
-      return { success: true, message: 'Webhook handled successfully' };
+      return { success: true, message: 'Webhook processed successfully' };
+    } catch (error) {
+      console.error('Webhook processing error:', error.message);
+      throw new BadRequestException(
+        `Webhook handling failed: ${error.message}`,
+      );
+    }
+  }
+
+  private async verifySignature(data): Promise<boolean> {
+    const paymentSettings = await this.flutterwaveSettings(data.clientId);
+    const hash = crypto
+      .createHmac('sha256', paymentSettings.secret_key)
+      .update(JSON.stringify(data.body))
+      .digest('hex');
+
+    return hash === data.flutterwaveKey;
+  }
+
+  // Handlers for different webhook events
+  private async handleChargeCompleted(data: any): Promise<void> {
+    const transaction = await this.transactionRepository.findOne({
+      where: { transaction_no: data.tx_ref },
+    });
+
+    if (transaction && transaction.status === 0) {
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+
+      await this.notifyTrackier(transaction, data.clientId);
+    }
+  }
+
+  private async handleTransferSuccess(data: any): Promise<void> {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: { client_id: data.clientId, withdrawal_code: data.reference },
+    });
+
+    if (withdrawal && withdrawal.status === 0) {
+      await this.withdrawalRepository.update(
+        { id: withdrawal.id },
+        { status: 1 },
+      );
+    }
+  }
+
+  private async handleTransferFailed(data: any): Promise<void> {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: { client_id: data.clientId, withdrawal_code: data.reference },
+    });
+
+    if (withdrawal) {
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: withdrawal.user_id },
+      });
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(withdrawal.amount.toString());
+
+      await this.helperService.updateWallet(balance, withdrawal.user_id);
+      await this.withdrawalRepository.update(
+        { id: withdrawal.id },
+        { status: 2, comment: 'Transfer failed' },
+      );
+
+      await this.helperService.saveTransaction({
+        amount: withdrawal.amount,
+        channel: 'internal',
+        clientId: data.clientId,
+        toUserId: withdrawal.user_id,
+        toUsername: wallet.username,
+        toUserBalance: balance,
+        fromUserId: 0,
+        fromUsername: 'System',
+        fromUserbalance: 0,
+        source: 'system',
+        subject: 'Failed Withdrawal Request',
+        description: 'Transfer failed',
+        transactionNo: generateTrxNo(),
+        status: 1,
+      });
+    }
+  }
+
+  private async handleTransferReversed(data: any): Promise<void> {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: { client_id: data.clientId, withdrawal_code: data.reference },
+    });
+
+    if (withdrawal) {
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: withdrawal.user_id },
+      });
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(withdrawal.amount.toString());
+
+      await this.helperService.updateWallet(balance, withdrawal.user_id);
+      await this.withdrawalRepository.update(
+        { id: withdrawal.id },
+        { status: 2, comment: 'Transfer reversed' },
+      );
+
+      await this.helperService.saveTransaction({
+        amount: withdrawal.amount,
+        channel: 'internal',
+        clientId: data.clientId,
+        toUserId: withdrawal.user_id,
+        toUsername: wallet.username,
+        toUserBalance: balance,
+        fromUserId: 0,
+        fromUsername: 'System',
+        fromUserbalance: 0,
+        source: 'system',
+        subject: 'Reversed Withdrawal Request',
+        description: 'Transfer was reversed',
+        transactionNo: generateTrxNo(),
+        status: 1,
+      });
+    }
+  }
+
+  private async notifyTrackier(
+    transaction: any,
+    clientId: number,
+  ): Promise<void> {
+    try {
+      const keys = await this.identityService.getTrackierKeys({
+        itemId: clientId,
+      });
+      if (keys.success) {
+        await this.helperService.sendActivity(
+          {
+            subject: 'Deposit',
+            username: transaction.username,
+            amount: transaction.amount,
+            transactionId: transaction.transaction_no,
+            clientId: clientId,
+          },
+          keys.data,
+        );
+      }
     } catch (e) {
-      return {
-        success: false,
-        message: `Webhook handling failed: ${e.message}`,
-      };
+      console.error('Trackier error:', e.message);
     }
   }
 }

@@ -4,36 +4,60 @@ import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Repository } from 'typeorm';
-import * as https from 'https';
+import { Wallet } from 'src/entity/wallet.entity';
+import { HelperService } from './helper.service';
+import { Withdrawal } from 'src/entity/withdrawal.entity';
+import { Transaction } from 'src/entity/transaction.entity';
+import { StkTransactionRequest } from 'src/proto/wallet.pb';
 
-const agent = new https.Agent({
-  rejectUnauthorized: false,
-});
 
 @Injectable()
 export class Pitch90SMSService {
   constructor(
     @InjectRepository(PaymentMethod)
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
+    @InjectRepository(Wallet)
+    private readonly walletRepository: Repository<Wallet>,
+
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
+
+    private helperService: HelperService
   ) {}
 
-  async stkPush({ amount, user }) {
+  async deposit({ amount, user, clientId }) {
+    const settings = await this.getSettings(clientId);
+
     try {
+      const payload = {
+        amount: `${amount}`,
+        salt: settings.secret_key,
+        username: user.username,
+        msisdn: '254' + user.username,
+        account: '254' + user.username,
+      }
+      const url = `${settings.base_url}/wallet/stkpush`;
+
       const { data } = await axios.post(
-        `${process.env.PITCH_90_API}/wallet/stkpush`,
-        {
-          amount: `${amount}`,
-          salt: process.env.PITCH_90_SMS_SALT,
-          username: user.username,
-          msisdn: '0' + user.username,
-          account: '0' + user.username,
-        },
-        { httpsAgent: agent },
+        url,
+        payload,
       );
+
+      console.log(data)
+
       if (data.status === 'Fail') {
         return { success: false, message: data.error_desc };
+      } else {
+        // find user wallet
+        // const wallet = await this.walletRepository.findOne({where: {username: user.username}});
+        // // update user wallet
+        // wallet.available_balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
+        // wallet.balance = parseFloat(wallet.available_balance.toString()) + parseFloat(amount);
+        // this.walletRepository.save(wallet);
+
+        return { success: true, data, message: data.message };
       }
-      return { success: true, data, message: data.message };
+
     } catch (error) {
       console.log(1234, error.message);
       return {
@@ -43,22 +67,77 @@ export class Pitch90SMSService {
     }
   }
 
-  async withdraw({ amount, user }) {
+  async stkDepositNotification(data: StkTransactionRequest) {
+    console.log('stk deposit data:', data);
+    const username = data.msisdn.substring(3);
+    try {
+      if (data.trxCode === 'SHS5LC5AEN')
+        return {success: false, data: {refId: data.refId}};
+      // find user wallet
+      const wallet = await this.walletRepository.findOne({where: {username}});
+
+      const transaction = await this.transactionRepository.findOne({where: {transaction_no: data.refId, tranasaction_type: 'credit', status: 0}});
+      // return error if not foumd
+      if (!transaction) {
+        console.log('t not found');
+        return {success: false, data: {refId: data.refId, message: "transaction not found"}};
+      }
+
+      if (transaction.status === 1)
+        return {success: false, data: { refId: data.refId, message: "transaction already processed"}};
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(data.amount.toString()); 
+      // fund user wallet
+      await this.helperService.updateWallet(balance, wallet.user_id);
+
+      // update transaction status to completed - 1
+      await this.transactionRepository.update(
+        {
+          transaction_no: data.refId,
+        },
+        {
+          status: 1,
+          balance,
+        },
+      );
+
+
+      return {success: true, data: {refId: data.refId}};
+
+    } catch (e) {
+      console.log('Error in deposit', e.message);
+      return {status: 'Fail', ref_id: data.refId, error_desc: `Error processing request: ${e.message}`}
+    }
+  }
+
+  async withdraw(withdrawal: Withdrawal, clientId: number) {
+
+    const settings = await this.getSettings(clientId);
+
     try {
       const { data } = await axios.post(
-        `${process.env.PITCH_90_API}/wallet/withdrawal`,
+        `${settings.base_url}/wallet/withdrawal`,
         {
-          amount: `${amount}`,
-          salt: process.env.PITCH_90_SMS_SALT,
-          username: user.username,
-          msisdn: '0' + user.username,
+          amount: `${withdrawal.amount}`,
+          salt: settings.secret_key,
+          username: withdrawal.username,
+          msisdn: '254' + withdrawal.username,
         },
-        { httpsAgent: agent },
       );
+
       if (data.status === 'Fail') {
         return { success: false, message: data.error_desc };
+      } else {
+
+        return {
+          success: true,
+          data,
+          message: 'Withdrawal processed.',
+        };
       }
-      return { success: true, data, message: data.message };
+
     } catch (error) {
       return {
         success: false,
@@ -66,39 +145,96 @@ export class Pitch90SMSService {
       };
     }
   }
-  async registerUrl({ action, url }) {
+
+  async stkWithdrawalNotification (data) {
+    console.log('stk withdraw data:', data);
+    const username = data.msisdn.substring(3);
     try {
+        // find user wallet
+        const wallet = await this.walletRepository.findOne({where: {username}});
+        // return error if not foumd
+        if (!wallet) {
+          console.log('wallet not found');
+          return {success: false, data: {refId: data.refId, message: "user not found"}};
+        }
+
+        if (wallet.available_balance < parseFloat(data.amount))
+          return {
+            success: false,
+            data: { 
+              refId: data.ref_id, 
+              error_no: 5003,
+              message: "User not found"
+            },
+          };
+
+        const balance = wallet.available_balance;
+        // update user wallet
+        wallet.available_balance = parseFloat(wallet.available_balance.toString()) - parseFloat(data.amount);
+        wallet.balance = balance - parseFloat(data.amount);
+        this.walletRepository.save(wallet);
+        // save transaction details
+        await this.helperService.saveTransaction({
+          amount: data.amount,
+          channel: 'ussd',
+          clientId: data.clientId,
+          fromUserId: wallet.user_id,
+          fromUsername: wallet.username,
+          fromUserBalance: wallet.available_balance,
+          toUserId: 0,
+          toUsername: 'System',
+          toUserbalance: 0,
+          status: 1,
+          source: 'stkpush',
+          subject: 'Withdrawal',
+          description: 'Ussd Withdrawal',
+          transactionNo: data.ref_id,
+        });
+
+
+        return {success: true, data: {refId: data.refId}};
+
+
+    } catch (e) {
+      return {success: true, data: {refId: data.ref_id, error_desc: `Error processing request: ${e.message}`}}
+    }
+  }
+
+  async stkStatusNotification(data) {
+    console.log('stk status', data)
+    return {status: 'Success', ref_id: data.ref_id};
+  }
+
+  async registerUrl({ action, url, clientId }) {
+    try {
+      const settings = await this.getSettings(clientId);
       let response;
       switch (action) {
         case 'payment':
           response = await axios.post(
-            `${process.env.PITCH_90_API}/wallet/registerIpnUrl`,
+            `${settings.base_url}/wallet/registerIpnUrl`,
             {
               url: `${url}`,
-              salt: process.env.PITCH_90_SMS_SALT,
+              salt: settings.secret_key,
             },
-            { httpsAgent: agent },
           );
           break;
         case 'withdrawal':
           response = await axios.post(
-            `${process.env.PITCH_90_API}/wallet/registerWithdrawalUrl`,
+            `${settings.base_url}/wallet/registerWithdrawalUrl`,
             {
               url: `${url}`,
-              salt: process.env.PITCH_90_SMS_SALT,
+              salt: settings.secret_key,
             },
-            { httpsAgent: agent },
           );
           break;
         case 'stkstatus':
-          console.log(1);
           response = await axios.post(
-            `${process.env.PITCH_90_API}/wallet/registerStkStatusUrl`,
+            `${settings.base_url}/wallet/registerStkStatusUrl`,
             {
               url: `${url}`,
-              salt: process.env.PITCH_90_SMS_SALT,
+              salt: settings.secret_key,
             },
-            { httpsAgent: agent },
           );
           break;
 
@@ -121,4 +257,14 @@ export class Pitch90SMSService {
       };
     }
   }
+
+  private async getSettings(client_id: number) {
+    return await this.paymentMethodRepository.findOne({
+      where: {
+        provider: 'stkpush',
+        client_id,
+      },
+    });
+  }
+
 }

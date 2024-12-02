@@ -43,6 +43,7 @@ import { WayaQuickService } from './services/wayaquick.service';
 import { WayaBankService } from './services/wayabank.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
 import { ConfigModule } from '@nestjs/config';
+import { KorapayService } from './services/kora.service';
 
 @Module({
   imports: [
@@ -73,14 +74,14 @@ import { ConfigModule } from '@nestjs/config';
     ),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
-      type: process.env.DB_TYPE as any,
+      type: 'mysql',
       host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT),
+      port: parseInt(process.env.DB_PORT, 10),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: ['dist/**/*.entity.js'],
-      synchronize: true,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: false,
     }),
     TypeOrmModule.forFeature([
       Bank,
@@ -102,6 +103,7 @@ import { ConfigModule } from '@nestjs/config';
   providers: [
     AppService,
     FlutterwaveService,
+    KorapayService,
     MonnifyService,
     MomoService,
     MgurushService,
