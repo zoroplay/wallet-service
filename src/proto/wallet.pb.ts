@@ -12,71 +12,20 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
-export interface VerifyKoraPayTransactionRequest {
-  reference: string;
+export interface FlutterwaveWebhookRequest {
   clientId: number;
-}
-
-export interface VerifyTransactionResponse {
-  message: string;
-}
-
-export interface CreateKaraPaymentRequest {
-  amount: number;
-  redirectUrl: string;
-  currency: string;
-  reference: string;
-  notificationUrl: string;
-  narration: string;
-  channels: string[];
-  defaultChannel: string;
-  metadata: { [key: string]: string };
-  customer: Customer | undefined;
-  merchantBearsCost: boolean;
-}
-
-export interface CreateKaraPaymentRequest_MetadataEntry {
-  key: string;
-  value: string;
-}
-
-export interface Customer {
-  email: string;
-  name: string;
-}
-
-export interface KorapayPaymentResponse {
-  message: string;
-  paymentLink: string;
-}
-
-export interface VerifyFlutterWaveTransactionRequest {
   txRef: string;
+  event: string;
+  body: string;
+  flutterwaveKey: string;
+}
+
+export interface KoraPayWebhookRequest {
   clientId: number;
-}
-
-export interface CreateFlutterWavePaymentRequest {
-  txRef: string;
-  amount: string;
-  currency: string;
-  redirectUrl: string;
-  customer: Customers | undefined;
-}
-
-export interface Customers {
-  email: string;
-  phoneNumber: string;
-  name: string;
-}
-
-export interface CreatePaymentResponse {
-  message: string;
-  data: { [key: string]: string };
-}
-
-export interface CreatePaymentResponse_DataEntry {
-  key: string;
-  value: string;
+  reference: string;
+  event: string;
+  body: string;
+  korapayKey: string;
 }
 
 export interface PawapayToolkitRequest {
@@ -1086,13 +1035,9 @@ export interface WalletServiceClient {
 
   debitAgentBalance(request: DebitUserRequest): Observable<CommonResponseObj>;
 
-  initiateFlutterWaveDeposit(request: CreateFlutterWavePaymentRequest): Observable<CreatePaymentResponse>;
+  flutterWaveWebhook(request: FlutterwaveWebhookRequest): Observable<WebhookResponse>;
 
-  verifyFlutterwaveTransaction(request: VerifyFlutterWaveTransactionRequest): Observable<VerifyTransactionResponse>;
-
-  initializeKoraPayDeposit(request: CreateKaraPaymentRequest): Observable<KorapayPaymentResponse>;
-
-  verifyTransaction(request: VerifyKoraPayTransactionRequest): Observable<VerifyTransactionResponse>;
+  korapayWebhook(request: KoraPayWebhookRequest): Observable<WebhookResponse>;
 }
 
 export interface WalletServiceController {
@@ -1434,21 +1379,13 @@ export interface WalletServiceController {
     request: DebitUserRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
-  initiateFlutterWaveDeposit(
-    request: CreateFlutterWavePaymentRequest,
-  ): Promise<CreatePaymentResponse> | Observable<CreatePaymentResponse> | CreatePaymentResponse;
+  flutterWaveWebhook(
+    request: FlutterwaveWebhookRequest,
+  ): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
 
-  verifyFlutterwaveTransaction(
-    request: VerifyFlutterWaveTransactionRequest,
-  ): Promise<VerifyTransactionResponse> | Observable<VerifyTransactionResponse> | VerifyTransactionResponse;
-
-  initializeKoraPayDeposit(
-    request: CreateKaraPaymentRequest,
-  ): Promise<KorapayPaymentResponse> | Observable<KorapayPaymentResponse> | KorapayPaymentResponse;
-
-  verifyTransaction(
-    request: VerifyKoraPayTransactionRequest,
-  ): Promise<VerifyTransactionResponse> | Observable<VerifyTransactionResponse> | VerifyTransactionResponse;
+  korapayWebhook(
+    request: KoraPayWebhookRequest,
+  ): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1541,10 +1478,8 @@ export function WalletServiceControllerMethods() {
       "validateWithdrawalCode",
       "processShopWithdrawal",
       "debitAgentBalance",
-      "initiateFlutterWaveDeposit",
-      "verifyFlutterwaveTransaction",
-      "initializeKoraPayDeposit",
-      "verifyTransaction",
+      "flutterWaveWebhook",
+      "korapayWebhook",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

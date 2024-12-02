@@ -46,14 +46,12 @@ import {
   WALLET_SERVICE_NAME,
   WalletTransferRequest,
   WithdrawRequest,
-  Pitch90TransactionRequest,
   WayaBankRequest,
-  Pitch90RegisterUrlRequest,
+  StkTransactionRequest,
+  StkRegisterUrlRequest,
   FetchUsersWithdrawalRequest,
-  CreateFlutterWavePaymentRequest,
-  VerifyFlutterWaveTransactionRequest,
-  CreateKaraPaymentRequest,
-  VerifyKoraPayTransactionRequest,
+  FlutterwaveWebhookRequest,
+  KoraPayWebhookRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -66,6 +64,7 @@ import { WithdrawalService } from './services/withdrawal.service';
 import { ReportingService } from './services/reporting.service';
 import { FlutterwaveService } from './services/flutterwave.service';
 import { KorapayService } from './services/kora.service';
+import { Pitch90SMSService } from './services/pitch90sms.service';
 
 @Controller()
 export class AppController {
@@ -81,6 +80,7 @@ export class AppController {
     private reportingService: ReportingService,
     private flutterwaveService: FlutterwaveService,
     private korapayService: KorapayService,
+    private pitch90Service: Pitch90SMSService
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -88,26 +88,14 @@ export class AppController {
     return this.depositService.fetchBetRange(payload);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveDeposit')
-  CreateFlutterWavePayment(payload: CreateFlutterWavePaymentRequest) {
-    return this.flutterwaveService.createPayment(payload);
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveWebhook')
+  flutterWaveWebhook(param: FlutterwaveWebhookRequest) {
+    return this.flutterwaveService.handleWebhook(param);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveVerify')
-  VerifyFlutterWavePayment(payload: VerifyFlutterWaveTransactionRequest) {
-    const { txRef, clientId } = payload;
-    return this.flutterwaveService.verifyTransaction(txRef, clientId);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayDeposit')
-  CreatekorapayPayment(payload: CreateKaraPaymentRequest) {
-    return this.korapayService.createPayment(payload);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayVerify')
-  VerifyCreatekorapayPayment(payload: VerifyKoraPayTransactionRequest) {
-    const { reference, clientId } = payload;
-    return this.korapayService.verifyTransaction(reference, clientId);
+  @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayWebhook')
+  korapayWebhook(param: KoraPayWebhookRequest) {
+    return this.korapayService.processWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')
@@ -446,13 +434,21 @@ export class AppController {
   WayabankAccountEnquiry(param: WayaBankRequest) {
     return this.paymentService.wayabankAccountEnquiry(param);
   }
-  @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90Transaction')
-  Pitch90Transaction(param: Pitch90TransactionRequest) {
-    return this.paymentService.pitch90Transaction(param);
+  @GrpcMethod(WALLET_SERVICE_NAME, 'stkDepositNotification')
+  stkDepositNotification(param: StkTransactionRequest) {
+    return this.pitch90Service.stkDepositNotification(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'stkWithdrawalNotification')
+  stkWithdrawalNotification(param: StkTransactionRequest) {
+    return this.pitch90Service.stkWithdrawalNotification(param);
+  }
+  @GrpcMethod(WALLET_SERVICE_NAME, 'stkStatusNotification')
+  stkStatusNotification(param: StkTransactionRequest) {
+    return this.pitch90Service.stkStatusNotification(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'Pitch90RegisterUrl')
-  Pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
-    return this.paymentService.pitch90RegisterUrl(param);
+  Pitch90RegisterUrl(param: StkRegisterUrlRequest) {
+    return this.pitch90Service.registerUrl(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchUsersWithdrawal')
   FetchUsersWithdrawal(param: FetchUsersWithdrawalRequest) {

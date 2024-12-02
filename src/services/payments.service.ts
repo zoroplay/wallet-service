@@ -20,8 +20,8 @@ import {
   PawapayCountryRequest,
   WayaQuickRequest,
   WayaBankRequest,
-  Pitch90RegisterUrlRequest,
-  Pitch90TransactionRequest,
+  //Pitch90RegisterUrlRequest,
+  //Pitch90TransactionRequest,
   PawapayToolkitRequest,
   FetchPawapayRequest,
 } from 'src/proto/wallet.pb';
@@ -37,6 +37,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { WayaQuickService } from './wayaquick.service';
 import { WayaBankService } from './wayabank.service';
 import { Pitch90SMSService } from './pitch90sms.service';
+import { FlutterwaveService } from './flutterwave.service';
+import { KorapayService } from './kora.service';
 
 @Injectable()
 export class PaymentService {
@@ -57,6 +59,8 @@ export class PaymentService {
     private wayabankService: WayaBankService,
     private helperService: HelperService,
     private pitch90smsService: Pitch90SMSService,
+    private flutterwaveService: FlutterwaveService,
+    private korapayService: KorapayService
   ) {}
 
   async inititateDeposit(
@@ -127,7 +131,48 @@ export class PaymentService {
           transactionNo = res.depositId;
           break;
         case 'flutterwave':
+          const result = await this.flutterwaveService.createPayment(
+            {
+              amount: param.amount,
+              currency: user.currency,
+              redirect_url:
+                user.callbackUrl + '/payment-verification/flutterwave',
+              customer: {
+                email: user.email,
+                phone_number: '+234' + user.username,
+              },
+            },
+            param.clientId,
+          );
           description = 'Online Deposit (Flutterwave)';
+          if (!result.success) return result as any;
+
+          link = result.data.link;
+
+          break;
+
+        case 'korapay':
+          const koraRes = await this.korapayService.createPayment(
+            {
+              amount: param.amount,
+              currency: user.currency,
+              redirect_url: user.callbackUrl + '/payment-verification/korapay',
+              channels: ['card', 'bank_transfer'],
+              metadata: {
+                clientId: param.clientId,
+              },
+              customer: {
+                email: user.email,
+                name: '+234' + user.username,
+              },
+            },
+            param.clientId,
+          );
+          description = 'Online Deposit (Korapay)';
+          if (!koraRes.success) return koraRes as any;
+
+          link = result.data.checkout_url;
+
           break;
         case 'monnify':
           const mRes: any = await this.monnifyService.generatePaymentLink(
@@ -167,6 +212,20 @@ export class PaymentService {
 
           link = wRes.data.authorization_url;
           transactionNo = wRes.data.tranId;
+
+          break;
+          case 'stkpush':
+            const stkRes = await this.pitch90smsService.deposit({
+              amount: param.amount,
+              user,
+              clientId: param.clientId
+            });
+  
+            if (!stkRes.success) return stkRes;
+  
+            transactionNo = stkRes.data.ref_id;
+  
+            description = 'Online Deposit (StkPush)';
 
           break;
         default:
@@ -395,94 +454,94 @@ export class PaymentService {
     }
   }
 
-  async pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
-    try {
-      const res = await this.pitch90smsService.registerUrl(param);
-      if (!res) return res;
-      return {
-        success: true,
-        data: res.data,
-        message: res.message,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
+  // async pitch90RegisterUrl(param: Pitch90RegisterUrlRequest) {
+  //   try {
+  //     const res = await this.pitch90smsService.registerUrl(param);
+  //     if (!res) return res;
+  //     return {
+  //       success: true,
+  //       data: res.data,
+  //       message: res.message,
+  //     };
+  //   } catch (error) {
+  //     return {
+  //       success: false,
+  //       message: 'Error verifying account',
+  //       status: HttpStatus.INTERNAL_SERVER_ERROR,
+  //     };
+  //   }
+  // }
 
-  async pitch90Transaction(param: Pitch90TransactionRequest) {
-    try {
-      const wallet = await this.walletRepository
-        .createQueryBuilder()
-        .where('client_id = :clientId', { clientId: param.clientId })
-        .andWhere('user_id = :user_id', { user_id: param.userId })
-        .getOne();
+  // async pitch90Transaction(param: Pitch90TransactionRequest) {
+  //   try {
+  //     const wallet = await this.walletRepository
+  //       .createQueryBuilder()
+  //       .where('client_id = :clientId', { clientId: param.clientId })
+  //       .andWhere('user_id = :user_id', { user_id: param.userId })
+  //       .getOne();
 
-      if (!wallet) return { success: false, message: 'Wallet not found' };
+  //     if (!wallet) return { success: false, message: 'Wallet not found' };
 
-      const user = await this.identityService
-        .getPaymentData({
-          clientId: param.clientId,
-          userId: param.userId,
-          source: param.source,
-        })
-        .toPromise();
+  //     const user = await this.identityService
+  //       .getPaymentData({
+  //         clientId: param.clientId,
+  //         userId: param.userId,
+  //         source: param.source,
+  //       })
+  //       .toPromise();
 
-      let subject, transactionNo, res;
-      switch (param.action) {
-        case 'deposit':
-          res = await this.pitch90smsService.stkPush({
-            amount: param.amount,
-            user,
-          });
-          if (!res.success) return res;
-          transactionNo = res.data.ref_id;
-          subject = 'Pitch90 Deposit';
-          break;
-        case 'withdrawal':
-          res = await this.pitch90smsService.withdraw({
-            amount: param.amount,
-            user,
-          });
-          if (!res.success) return res;
-          transactionNo = res.data.ref_id;
-          subject = 'Pitch90 Withdrawal';
-          break;
+  //     let subject, transactionNo, res;
+  //     switch (param.action) {
+  //       case 'deposit':
+  //         res = await this.pitch90smsService.stkPush({
+  //           amount: param.amount,
+  //           user,
+  //         });
+  //         if (!res.success) return res;
+  //         transactionNo = res.data.ref_id;
+  //         subject = 'Pitch90 Deposit';
+  //         break;
+  //       case 'withdrawal':
+  //         res = await this.pitch90smsService.withdraw({
+  //           amount: param.amount,
+  //           user,
+  //         });
+  //         if (!res.success) return res;
+  //         transactionNo = res.data.ref_id;
+  //         subject = 'Pitch90 Withdrawal';
+  //         break;
 
-        default:
-          break;
-      }
-      await this.helperService.saveTransaction({
-        amount: param.amount,
-        channel: 'pawapay',
-        clientId: param.clientId,
-        toUserId: param.userId,
-        toUsername: wallet.username,
-        toUserBalance: wallet.available_balance,
-        fromUserId: 0,
-        fromUsername: 'System',
-        fromUserbalance: 0,
-        source: param.source,
-        subject,
-        description: res.data.status,
-        transactionNo,
-      });
-      return {
-        success: true,
-        message: 'Success',
-        data: { transactionRef: transactionNo },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error verifying account',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      };
-    }
-  }
+  //       default:
+  //         break;
+  //     }
+  //     await this.helperService.saveTransaction({
+  //       amount: param.amount,
+  //       channel: 'pawapay',
+  //       clientId: param.clientId,
+  //       toUserId: param.userId,
+  //       toUsername: wallet.username,
+  //       toUserBalance: wallet.available_balance,
+  //       fromUserId: 0,
+  //       fromUsername: 'System',
+  //       fromUserbalance: 0,
+  //       source: param.source,
+  //       subject,
+  //       description: res.data.status,
+  //       transactionNo,
+  //     });
+  //     return {
+  //       success: true,
+  //       message: 'Success',
+  //       data: { transactionRef: transactionNo },
+  //     };
+  //   } catch (error) {
+  //     return {
+  //       success: false,
+  //       message: 'Error verifying account',
+  //       status: HttpStatus.INTERNAL_SERVER_ERROR,
+  //     };
+  //   }
+  // }
 
   /**
    * Function: verifyPayment
@@ -501,6 +560,9 @@ export class PaymentService {
           case 'wayaquick':
             return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
+            return this.flutterwaveService.verifyTransaction(param);
+            case 'korapay':
+              return this.korapayService.verifyTransaction(param)
             break;
           default:
             break;
@@ -728,7 +790,8 @@ export class PaymentService {
       const senderBalance = fromWallet.available_balance - amount;
       // credit receiver balance
       const receiverBalance =
-        parseFloat(toWallet.available_balance.toString()) + parseFloat(amount.toFixed());
+        parseFloat(toWallet.available_balance.toString()) +
+        parseFloat(amount.toFixed());
 
       //update send balance
       await this.walletRepository.update(
