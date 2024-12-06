@@ -49,18 +49,17 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      const payload = {
-        tx_ref: generateTrxNo(),
-        ...data,
-      };
+      console.log(data);
 
       try {
-        const response = await axios.post(this.apiUrl, payload, {
+        const response = await axios.post(this.apiUrl, data, {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
         });
+
+        console.log(response.data);
 
         if (!response.data) {
           return {
@@ -69,10 +68,28 @@ export class FlutterwaveService {
           };
         }
 
+        console.log('Flutterwave Response:', response.data);
+
+        if (!response.data || !response.data.data) {
+          return {
+            success: false,
+            message: 'Payment initiation failed',
+          };
+        }
+
+        const { link } = response.data.data;
+        if (!link) {
+          return {
+            success: false,
+            message: 'Payment link not found in the response',
+            data: response.data.data,
+          };
+        }
+
         return {
           success: true,
           message: 'Payment initiated successfully',
-          data: response.data,
+          data: { link },
         };
       } catch (error) {
         console.error('Error creating payment:', error);
@@ -99,7 +116,7 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      const verifyUrl = `${baseUrl}/transactions/verify_by_reference?tx_ref=${param.tx_ref}`;
+      const verifyUrl = `${baseUrl}/transactions/verify_by_reference?tx_ref=${param.transactionRef}`;
 
       const resp = await axios.get(verifyUrl, {
         headers: {
@@ -113,7 +130,7 @@ export class FlutterwaveService {
         const transaction = await this.transactionRepository.findOne({
           where: {
             client_id: param.clientId,
-            transaction_no: param.tx_ref,
+            transaction_no: param.transactionRef,
             tranasaction_type: 'credit',
           },
         });
@@ -156,6 +173,7 @@ export class FlutterwaveService {
         };
       }
     } catch (e) {
+      console.log(e);
       return {
         success: false,
         message: `Unable to verify transaction: ${e.message}`,
