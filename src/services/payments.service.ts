@@ -214,18 +214,18 @@ export class PaymentService {
           transactionNo = wRes.data.tranId;
 
           break;
-          case 'stkpush':
-            const stkRes = await this.pitch90smsService.deposit({
-              amount: param.amount,
-              user,
-              clientId: param.clientId
-            });
-  
-            if (!stkRes.success) return stkRes;
-  
-            transactionNo = stkRes.data.ref_id;
-  
-            description = 'Online Deposit (StkPush)';
+        case 'stkpush':
+          const stkRes = await this.pitch90smsService.deposit({
+            amount: param.amount,
+            user,
+            clientId: param.clientId
+          });
+
+          if (!stkRes.success) return stkRes;
+
+          transactionNo = stkRes.data.ref_id;
+
+          description = 'Online Deposit (StkPush)';
 
           break;
         default:
@@ -255,7 +255,7 @@ export class PaymentService {
         data: { transactionRef: transactionNo, link },
       };
     } catch (e) {
-      // console.log(e.message);
+      console.log(e.message);
       return { success: false, message: 'Unable to complete transaction' };
     }
   }
