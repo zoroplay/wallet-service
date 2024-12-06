@@ -158,9 +158,8 @@ export class PaymentService {
             {
               amount: param.amount,
               reference: transactionNo,
-              currency: user.currency || 'NGN',
-              redirect_url:
-                'https://api.staging.sportsbookengine.com/payment-verification/korapay',
+              currency: user.currency,
+              redirect_url: user.callbackUrl + '/payment-verification/korapay',
 
               channels: ['card', 'bank_transfer'],
               default_channel: 'card',
