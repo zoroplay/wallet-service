@@ -33,12 +33,6 @@ export class KorapayService {
   }
   async createPayment(data, client_id) {
     try {
-      const apiUrl = `${process.env.KORAPAY_API_URL}/charges/initialize`;
-      const secretKey = process.env.KORAPAY_SECRET_KEY as string;
-
-      if (!apiUrl || !secretKey) {
-        throw new Error('Korapay API URL or Secret Key is missing');
-      }
       console.log('Korapay Response:', data);
 
       const paymentSettings = await this.korapaySettings(client_id);
@@ -49,12 +43,16 @@ export class KorapayService {
         };
       }
 
-      const response = await axios.post(apiUrl, data, {
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          'Content-Type': 'application/json',
+      const response = await axios.post(
+        `${paymentSettings.base_url}/charges/initialize`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${paymentSettings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
 
       console.log('Response:', response.data);
 
@@ -90,9 +88,6 @@ export class KorapayService {
 
   async verifyTransaction(param) {
     try {
-      const apiKey = process.env.KORAPAY_SECRET_KEY as string;
-      const baseUrl = process.env.KORAPAY_API_URL as string;
-
       const paymentSettings = await this.korapaySettings(param.client_id);
       if (!paymentSettings)
         return {
@@ -100,12 +95,12 @@ export class KorapayService {
           message: 'Korapay has not been configured for client',
         };
 
-      const apiUrl = `${baseUrl}/charges/${param.transactionRef}`;
+      const apiUrl = `${paymentSettings.base_url}/charges/${param.transactionRef}`;
       console.log(apiUrl);
 
       const resp = await axios.get(apiUrl, {
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${paymentSettings.secret_key}`,
         },
       });
 

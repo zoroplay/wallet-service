@@ -52,12 +52,16 @@ export class FlutterwaveService {
       console.log(data);
 
       try {
-        const response = await axios.post(this.apiUrl, data, {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
+        const response = await axios.post(
+          `${paymentSettings.base_url}/payments`,
+          data,
+          {
+            headers: {
+              Authorization: `Bearer ${paymentSettings.secret_key}`,
+              'Content-Type': 'application/json',
+            },
           },
-        });
+        );
 
         console.log(response.data);
 
@@ -106,9 +110,6 @@ export class FlutterwaveService {
 
   async verifyTransaction(param) {
     try {
-      const baseUrl = process.env.FLUTTERWAVE_VERIFY_URL as string;
-      const apiKey = process.env.FLUTTERWAVE_PUB_KEY as string;
-
       const paymentSettings = await this.flutterwaveSettings(param.client_id);
       if (!paymentSettings)
         return {
@@ -116,11 +117,11 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      const verifyUrl = `${baseUrl}/transactions/verify_by_reference?tx_ref=${param.transactionRef}`;
+      const verifyUrl = `${paymentSettings.base_url}/transactions/verify_by_reference?tx_ref=${param.transactionRef}`;
 
       const resp = await axios.get(verifyUrl, {
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${paymentSettings.secret_key}`,
         },
       });
 
@@ -173,7 +174,7 @@ export class FlutterwaveService {
         };
       }
     } catch (e) {
-      console.log(e);
+      console.log('This', e);
       return {
         success: false,
         message: `Unable to verify transaction: ${e.message}`,
