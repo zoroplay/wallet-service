@@ -60,7 +60,7 @@ export class PaymentService {
     private helperService: HelperService,
     private pitch90smsService: Pitch90SMSService,
     private flutterwaveService: FlutterwaveService,
-    private korapayService: KorapayService
+    private korapayService: KorapayService,
   ) {}
 
   async inititateDeposit(
@@ -134,7 +134,8 @@ export class PaymentService {
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
-              currency: user.currency,
+              tx_ref: transactionNo,
+              currency: user.currency || 'NGN',
               redirect_url:
                 user.callbackUrl + '/payment-verification/flutterwave',
               customer: {
@@ -146,6 +147,7 @@ export class PaymentService {
           );
           description = 'Online Deposit (Flutterwave)';
           if (!result.success) return result as any;
+          console.log(result);
 
           link = result.data.link;
 
@@ -155,23 +157,28 @@ export class PaymentService {
           const koraRes = await this.korapayService.createPayment(
             {
               amount: param.amount,
-              currency: user.currency,
+              reference: transactionNo,
+              currency: user.currency || 'NGN',
               redirect_url: user.callbackUrl + '/payment-verification/korapay',
+
               channels: ['card', 'bank_transfer'],
+              default_channel: 'card',
               metadata: {
                 clientId: param.clientId,
               },
+              narration: 'Online Deposit (Korapay)',
               customer: {
                 email: user.email,
-                name: '+234' + user.username,
               },
+              merchant_bears_cost: false,
             },
             param.clientId,
           );
+
           description = 'Online Deposit (Korapay)';
           if (!koraRes.success) return koraRes as any;
 
-          link = result.data.checkout_url;
+          link = koraRes.data.link;
 
           break;
         case 'monnify':
@@ -218,7 +225,7 @@ export class PaymentService {
           const stkRes = await this.pitch90smsService.deposit({
             amount: param.amount,
             user,
-            clientId: param.clientId
+            clientId: param.clientId,
           });
 
           if (!stkRes.success) return stkRes;
@@ -561,8 +568,8 @@ export class PaymentService {
             return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
             return this.flutterwaveService.verifyTransaction(param);
-            case 'korapay':
-              return this.korapayService.verifyTransaction(param)
+          case 'korapay':
+            return this.korapayService.verifyTransaction(param);
             break;
           default:
             break;

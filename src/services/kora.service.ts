@@ -31,15 +31,15 @@ export class KorapayService {
       where: { provider: 'korapay', client_id },
     });
   }
-
   async createPayment(data, client_id) {
     try {
       const apiUrl = `${process.env.KORAPAY_API_URL}/charges/initialize`;
-      const secretKey = process.env.KORAPAY_SECRET_KEY;
+      const secretKey = process.env.KORAPAY_SECRET_KEY as string;
 
       if (!apiUrl || !secretKey) {
         throw new Error('Korapay API URL or Secret Key is missing');
       }
+      console.log('Korapay Response:', data);
 
       const paymentSettings = await this.korapaySettings(client_id);
       if (!paymentSettings) {
@@ -49,40 +49,41 @@ export class KorapayService {
         };
       }
 
-      const payload = {
-        reference: generateTrxNo(),
-        ...data,
-      };
+      const response = await axios.post(apiUrl, data, {
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      try {
-        const response = await axios.post(apiUrl, payload, {
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-          },
-        });
+      console.log('Response:', response.data);
 
-        if (!response.data) {
-          return {
-            success: false,
-            message: 'Payment initiation failed',
-          };
-        }
-
+      if (!response.data || !response.data.status) {
         return {
-          success: true,
-          message: 'Payment initiated successfully',
-          data: response.data,
+          success: false,
+          message: 'Payment initiation failed',
+          data: response.data?.data || {},
         };
-      } catch (error) {
-        console.error('Error creating payment:', error);
-        throw new BadRequestException(
-          'Failed to create payment',
-          error.message,
-        );
       }
+
+      console.log({
+        link: response.data.data.checkout_url,
+        transactionRef: response.data.data.reference,
+      });
+
+      return {
+        success: true,
+        message: 'Success',
+        data: {
+          link: response.data.data.checkout_url,
+          transactionRef: response.data.data.reference,
+        },
+      };
     } catch (error) {
-      console.error('Error in createPayment method:', error);
+      console.error(
+        'Error in createPayment:',
+        error.response?.data || error.message,
+      );
       throw new BadRequestException('Error in payment process', error.message);
     }
   }
@@ -99,7 +100,8 @@ export class KorapayService {
           message: 'Korapay has not been configured for client',
         };
 
-      const apiUrl = `${baseUrl}/charges/${param.reference}`;
+      const apiUrl = `${baseUrl}/charges/${param.transactionRef}`;
+      console.log(apiUrl);
 
       const resp = await axios.get(apiUrl, {
         headers: {
@@ -107,13 +109,13 @@ export class KorapayService {
         },
       });
 
-      const data = resp.data;
+      const data = resp.data.data;
 
       if (data.status === 'success') {
         const transaction = await this.transactionRepository.findOne({
           where: {
-            client_id: param.client_id,
-            transaction_no: param.reference,
+            client_id: param.clientId,
+            transaction_no: param.transactionRef,
             tranasaction_type: 'credit',
           },
         });
@@ -156,6 +158,7 @@ export class KorapayService {
         };
       }
     } catch (e) {
+      console.log(e);
       return {
         success: false,
         message: `Unable to verify transaction: ${e.message}`,
