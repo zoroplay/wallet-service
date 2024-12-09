@@ -158,13 +158,13 @@ export class PaymentService {
             {
               amount: param.amount,
               reference: transactionNo,
-              currency: user.currency,
+              currency: user.currency || 'NGN',
               redirect_url: user.callbackUrl + '/payment-verification/korapay',
 
               channels: ['card', 'bank_transfer'],
               default_channel: 'card',
               metadata: {
-                clientId: param.clientId || 'Try me now',
+                clientId: param.clientId,
               },
               narration: 'Online Deposit (Korapay)',
               customer: {
@@ -174,7 +174,7 @@ export class PaymentService {
             },
             param.clientId,
           );
-          // console.log('Korapay Response:', koraRes);
+
           description = 'Online Deposit (Korapay)';
           if (!koraRes.success) return koraRes as any;
 
@@ -262,7 +262,7 @@ export class PaymentService {
         data: { transactionRef: transactionNo, link },
       };
     } catch (e) {
-      // console.log(e.message);
+      console.log(e.message);
       return { success: false, message: 'Unable to complete transaction' };
     }
   }

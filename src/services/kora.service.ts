@@ -39,6 +39,7 @@ export class KorapayService {
       if (!apiUrl || !secretKey) {
         throw new Error('Korapay API URL or Secret Key is missing');
       }
+      console.log('Korapay Response:', data);
 
       const paymentSettings = await this.korapaySettings(client_id);
       if (!paymentSettings) {
