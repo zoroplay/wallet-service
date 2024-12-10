@@ -120,12 +120,15 @@ export class Pitch90SMSService {
       const { data } = await axios.post(
         `${settings.base_url}/wallet/withdrawal`,
         {
+          msisdn: '254' + withdrawal.username,
           amount: `${withdrawal.amount}`,
+          account: withdrawal.username,
           salt: settings.secret_key,
           username: withdrawal.username,
-          msisdn: '254' + withdrawal.username,
         },
       );
+
+      console.log('stk withdraw response', data)
 
       if (data.status === 'Fail') {
         return { success: false, message: data.error_desc };
