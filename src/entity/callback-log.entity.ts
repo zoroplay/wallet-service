@@ -9,8 +9,7 @@ export class CallbackLog {
     @Column()
     client_id: number;
 
-    @Index()
-    @Column({ type: "longtext"})
+    @Column({ type: "longtext", nullable: true})
     request: string;
 
     @Column({ type: "longtext", nullable: true})
