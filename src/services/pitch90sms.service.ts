@@ -143,7 +143,7 @@ export class Pitch90SMSService {
 
     } catch (e) {
       console.log('Error in deposit', e.message);
-      response = {status: 'Fail', ref_id: data.refId, error_desc: `Error processing request: ${e.message}`}
+      response = {status: 'Fail', ref_id: data.refId, message: `Error processing request: ${e.message}`}
       // update callback response
       await this.callbackLogRepository.update({
         id: callback.id,
@@ -230,7 +230,7 @@ export class Pitch90SMSService {
       return response;
 
     } catch (e) {
-      response = {success: true, data: {refId: data.ref_id, error_desc: `Error processing request: ${e.message}`}}
+      response = {success: true, data: {refId: data.ref_id, message: `Error processing request: ${e.message}`}}
       // update callback response
       await this.callbackLogRepository.update({
         id: callback.id,
