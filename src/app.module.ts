@@ -42,6 +42,7 @@ import { SalesReport } from './cashbook/entities/sales_report.entity';
 import { WayaQuickService } from './services/wayaquick.service';
 import { WayaBankService } from './services/wayabank.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
+import { CallbackLog } from './entity/callback-log.entity';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { Pitch90SMSService } from './services/pitch90sms.service';
       CashIn,
       CashOut,
       SalesReport,
+      CallbackLog
     ]),
     IdentityModule,
     RetailModule,
