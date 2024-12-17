@@ -229,6 +229,7 @@ export class PaymentService {
             const paymentMethod = await this.paymentMethodRepository.findOne({
               where: { for_disbursement: 1, client_id: clientId },
             });
+            console.log(paymentMethod);
             if (paymentMethod) {
               let resp: any = {
                 success: false,

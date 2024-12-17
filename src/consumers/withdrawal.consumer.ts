@@ -45,7 +45,7 @@ export class WithdrawalConsumer extends WorkerHost {
     try {
       const data: any = job.data;
 
-      // console.log(data)
+      console.log(data)
       const autoDisbursement = data.autoDisbursement;
 
       // save withdrawal request
@@ -101,6 +101,8 @@ export class WithdrawalConsumer extends WorkerHost {
         const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(
           data.userId,
         );
+
+        console.log(withdrawalCount);
 
         if (
           withdrawalCount <= autoDisbursement.autoDisbursementCount &&
