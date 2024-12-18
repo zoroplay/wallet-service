@@ -9,6 +9,7 @@ import { HelperService } from './helper.service';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { StkTransactionRequest } from 'src/proto/wallet.pb';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 
 @Injectable()
@@ -18,9 +19,12 @@ export class Pitch90SMSService {
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
     @InjectRepository(Wallet)
     private readonly walletRepository: Repository<Wallet>,
-
+    @InjectRepository(Withdrawal)
+    private readonly withdrawalRepository: Repository<Withdrawal>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(CallbackLog)
+    private readonly callbackLogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService
   ) {}
@@ -70,21 +74,43 @@ export class Pitch90SMSService {
   async stkDepositNotification(data: StkTransactionRequest) {
     console.log('stk deposit data:', data);
     const username = data.msisdn.substring(3);
+    // save callback logs
+    const callbackData = new CallbackLog();
+    callbackData.client_id = data.clientId;
+    callbackData.request = JSON.stringify(data);
+    let response = {};
+    const callback = await this.callbackLogRepository.save(callbackData);
+
     try {
-      if (data.trxCode === 'SHS5LC5AEN')
-        return {success: false, data: {refId: data.refId}};
+      
       // find user wallet
       const wallet = await this.walletRepository.findOne({where: {username}});
 
       const transaction = await this.transactionRepository.findOne({where: {transaction_no: data.refId, tranasaction_type: 'credit', status: 0}});
       // return error if not foumd
       if (!transaction) {
-        console.log('t not found');
-        return {success: false, data: {refId: data.refId, message: "transaction not found"}};
+        console.log('item not found');
+        response = {success: false, data: {refId: data.refId, message: "transaction not found"}};
+        // update callback response
+        await this.callbackLogRepository.update({
+          id: callback.id,
+        },{
+          response: JSON.stringify(response)
+        })
+        // return response
+        return response;
       }
 
-      if (transaction.status === 1)
-        return {success: false, data: { refId: data.refId, message: "transaction already processed"}};
+      if (transaction.status === 1) {
+        response = {success: false, data: { refId: data.refId, message: "transaction already processed"}};
+        // update callback response
+        await this.callbackLogRepository.update({
+          id: callback.id,
+        },{
+          response: JSON.stringify(response)
+        })
+        return response;
+      }
 
       const balance =
         parseFloat(wallet.available_balance.toString()) +
@@ -104,11 +130,28 @@ export class Pitch90SMSService {
       );
 
 
-      return {success: true, data: {refId: data.refId}};
+      response = {success: true, data: {refId: data.refId}};
+
+      // update callback response
+      await this.callbackLogRepository.update({
+        id: callback.id,
+      },{
+        response: JSON.stringify(response)
+      })
+
+      return response;
 
     } catch (e) {
       console.log('Error in deposit', e.message);
-      return {status: 'Fail', ref_id: data.refId, error_desc: `Error processing request: ${e.message}`}
+      response = {status: 'Fail', ref_id: data.refId, message: `Error processing request: ${e.message}`}
+      // update callback response
+      await this.callbackLogRepository.update({
+        id: callback.id,
+      },{
+        response: JSON.stringify(response)
+      });
+
+      return response;
     }
   }
 
@@ -120,16 +163,25 @@ export class Pitch90SMSService {
       const { data } = await axios.post(
         `${settings.base_url}/wallet/withdrawal`,
         {
+          msisdn: '254' + withdrawal.username,
           amount: `${withdrawal.amount}`,
+          account: withdrawal.username,
           salt: settings.secret_key,
           username: withdrawal.username,
-          msisdn: '254' + withdrawal.username,
         },
       );
+
+      console.log('stk withdraw response', data)
 
       if (data.status === 'Fail') {
         return { success: false, message: data.error_desc };
       } else {
+        // update withdrawal code
+        await this.withdrawalRepository.update({
+          id: withdrawal.id,
+        }, {
+          withdrawal_code: data.ref_id
+        });
 
         return {
           success: true,
@@ -148,55 +200,45 @@ export class Pitch90SMSService {
 
   async stkWithdrawalNotification (data) {
     console.log('stk withdraw data:', data);
+    
     const username = data.msisdn.substring(3);
+
+    // save callback logs
+    const callbackData = new CallbackLog();
+    callbackData.client_id = data.clientId;
+    callbackData.request = JSON.stringify(data);
+    let response = {};
+    const callback = await this.callbackLogRepository.save(callbackData);
+
     try {
-        // find user wallet
-        const wallet = await this.walletRepository.findOne({where: {username}});
-        // return error if not foumd
-        if (!wallet) {
-          console.log('wallet not found');
-          return {success: false, data: {refId: data.refId, message: "user not found"}};
-        }
+      // find and update withdrawal request
+      await this.withdrawalRepository.update({
+        withdrawal_code: data.refId
+      }, {
+        status: 1
+      });
 
-        if (wallet.available_balance < parseFloat(data.amount))
-          return {
-            success: false,
-            data: { 
-              refId: data.ref_id, 
-              error_no: 5003,
-              message: "User not found"
-            },
-          };
+      response = {success: true, data: {refId: data.refId}};
 
-        const balance = wallet.available_balance;
-        // update user wallet
-        wallet.available_balance = parseFloat(wallet.available_balance.toString()) - parseFloat(data.amount);
-        wallet.balance = balance - parseFloat(data.amount);
-        this.walletRepository.save(wallet);
-        // save transaction details
-        await this.helperService.saveTransaction({
-          amount: data.amount,
-          channel: 'ussd',
-          clientId: data.clientId,
-          fromUserId: wallet.user_id,
-          fromUsername: wallet.username,
-          fromUserBalance: wallet.available_balance,
-          toUserId: 0,
-          toUsername: 'System',
-          toUserbalance: 0,
-          status: 1,
-          source: 'stkpush',
-          subject: 'Withdrawal',
-          description: 'Ussd Withdrawal',
-          transactionNo: data.ref_id,
-        });
+      // update callback response
+      await this.callbackLogRepository.update({
+        id: callback.id,
+      },{
+        response: JSON.stringify(response)
+      })
 
-
-        return {success: true, data: {refId: data.refId}};
-
+      return response;
 
     } catch (e) {
-      return {success: true, data: {refId: data.ref_id, error_desc: `Error processing request: ${e.message}`}}
+      response = {success: true, data: {refId: data.ref_id, message: `Error processing request: ${e.message}`}}
+      // update callback response
+      await this.callbackLogRepository.update({
+        id: callback.id,
+      },{
+        response: JSON.stringify(response)
+      })
+
+      return response;
     }
   }
 
