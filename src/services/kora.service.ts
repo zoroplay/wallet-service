@@ -5,17 +5,14 @@ import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Repository } from 'typeorm';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
-import * as crypto from 'crypto';
-import { HelperService } from './helper.service';
-import { generateTrxNo } from 'src/common/helpers';
-import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { generateTrxNo } from 'src/common/helpers';
+import { HelperService } from './helper.service';
+import crypto from 'crypto';
 import { IdentityService } from 'src/identity/identity.service';
 
 @Injectable()
-export class FlutterwaveService {
-  private readonly apiKey: string;
-  private readonly apiUrl: string;
+export class KorapayService {
   constructor(
     @InjectRepository(PaymentMethod)
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
@@ -25,107 +22,89 @@ export class FlutterwaveService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
-    private readonly configService: ConfigService,
-    private identityService: IdentityService,
-
     private helperService: HelperService,
-  ) {
-    this.apiKey = this.configService.get<string>('FLUTTERWAVE_PUB_KEY');
-    this.apiUrl = this.configService.get<string>('FLUTTERWAVE_URL');
-  }
+    private identityService: IdentityService,
+  ) {}
 
-  private async flutterwaveSettings(client_id: number) {
+  private async korapaySettings(client_id: number) {
     return await this.paymentMethodRepository.findOne({
-      where: { provider: 'flutterwave', client_id },
+      where: { provider: 'korapay', client_id },
     });
   }
-
   async createPayment(data, client_id) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(client_id);
-      if (!paymentSettings)
+      console.log('Korapay Response:', data);
+
+      const paymentSettings = await this.korapaySettings(client_id);
+      if (!paymentSettings) {
         return {
           success: false,
-          message: 'Flutterwave has not been configured for client',
+          message: 'Korapay has not been configured for client',
         };
-
-      console.log(data);
-
-      try {
-        const response = await axios.post(
-          `${paymentSettings.base_url}/payments`,
-          data,
-          {
-            headers: {
-              Authorization: `Bearer ${paymentSettings.secret_key}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
-
-        console.log(response.data);
-
-        if (!response.data) {
-          return {
-            success: false,
-            message: 'Payment initiation failed',
-          };
-        }
-
-        console.log('Flutterwave Response:', response.data);
-
-        if (!response.data || !response.data.data) {
-          return {
-            success: false,
-            message: 'Payment initiation failed',
-          };
-        }
-
-        const { link } = response.data.data;
-        if (!link) {
-          return {
-            success: false,
-            message: 'Payment link not found in the response',
-            data: response.data.data,
-          };
-        }
-
-        return {
-          success: true,
-          message: 'Payment initiated successfully',
-          data: { link },
-        };
-      } catch (error) {
-        console.error('Error creating payment:', error);
-        throw new BadRequestException(
-          'Failed to create payment',
-          error.message,
-        );
       }
+
+      const response = await axios.post(
+        `${paymentSettings.base_url}/charges/initialize`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${paymentSettings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      console.log('Response:', response.data);
+
+      if (!response.data || !response.data.status) {
+        return {
+          success: false,
+          message: 'Payment initiation failed',
+          data: response.data?.data || {},
+        };
+      }
+
+      console.log({
+        link: response.data.data.checkout_url,
+        transactionRef: response.data.data.reference,
+      });
+
+      return {
+        success: true,
+        message: 'Success',
+        data: {
+          link: response.data.data.checkout_url,
+          transactionRef: response.data.data.reference,
+        },
+      };
     } catch (error) {
-      console.error('Error in createPayment method:', error);
+      console.error(
+        'Error in createPayment:',
+        error.response?.data || error.message,
+      );
       throw new BadRequestException('Error in payment process', error.message);
     }
   }
 
   async verifyTransaction(param) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(param.client_id);
+      const paymentSettings = await this.korapaySettings(param.client_id);
       if (!paymentSettings)
         return {
           success: false,
-          message: 'Flutterwave has not been configured for client',
+          message: 'Korapay has not been configured for client',
         };
 
-      const verifyUrl = `${paymentSettings.base_url}/transactions/verify_by_reference?tx_ref=${param.transactionRef}`;
+      const apiUrl = `${paymentSettings.base_url}/charges/${param.transactionRef}`;
+      console.log(apiUrl);
 
-      const resp = await axios.get(verifyUrl, {
+      const resp = await axios.get(apiUrl, {
         headers: {
           Authorization: `Bearer ${paymentSettings.secret_key}`,
         },
       });
 
-      const data = resp.data;
+      const data = resp.data.data;
 
       if (data.status === 'success') {
         const transaction = await this.transactionRepository.findOne({
@@ -174,7 +153,7 @@ export class FlutterwaveService {
         };
       }
     } catch (e) {
-      console.log('This', e);
+      console.log(e);
       return {
         success: false,
         message: `Unable to verify transaction: ${e.message}`,
@@ -182,53 +161,62 @@ export class FlutterwaveService {
     }
   }
 
-  async disburseFunds(withdrawal: Withdrawal, client_id) {
+  async initiateKoraPayout(payoutDto) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(client_id);
-      if (!paymentSettings)
+      const apiKey = process.env.KORAPAY_SECRET_KEY as string;
+      const apiUrl = `${process.env.KORAPAY_API_URL}/merchant/api/v1/transactions/disburse`;
+
+      if (!apiKey || !apiUrl) {
+        throw new Error(
+          'Korapay API URL or Secret Key is missing in the environment variables',
+        );
+      }
+
+      const reference = generateTrxNo(); // Assuming `generateTrxNo` generates a unique reference
+
+      // Constructing the payout payload
+      const paymentPayload = {
+        reference, // Reference generated by `generateTrxNo`
+        ...payoutDto, // Including other fields from `payoutDto`
+      };
+
+      // Making the API request
+      const response = await axios.post(apiUrl, paymentPayload, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Check response status
+      if (response.data.status === 'success') {
+        const { status } = response.data.data;
+        if (status === 'successful') {
+          return {
+            success: true,
+            message: 'Payment successful',
+          };
+        } else {
+          return {
+            success: false,
+            message: 'Payment not successful',
+          };
+        }
+      } else {
         return {
           success: false,
-          message: 'Flutterwave has not been configured for client',
+          message: 'Unable to process payout transaction',
         };
-
-      const payload = {
-        account_bank: withdrawal.bank_code,
-        account_number: withdrawal.account_number,
-        amount: withdrawal.amount,
-        narration: 'Withdrawal Payout',
-        currency: 'NGN',
-        reference: withdrawal.withdrawal_code,
-      };
-
-      const resp = await axios.post(
-        `${paymentSettings.base_url}/v3/transfers`,
-        {
-          payload,
-          headers: {
-            Authorization: `Bearer ${paymentSettings.secret_key}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      if (resp.data.status === 'success') {
-        await this.withdrawalRepository.update(
-          { id: withdrawal.id },
-          { status: 1 },
-        );
-        return { success: true, message: 'Funds disbursed successfully' };
-      } else {
-        return { success: false, message: resp.data.message };
       }
-    } catch (e) {
-      return {
-        success: false,
-        message: `Unable to disburse funds: ${e.message}`,
-      };
+    } catch (error) {
+      console.error('Error initiating payout:', error);
+      throw new BadRequestException(
+        `Unable to Payout transaction: ${error.message}`,
+      );
     }
   }
 
-  async handleWebhook(data) {
+  async processWebhook(data) {
     try {
       const isValid = this.verifySignature(data);
 
@@ -261,15 +249,15 @@ export class FlutterwaveService {
       );
     }
   }
-
   private async verifySignature(data): Promise<boolean> {
-    const paymentSettings = await this.flutterwaveSettings(data.clientId);
+    const paymentSettings = await this.korapaySettings(data.clientId);
+
     const hash = crypto
       .createHmac('sha256', paymentSettings.secret_key)
       .update(JSON.stringify(data.body))
       .digest('hex');
 
-    return hash === data.flutterwaveKey;
+    return hash === data.korapayKey;
   }
 
   // Handlers for different webhook events

@@ -47,9 +47,11 @@ import {
   WalletTransferRequest,
   WithdrawRequest,
   WayaBankRequest,
-  FetchUsersWithdrawalRequest,
   StkTransactionRequest,
   StkRegisterUrlRequest,
+  FetchUsersWithdrawalRequest,
+  FlutterwaveWebhookRequest,
+  KoraPayWebhookRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -60,6 +62,8 @@ import { MonnifyService } from './services/monnify.service';
 import { CashbookService } from './cashbook/cashbook.service';
 import { WithdrawalService } from './services/withdrawal.service';
 import { ReportingService } from './services/reporting.service';
+import { FlutterwaveService } from './services/flutterwave.service';
+import { KorapayService } from './services/kora.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
 
 @Controller()
@@ -74,12 +78,24 @@ export class AppController {
     private cashbookService: CashbookService,
     private withdrawalService: WithdrawalService,
     private reportingService: ReportingService,
+    private flutterwaveService: FlutterwaveService,
+    private korapayService: KorapayService,
     private pitch90Service: Pitch90SMSService
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
   FetchBetRange(payload: FetchBetRangeRequest) {
     return this.depositService.fetchBetRange(payload);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveWebhook')
+  flutterWaveWebhook(param: FlutterwaveWebhookRequest) {
+    return this.flutterwaveService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayWebhook')
+  korapayWebhook(param: KoraPayWebhookRequest) {
+    return this.korapayService.processWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')

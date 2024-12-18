@@ -42,10 +42,16 @@ import { SalesReport } from './cashbook/entities/sales_report.entity';
 import { WayaQuickService } from './services/wayaquick.service';
 import { WayaBankService } from './services/wayabank.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
+import { ConfigModule } from '@nestjs/config';
+import { KorapayService } from './services/kora.service';
 import { CallbackLog } from './entity/callback-log.entity';
+
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST,
@@ -100,6 +106,7 @@ import { CallbackLog } from './entity/callback-log.entity';
   providers: [
     AppService,
     FlutterwaveService,
+    KorapayService,
     MonnifyService,
     MomoService,
     MgurushService,
