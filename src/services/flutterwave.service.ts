@@ -8,7 +8,6 @@ import { Withdrawal } from 'src/entity/withdrawal.entity';
 import * as crypto from 'crypto';
 import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
-import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 
@@ -25,14 +24,10 @@ export class FlutterwaveService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
-    private readonly configService: ConfigService,
     private identityService: IdentityService,
 
     private helperService: HelperService,
-  ) {
-    this.apiKey = this.configService.get<string>('FLUTTERWAVE_PUB_KEY');
-    this.apiUrl = this.configService.get<string>('FLUTTERWAVE_URL');
-  }
+  ) {}
 
   private async flutterwaveSettings(client_id: number) {
     return await this.paymentMethodRepository.findOne({
@@ -126,62 +121,112 @@ export class FlutterwaveService {
       });
 
       const data = resp.data;
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: param.clientId,
+          transaction_no: param.transactionRef,
+          tranasaction_type: 'credit',
+        },
+      });
 
-      if (data.status === 'success') {
-        const transaction = await this.transactionRepository.findOne({
-          where: {
-            client_id: param.clientId,
-            transaction_no: param.transactionRef,
-            tranasaction_type: 'credit',
-          },
-        });
-
-        if (!transaction)
-          return {
-            success: false,
-            message: 'Transaction not found',
-            status: HttpStatus.NOT_FOUND,
-          };
-
-        if (transaction.status === 1)
-          return {
-            success: true,
-            message: 'Transaction already successful',
-          };
-
-        const wallet = await this.walletRepository.findOne({
-          where: { user_id: transaction.user_id },
-        });
-
-        const balance =
-          parseFloat(wallet.available_balance.toString()) +
-          parseFloat(transaction.amount.toString());
-
-        await this.helperService.updateWallet(balance, transaction.user_id);
-        await this.transactionRepository.update(
-          { transaction_no: transaction.transaction_no },
-          { status: 1, balance },
-        );
-
-        return {
-          success: true,
-          message: 'Transaction successfully verified and processed',
-        };
-      } else {
+      if (!transaction)
         return {
           success: false,
-          message: `Transaction failed: ${data.message}`,
+          message: 'Transaction not found',
+          status: HttpStatus.NOT_FOUND,
+        };
+
+      if (data.status === 'success') {
+        if (transaction.status === 1)
+          // if transaction is already successful, return success message
+          return {
+            success: true,
+            message: 'Transaction was successful',
+            status: HttpStatus.OK,
+          };
+        console.log(transaction);
+        if (transaction.status === 2)
+          return {
+            success: false,
+            message: 'Transaction failed. Try again',
+            status: HttpStatus.NOT_ACCEPTABLE,
+          };
+
+        if (transaction.status === 0) {
+          // find user wallet
+          const wallet = await this.walletRepository.findOne({
+            where: { user_id: transaction.user_id },
+          });
+
+          const balance =
+            parseFloat(wallet.available_balance.toString()) +
+            parseFloat(transaction.amount.toString());
+
+          // fund user wallet
+          await this.helperService.updateWallet(balance, transaction.user_id);
+
+          // update transaction status to completed - 1
+          await this.transactionRepository.update(
+            {
+              transaction_no: transaction.transaction_no,
+            },
+            {
+              status: 1,
+              balance,
+            },
+          );
+
+          try {
+            const keys = await this.identityService.getTrackierKeys({
+              itemId: data.clientId,
+            });
+            if (keys.success) {
+              // send deposit to trackier
+              await this.helperService.sendActivity(
+                {
+                  subject: 'Deposit',
+                  username: transaction.username,
+                  amount: transaction.amount,
+                  transactionId: transaction.transaction_no,
+                  clientId: data.clientId,
+                },
+                keys.data,
+              );
+            }
+          } catch (e) {
+            console.log(e.message);
+          }
+
+          return {
+            success: true,
+            message: 'Transaction was successful',
+            status: HttpStatus.OK,
+          };
+        }
+      } else {
+        // update transaction status to failed - 2
+        await this.transactionRepository.update(
+          {
+            transaction_no: transaction.transaction_no,
+          },
+          {
+            status: 2,
+          },
+        );
+        return {
+          success: false,
+          message: `Transaction was not successful: Last gateway response was:  ${data.gateway_response}`,
+          status: HttpStatus.BAD_REQUEST,
         };
       }
     } catch (e) {
-      console.log('This', e);
       return {
         success: false,
-        message: `Unable to verify transaction: ${e.message}`,
+        message: 'Unable to verify transaction: ' + e.message,
+        status: HttpStatus.BAD_REQUEST,
       };
     }
   }
-
   async disburseFunds(withdrawal: Withdrawal, client_id) {
     try {
       const paymentSettings = await this.flutterwaveSettings(client_id);

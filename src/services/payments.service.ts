@@ -167,7 +167,7 @@ export class PaymentService {
               customer: {
                 email: user.email,
               },
-              merchant_bears_cost: false,
+              merchant_bears_cost: true,
             },
             param.clientId,
           );
