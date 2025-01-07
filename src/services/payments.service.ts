@@ -18,10 +18,7 @@ import {
   CommonResponseObj,
   WalletTransferRequest,
   PawapayCountryRequest,
-  WayaQuickRequest,
   WayaBankRequest,
-  //Pitch90RegisterUrlRequest,
-  //Pitch90TransactionRequest,
   PawapayToolkitRequest,
   FetchPawapayRequest,
 } from 'src/proto/wallet.pb';
@@ -68,7 +65,7 @@ export class PaymentService {
   ): Promise<InitiateDepositResponse> {
     let transactionNo = generateTrxNo();
     let link = '',
-      description;
+      description, status = 0;
     // console.log(param);
     // find user wallet
     // find wallet
@@ -225,7 +222,7 @@ export class PaymentService {
           const stkRes = await this.pitch90smsService.deposit({
             amount: param.amount,
             user,
-            clientId: param.clientId,
+            clientId: param.clientId
           });
 
           if (!stkRes.success) return stkRes;
@@ -250,6 +247,7 @@ export class PaymentService {
         fromUserId: 0,
         fromUsername: 'System',
         fromUserbalance: 0,
+        status,
         source: param.source,
         subject: 'Deposit',
         description,
@@ -282,8 +280,9 @@ export class PaymentService {
         switch (action) {
           case 'approve':
             const paymentMethod = await this.paymentMethodRepository.findOne({
-              where: { for_disbursement: 1 },
+              where: { for_disbursement: 1, client_id: clientId },
             });
+            console.log(paymentMethod);
             if (paymentMethod) {
               let resp: any = {
                 success: false,
@@ -298,7 +297,11 @@ export class PaymentService {
                     clientId,
                   );
                   break;
-                case 'mgurush':
+                case 'stkpush':
+                  resp = await this.pitch90smsService.withdraw(
+                    wRequest,
+                    clientId,
+                  );
                   break;
                 case 'monnify':
                   break;
@@ -307,7 +310,7 @@ export class PaymentService {
                 default:
                   break;
               }
-              // update withdrawal request
+              // update withdrawal request status
               if (resp.success)
                 await this.withdrawalRepository.update(
                   {
@@ -329,7 +332,6 @@ export class PaymentService {
                 status: HttpStatus.NOT_IMPLEMENTED,
               };
             }
-            break;
           case 'cancel':
             await this.withdrawalRepository.update(
               {
@@ -384,8 +386,6 @@ export class PaymentService {
               message: 'Withdrawal request caancelled',
               status: HttpStatus.CREATED,
             };
-
-            break;
 
           default:
             // update withdrawal status
@@ -443,7 +443,6 @@ export class PaymentService {
               status: HttpStatus.CREATED,
             };
 
-            break;
         }
       } else {
         return {

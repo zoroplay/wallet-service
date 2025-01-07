@@ -144,11 +144,12 @@ export class AppService {
   async getPaymentMethods(data: GetPaymentMethodRequest) {
     try {
       const { clientId, status } = data;
+      console.log(status)
       const where: any = { client_id: clientId };
       if (status) where.status = status;
 
       let results = [];
-      // console.log(where)
+      console.log(where)
       const pMethods = await this.pMethodRepository.find({ where });
 
       if (status) {

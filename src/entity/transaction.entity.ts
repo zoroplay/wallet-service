@@ -47,7 +47,7 @@ export class Transaction {
   source: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   channel: string;
 
   @Column({ type: 'decimal', precision: 20, scale: 2, default: 0 })
