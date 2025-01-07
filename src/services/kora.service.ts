@@ -33,8 +33,6 @@ export class KorapayService {
   }
   async createPayment(data, client_id) {
     try {
-      console.log('Korapay Response:', data);
-
       const paymentSettings = await this.korapaySettings(client_id);
       if (!paymentSettings) {
         return {
@@ -53,8 +51,6 @@ export class KorapayService {
           },
         },
       );
-
-      console.log('Response:', response.data);
 
       if (!response.data || !response.data.status) {
         return {
