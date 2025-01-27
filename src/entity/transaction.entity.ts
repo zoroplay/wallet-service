@@ -43,7 +43,7 @@ export class Transaction {
   description: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 150, nullable: true })
   source: string;
 
   @Index()
