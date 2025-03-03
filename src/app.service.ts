@@ -12,7 +12,6 @@ import {
   GetNetworkBalanceResponse,
   GetPaymentMethodRequest,
   MetaData,
-  PaginationResponse,
   PaymentMethodRequest,
   PaymentMethodResponse,
   PlayerWalletData,
@@ -36,6 +35,8 @@ import * as dayjs from "dayjs";
 
 import { Bank } from "./entity/bank.entity";
 import { IdentityService } from "./identity/identity.service";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
 var customParseFormat = require("dayjs/plugin/customParseFormat");
 
 dayjs.extend(customParseFormat);
@@ -55,7 +56,9 @@ export class AppService {
     private bankRepository: Repository<Bank>,
     private helperService: HelperService,
     private identityService: IdentityService,
-  ) {}
+    // @InjectQueue('deposit')
+    // private depositQueue: Queue,
+  ) { }
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
     try {
@@ -221,103 +224,61 @@ export class AppService {
       let walletType = "Main";
       let balance = 0;
 
-      if (wallet) {
-        let walletBalance = "available_balance";
-        switch (data.wallet) {
-          case "sport-bonus":
-            walletBalance = "sport_bonus_balance";
-            walletType = "Sport Bonus";
-            balance =
-              parseFloat(wallet.sport_bonus_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          case "virtual":
-            walletBalance = "virtual_bonus_balance";
-            walletType = "Virtual Bonus";
-            balance =
-              parseFloat(wallet.virtual_bonus_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          case "casino":
-            walletBalance = "casino_bonus_balance";
-            walletType = "Casino Bonus";
-            balance =
-              parseFloat(wallet.casino_bonus_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          case "trust":
-            walletBalance = "trust_balance";
-            walletType = "Trust";
-            balance =
-              parseFloat(wallet.trust_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          default:
-            balance =
-              parseFloat(wallet.available_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-        }
-        // console.log(walletBalance, data.wallet)
-        
-        await this.walletRepository.update(
-          {
-            user_id: data.userId,
-            client_id: data.clientId,
-          },
-          {
-            // balance,
-            [walletBalance]: balance,
-          }
-        );
-      } else {
-        // create new wallet
-        const wallet: any = new Wallet();
-        wallet.user_id = data.userId;
-        wallet.client_id = data.clientId;
-        wallet.username = data.username;
-        wallet.balance = parseFloat(data.amount) || 0;
-        wallet.available_balance = parseFloat(data.amount) || 0;
-
-        await this.walletRepository.save(wallet);
+      let walletBalance = "available_balance";
+      switch (data.wallet) {
+        case "sport-bonus":
+          walletBalance = "sport_bonus_balance";
+          walletType = "Sport Bonus";
+          balance =
+            parseFloat(wallet.sport_bonus_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        case "virtual":
+          walletBalance = "virtual_bonus_balance";
+          walletType = "Virtual Bonus";
+          balance =
+            parseFloat(wallet.virtual_bonus_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        case "casino":
+          walletBalance = "casino_bonus_balance";
+          walletType = "Casino Bonus";
+          balance =
+            parseFloat(wallet.casino_bonus_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        case "trust":
+          walletBalance = "trust_balance";
+          walletType = "Trust";
+          balance =
+            parseFloat(wallet.trust_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        default:
+          balance =
+            parseFloat(wallet.available_balance.toString()) +
+            parseFloat(data.amount);
+          break;
       }
+      // console.log(walletBalance, data.wallet)
+
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          [walletBalance]: balance,
+        }
+      );
+
       const transactionNo = generateTrxNo();
-      //to-do save transaction log
-      await this.helperService.saveTransaction({
-        clientId: data.clientId,
-        transactionNo,
-        amount: parseFloat(data.amount),
-        description: data.description,
-        subject: data.subject,
-        channel: data.channel,
-        source: data.source,
-        fromUserId: 0,
-        fromUsername: "System",
-        fromUserBalance: 0,
-        toUserId: data.userId,
-        toUsername: data.username,
-        toUserBalance: balance,
-        status: 1,
-        walletType,
-      });
+      // add request to queue
+      // await this.depositQueue.add('credit-user', data, {
+      //   jobId: `credit-user:${transactionNo}`,
+      // });
 
-      // send deposit to trackier
-      try {
-        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
-
-        if (keys.success){
-          await this.helperService.sendActivity({
-            subject: data.subject,
-            username: data.username,
-            amount: data.amount,
-            transactionId: transactionNo,
-            clientId: data.clientId,
-          },  keys.data);
-        }
-
-      } catch (e) {
-        console.log('Trackier error: Credit User', e.message)
-      }
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet credited");
     } catch (e) {
@@ -397,9 +358,9 @@ export class AppService {
 
       // send deposit to trackier
       try {
-        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+        const keys = await this.identityService.getTrackierKeys({ itemId: data.clientId });
 
-        if (keys.success){
+        if (keys.success) {
           await this.helperService.sendActivity({
             subject: data.subject,
             username: data.username,
@@ -437,7 +398,7 @@ export class AppService {
           break;
       }
 
-      const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
+      const wallet = await this.walletRepository.findOne({ where: { user_id: data.userId } });
 
       const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
 
@@ -472,7 +433,7 @@ export class AppService {
         status: 1,
         walletType: 'Main',
       });
-      
+
     } catch (e) {
       console.log('Error awarding bonus', e.message);
       return {
@@ -612,7 +573,7 @@ export class AppService {
         offset = offset + 1;
       }
 
-      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy("transaction.created_at", "DESC")

@@ -227,6 +227,7 @@ export class FlutterwaveService {
       };
     }
   }
+  
   async disburseFunds(withdrawal: Withdrawal, client_id) {
     try {
       const paymentSettings = await this.flutterwaveSettings(client_id);

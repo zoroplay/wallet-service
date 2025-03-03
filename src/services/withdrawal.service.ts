@@ -100,7 +100,8 @@ export class WithdrawalService {
 
       // console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}:${jobData.withdrawalCode}`,
+        delay: 5000
       });
 
       return {
@@ -322,7 +323,7 @@ export class WithdrawalService {
       }
 
       // check if the authorizing agent and the withdrawer are the same person
-      if (withdrawReqeust.id === payload.userId) {
+      if (withdrawReqeust.user_id === payload.userId) {
         return {
           success: false,
           status: HttpStatus.BAD_REQUEST,
