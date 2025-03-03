@@ -609,10 +609,10 @@ export class AppService {
 
       if (page > 1) {
         offset = (page - 1) * limit;
-        offset = offset + 1;
+        // offset = offset + 1;
       }
 
-      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy("transaction.created_at", "DESC")
