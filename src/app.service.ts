@@ -587,7 +587,7 @@ export class AppService {
     startDate,
     endDate,
     page = 1,
-    limit = 20,
+    limit = 50,
   }): Promise<UserTransactionResponse> {
     // console.log(startDate, endDate, userId, clientId)
     try {
@@ -612,7 +612,7 @@ export class AppService {
         // offset = offset + 1;
       }
 
-      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy("transaction.created_at", "DESC")
