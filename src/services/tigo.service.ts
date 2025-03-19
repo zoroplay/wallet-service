@@ -1,13 +1,11 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Repository } from 'typeorm';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
-import * as crypto from 'crypto';
 import { HelperService } from './helper.service';
-import { generateTrxNo } from 'src/common/helpers';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
@@ -31,57 +29,134 @@ export class TigoService {
 
   private async tigoSettings(client_id: number) {
     return await this.paymentMethodRepository.findOne({
-      where: { provider: 'togo', client_id },
+      where: { provider: 'tigo', client_id },
     });
   }
 
-  private async getToken(): Promise<string> {
-    try {
-      const BASE_URL = process.env.TIGO_API_BASE_URL;
-      const USERNAME = process.env.TIGO_USERNAME;
-      const PASSWORD = process.env.TIGO_PASSWORD;
-      const GRANT_TYPE = process.env.TIGO_GRANT_TYPE;
+  async initiatePayment(data, client_id) {
+    // ✅ Get Tigo settings only once
+    const paymentSettings = await this.tigoSettings(client_id);
+    if (!paymentSettings)
+      return {
+        success: false,
+        message: 'Tigo has not been configured for client',
+      };
 
-      const response = await axios.post(`${BASE_URL}/token`, {
-        username: USERNAME,
-        password: PASSWORD,
-        grant_type: GRANT_TYPE,
+    try {
+      const TIGO_TOKEN =
+        'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-GetToken';
+      const requestBody = new URLSearchParams();
+      requestBody.append('username', paymentSettings.public_key);
+      requestBody.append('password', paymentSettings.secret_key);
+      requestBody.append('grant_type', 'password');
+      const token = await axios.post(TIGO_TOKEN, requestBody, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
-      if (response.data && response.data.access_token) {
-        return response.data.access_token;
+      if (!token) {
+        console.error('❌ Failed to retrieve access token');
+        return {
+          success: false,
+          message: 'Authentication failed',
+        };
       }
 
-      throw new Error('Failed to fetch access token');
-    } catch (error) {
-      console.error('Error fetching token:', error.message);
-      throw new BadRequestException('Authentication failed');
+      const payload = {
+        ...data,
+        BillerMSISDN: paymentSettings.merchant_id,
+      };
+
+      const payUrl =
+        'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-PushBillPay';
+      const response = await axios.post(payUrl, payload, {
+        headers: {
+          Authorization: `Bearer ${token.data.access_token}`, // ✅ Missing authorization header added
+          Username: paymentSettings.public_key,
+          Password: paymentSettings.secret_key,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('✅ Payment successful:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(
+        '❌ Error during Tigo payment initiation:',
+        error.response?.data || error.message,
+      );
+      return {
+        success: false,
+        message: 'Payment request failed',
+        error: error.response?.data || error.message,
+      };
     }
   }
 
-  //    async initiatePayment = async ( data) {
-  //      try {
-  //        const response = await axios.post(
-  //          `${BASE_URL}/API/BillerPayment/BillerPay`,
-  //          paymentDetails,
-  //          {
-  //            headers: {
-  //              Authorization: `Bearer ${token}`,
-  //              'Content-Type': 'application/json',
-  //              Username: USERNAME,
-  //              Password: PASSWORD,
-  //            },
-  //          },
-  //        );
+  async handleWebhook(data) {
+    console.log('TEST');
+    try {
+      const paymentSettings = await this.tigoSettings(data.client_id);
+      if (!paymentSettings)
+        return {
+          success: false,
+          message: 'Tigo has not been configured for client',
+        };
+      console.log('TEST 2');
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: data.clientId,
+          transaction_no: data.reference,
+          tranasaction_type: 'credit',
+        },
+      });
 
-  //        if (response.data && response.data.ResponseCode === '000') {
-  //          return response.data; // Payment successful
-  //        }
+      console.log('TRX', transaction);
 
-  //        throw new Error(response.data.ResponseDescription || 'Payment failed');
-  //      } catch (error) {
-  //        console.error('Error initiating payment:', error.message);
-  //        throw error;
-  //      }
-  //    };
+      if (!transaction)
+        return {
+          success: false,
+          message: 'Transaction not found',
+          status: HttpStatus.NOT_FOUND,
+        };
+
+      if (transaction.status === 1)
+        return {
+          success: true,
+          message: 'Transaction already successful',
+        };
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          success: false,
+          message: 'Wallet not found for this user',
+          status: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+
+      return {
+        success: true,
+        message: 'Transaction successfully verified and processed',
+      };
+    } catch (error) {
+      console.log('Tigo error', error);
+      return { success: false, message: 'error occurred' };
+    }
+  }
 }
