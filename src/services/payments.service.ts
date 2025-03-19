@@ -36,6 +36,7 @@ import { WayaBankService } from './wayabank.service';
 import { Pitch90SMSService } from './pitch90sms.service';
 import { FlutterwaveService } from './flutterwave.service';
 import { KorapayService } from './kora.service';
+import { TigoService } from './tigo.service';
 
 @Injectable()
 export class PaymentService {
@@ -58,6 +59,7 @@ export class PaymentService {
     private pitch90smsService: Pitch90SMSService,
     private flutterwaveService: FlutterwaveService,
     private korapayService: KorapayService,
+    private tigoService: TigoService,
   ) {}
 
   async inititateDeposit(
@@ -65,7 +67,8 @@ export class PaymentService {
   ): Promise<InitiateDepositResponse> {
     let transactionNo = generateTrxNo();
     let link = '',
-      description, status = 0;
+      description,
+      status = 0;
     // console.log(param);
     // find user wallet
     // find wallet
@@ -151,6 +154,7 @@ export class PaymentService {
           break;
 
         case 'korapay':
+          console.log('KORAPAY');
           const koraRes = await this.korapayService.createPayment(
             {
               amount: param.amount,
@@ -167,7 +171,7 @@ export class PaymentService {
               customer: {
                 email: user.email,
               },
-              merchant_bears_cost: true,
+              merchant_bears_cost: false,
             },
             param.clientId,
           );
@@ -176,8 +180,30 @@ export class PaymentService {
           if (!koraRes.success) return koraRes as any;
 
           link = koraRes.data.link;
+          console.log(link);
+          console.log(koraRes);
 
           break;
+
+        case 'tigo':
+          console.log('TIGO_PAYMENT');
+          description = 'Online Deposit (Tigo )';
+          const tigoRes = await this.tigoService.initiatePayment(
+            {
+              CustomerMSISDN: user.username,
+              Amount: param.amount,
+              Remarks: description,
+              ReferenceID: `${'KML'}${transactionNo}`,
+            },
+            param.clientId,
+          );
+
+          link = tigoRes;
+          console.log(tigoRes.ReferenceID)
+          console.log('THE_LINK', JSON.stringify(link, null, 2));
+          console.log('THE_RES', JSON.stringify(tigoRes, null, 2));
+          break;
+
         case 'monnify':
           const mRes: any = await this.monnifyService.generatePaymentLink(
             {
@@ -222,7 +248,7 @@ export class PaymentService {
           const stkRes = await this.pitch90smsService.deposit({
             amount: param.amount,
             user,
-            clientId: param.clientId
+            clientId: param.clientId,
           });
 
           if (!stkRes.success) return stkRes;
@@ -442,7 +468,6 @@ export class PaymentService {
               message: 'Withdrawal request updated',
               status: HttpStatus.CREATED,
             };
-
         }
       } else {
         return {

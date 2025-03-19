@@ -31,8 +31,10 @@ export class KorapayService {
       where: { provider: 'korapay', client_id },
     });
   }
+
   async createPayment(data, client_id) {
     try {
+      console.log('CHECK ONE');
       const paymentSettings = await this.korapaySettings(client_id);
       if (!paymentSettings) {
         return {
@@ -41,6 +43,10 @@ export class KorapayService {
         };
       }
 
+      console.log('Payment Settings:', paymentSettings);
+      console.log('CHECK TWO: Request Data:', data);
+
+      // Send payment request
       const response = await axios.post(
         `${paymentSettings.base_url}/charges/initialize`,
         data,
@@ -49,8 +55,11 @@ export class KorapayService {
             Authorization: `Bearer ${paymentSettings.secret_key}`,
             'Content-Type': 'application/json',
           },
+          timeout: 10000,
         },
       );
+
+      console.log('API Response:', response.data);
 
       if (!response.data || !response.data.status) {
         return {
@@ -59,11 +68,6 @@ export class KorapayService {
           data: response.data?.data || {},
         };
       }
-
-      console.log({
-        link: response.data.data.checkout_url,
-        transactionRef: response.data.data.reference,
-      });
 
       return {
         success: true,
@@ -77,8 +81,9 @@ export class KorapayService {
       console.error(
         'Error in createPayment:',
         error.response?.data || error.message,
+        error.config,
       );
-      throw new BadRequestException('Error in payment process', error.message);
+      throw new BadRequestException('Error in payment process', error);
     }
   }
 
