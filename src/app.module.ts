@@ -45,6 +45,7 @@ import { Pitch90SMSService } from './services/pitch90sms.service';
 import { ConfigModule } from '@nestjs/config';
 import { KorapayService } from './services/kora.service';
 import { CallbackLog } from './entity/callback-log.entity';
+import { TigoService } from './services/tigo.service';
 
 
 @Module({
@@ -107,6 +108,7 @@ import { CallbackLog } from './entity/callback-log.entity';
     AppService,
     FlutterwaveService,
     KorapayService,
+    TigoService,
     MonnifyService,
     MomoService,
     MgurushService,
