@@ -147,7 +147,6 @@ export class DepositService {
 
       if (deposits > 0) {
         // console.log(deposits, payload.userId)
-
         const wallet = await this.walletRepository.findOne({
           where: {
             user_id: payload.userId,
@@ -270,7 +269,7 @@ export class DepositService {
 
       // add request to queue
       await this.depositQueue.add('shop-deposit', jobData, {
-        jobId: `shop-deposit:${transaction.id}`,
+        jobId: `shop-deposit:${transaction.transaction_no}`,
       });
 
       return {

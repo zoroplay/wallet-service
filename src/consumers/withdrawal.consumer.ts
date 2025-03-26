@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnQueueCompleted } from '@nestjs/bull';
+import { Processor, WorkerHost} from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { generateTrxNo } from 'src/common/helpers';
@@ -7,6 +8,7 @@ import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
+import { IdentityService } from 'src/identity/identity.service';
 import { HelperService } from 'src/services/helper.service';
 import { PaymentService } from 'src/services/payments.service';
 import { Repository } from 'typeorm';
@@ -26,6 +28,7 @@ export class WithdrawalConsumer extends WorkerHost {
 
     private readonly helperService: HelperService,
     private readonly paymentService: PaymentService,
+    private readonly identityService: IdentityService,
   ) {
     super();
   }
@@ -35,17 +38,81 @@ export class WithdrawalConsumer extends WorkerHost {
       await this.processWithdrawal(job)
     } else if (job.name === 'shop-withdrawal') {
       await this.processShopWithdrawal(job)
+    } else {
+      await this.debitUser(job);
     }
   }
 
+  @OnQueueCompleted()
+  onComplete(job: Job) {
+    console.log(`completed processing job ${job.id} of type ${job.name}...`);
+  }
 
+  async debitUser(job: Job<unknown>) {
+    try {
+      console.log(`Processing debit job ${job.id} of type ${job.name}...`);
+
+      const data: any = job.data;
+
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          [data.wallet]: data.balance,
+        }
+      );
+      
+      
+      // to-do save transaction log
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo: generateTrxNo(),
+        amount: parseFloat(data.amount),
+        description: data.description,
+        subject: data.subject,
+        channel: data.channel,
+        source: data.source,
+        fromUserId: data.userId,
+        fromUsername: data.username,
+        fromUserBalance: data.balance,
+        toUserId: 0,
+        toUsername: "System",
+        toUserBalance: 0,
+        status: 1,
+        walletType: data.walletType,
+      });
+
+      // send deposit to trackier
+      // try {
+      //   const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+      //   if (keys.success){
+      //     await this.helperService.sendActivity({
+      //       subject: data.subject,
+      //       username: data.username,
+      //       amount: parseFloat(data.amount),
+      //       transactionId: data.transactionNo,
+      //       clientId: data.clientId
+      //     }, keys.data);
+      //   }
+      // } catch (e) {
+      //   console.log('trackier error: Debit User', e.message)
+      // }
+
+    } catch (e) {
+      console.log('error debiting user', e.message);
+    }
+  }
 
   async processWithdrawal(job: Job<unknown>) {
     console.log(`Processing withdrawal job ${job.id} of type ${job.name}...`);
     try {
       const data: any = job.data;
 
-      console.log(data)
+      // console.log(data)
       const autoDisbursement = data.autoDisbursement;
 
       // save withdrawal request
@@ -126,7 +193,6 @@ export class WithdrawalConsumer extends WorkerHost {
       console.log(`Error processing Job: ${job.id}`, e.message);
     }
   }
-
 
   async processShopWithdrawal(job: Job<unknown>) {
     console.log(`Processing shop withdrawal job ${job.id}`);

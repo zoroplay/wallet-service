@@ -12,7 +12,6 @@ import {
   GetNetworkBalanceResponse,
   GetPaymentMethodRequest,
   MetaData,
-  PaginationResponse,
   PaymentMethodRequest,
   PaymentMethodResponse,
   PlayerWalletData,
@@ -36,6 +35,8 @@ import * as dayjs from "dayjs";
 
 import { Bank } from "./entity/bank.entity";
 import { IdentityService } from "./identity/identity.service";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
 var customParseFormat = require("dayjs/plugin/customParseFormat");
 
 dayjs.extend(customParseFormat);
@@ -51,11 +52,17 @@ export class AppService {
     private withdrawalRepository: Repository<Withdrawal>,
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
+    @InjectQueue('deposit')
+    private depositQueue: Queue,
+    @InjectQueue('withdrawal')
+    private withdrawalQueue: Queue,
     @InjectRepository(Bank)
     private bankRepository: Repository<Bank>,
     private helperService: HelperService,
     private identityService: IdentityService,
-  ) {}
+    // @InjectQueue('deposit')
+    // private depositQueue: Queue,
+  ) { }
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
     try {
@@ -117,12 +124,37 @@ export class AppService {
   async getBalance(data: GetBalanceRequest): Promise<WalletResponse> {
     try {
 
+      setTimeout(() => {
+        
+      }, 500);
+      const timestamp = dayjs().unix();
+      console.log('get balance timestamp', timestamp)
+      
+      const job = await this.depositQueue.getJob(`update-wallet:${data.userId}:${timestamp}`);
+      // const job = jobs.find(item => {
+      //   console.log(item.id)
+      //   if(item.id.includes(`update-wallet:${data.userId}:${timestamp}`))
+      //     return item;
+      // });
+
+      console.log('job ID',job?.id);
+      // get user wallet
       const wallet = await this.walletRepository.findOne({
         where: {
           user_id: data.userId,
           client_id: data.clientId,
         },
       });
+
+      if (job) { //if job and job is waiting
+        const isCompleted = await job.isCompleted();
+        // const isWaiting = await job.isWaiting();
+        
+        if (!isCompleted) {
+          wallet.balance = job.data.balance;
+          wallet.available_balance = job.data.balance;
+        }
+      } 
 
       return handleResponse(
         {
@@ -215,110 +247,107 @@ export class AppService {
   async creditUser(data: CreditUserRequest): Promise<WalletResponse> {
     // console.log('credit data', data);
     try {
+      const timestamp = dayjs().unix();
+      console.log(`credit user ${data.subject} timestamp`, timestamp)
+      let isWaiting, isCompleted;
+      const jobs = await this.depositQueue.getJobs();
+      const job = jobs.find(item => {
+        if(item.id.includes(`update-wallet:${data.userId}`))
+          return item;
+      });
+
+      // console.log('job ID',job?.id)
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
       });
+
+      if (job) { //if job and job is waiting
+        console.log('job is still exists')
+        // isWaiting = await job.isWaiting();
+        isCompleted = await job.isCompleted();
+        console.log(isCompleted, isWaiting);
+        
+        if (!isCompleted) {// update wallet balance with queue
+          wallet.balance = job.data.balance;
+          wallet.available_balance = job.data.balance;
+        }
+      } 
+
       let walletType = "Main";
       let balance = 0;
 
-      if (wallet) {
-        let walletBalance = "available_balance";
-        switch (data.wallet) {
-          case "sport-bonus":
-            walletBalance = "sport_bonus_balance";
-            walletType = "Sport Bonus";
-            balance =
-              parseFloat(wallet.sport_bonus_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          case "virtual":
-            walletBalance = "virtual_bonus_balance";
-            walletType = "Virtual Bonus";
-            balance =
-              parseFloat(wallet.virtual_bonus_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          case "casino":
-            walletBalance = "casino_bonus_balance";
-            walletType = "Casino Bonus";
-            balance =
-              parseFloat(wallet.casino_bonus_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          case "trust":
-            walletBalance = "trust_balance";
-            walletType = "Trust";
-            balance =
-              parseFloat(wallet.trust_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-          default:
-            balance =
-              parseFloat(wallet.available_balance.toString()) +
-              parseFloat(data.amount);
-            break;
-        }
-        // console.log(walletBalance, data.wallet)
-        
-        await this.walletRepository.update(
-          {
-            user_id: data.userId,
-            client_id: data.clientId,
-          },
-          {
-            // balance,
-            [walletBalance]: balance,
-          }
-        );
-      } else {
-        // create new wallet
-        const wallet: any = new Wallet();
-        wallet.user_id = data.userId;
-        wallet.client_id = data.clientId;
-        wallet.username = data.username;
-        wallet.balance = parseFloat(data.amount) || 0;
-        wallet.available_balance = parseFloat(data.amount) || 0;
-
-        await this.walletRepository.save(wallet);
+      let walletBalance = "available_balance";
+      switch (data.wallet) {
+        case "sport-bonus":
+          walletBalance = "sport_bonus_balance";
+          walletType = "Sport Bonus";
+          balance =
+            parseFloat(wallet.sport_bonus_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        case "virtual":
+          walletBalance = "virtual_bonus_balance";
+          walletType = "Virtual Bonus";
+          balance =
+            parseFloat(wallet.virtual_bonus_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        case "casino":
+          walletBalance = "casino_bonus_balance";
+          walletType = "Casino Bonus";
+          balance =
+            parseFloat(wallet.casino_bonus_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        case "trust":
+          walletBalance = "trust_balance";
+          walletType = "Trust";
+          balance =
+            parseFloat(wallet.trust_balance.toString()) +
+            parseFloat(data.amount);
+          break;
+        default:
+          balance =
+            parseFloat(wallet.available_balance.toString()) +
+            parseFloat(data.amount);
+          break;
       }
+      // console.log(walletBalance, data.wallet)
+
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          [walletBalance]: balance,
+        }
+      );
+
       const transactionNo = generateTrxNo();
-      //to-do save transaction log
-      await this.helperService.saveTransaction({
-        clientId: data.clientId,
-        transactionNo,
-        amount: parseFloat(data.amount),
-        description: data.description,
-        subject: data.subject,
-        channel: data.channel,
-        source: data.source,
-        fromUserId: 0,
-        fromUsername: "System",
-        fromUserBalance: 0,
-        toUserId: data.userId,
-        toUsername: data.username,
-        toUserBalance: balance,
-        status: 1,
-        walletType,
-      });
 
-      // send deposit to trackier
-      try {
-        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+      let jobId = `update-wallet:${data.userId}:${timestamp}`;
 
-        if (keys.success){
-          await this.helperService.sendActivity({
-            subject: data.subject,
-            username: data.username,
-            amount: data.amount,
-            transactionId: transactionNo,
-            clientId: data.clientId,
-          },  keys.data);
-        }
-
-      } catch (e) {
-        console.log('Trackier error: Credit User', e.message)
+      // console.log(walletBalance, data.wallet)
+      const jobData: any = {...data};
+      jobData.balance = balance;
+      jobData.wallet = walletBalance;
+      jobData.walletType = walletType;
+      jobData.transactionNo = transactionNo;
+      // add request to queue
+      if (job && !isCompleted) {
+        console.log('update job data')
+        await job.updateData(jobData);
+      } else {
+        await this.depositQueue.add('credit-wallet', jobData, {
+          jobId,
+          removeOnComplete: true
+        });
       }
+        
       wallet.balance = balance;
+      
       return handleResponse(wallet, "Wallet credited");
     } catch (e) {
       console.log('credit error', e.message);
@@ -328,10 +357,30 @@ export class AppService {
 
   async debitUser(data: any): Promise<WalletResponse> {
     try {
+      const timestamp = dayjs().unix();
+      console.log('debit user timestamp', timestamp)
       // console.log(data);
+      let isWaiting, isCompleted;
+      const jobs = await this.depositQueue.getJobs();
+      const job = jobs.find(item => {
+        if(item.id.includes(`update-wallet:${data.userId}`))
+          return item;
+      });
+      console.log('job ID',job?.id)
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
       });
+
+      if (job) { //if job and job is waiting
+        console.log('job still exists')
+        isWaiting = await job.isWaiting();
+        isCompleted = await job.isCompleted();
+        console.log(isCompleted, isWaiting)
+        if (!isCompleted) {// update wallet balance with queue
+          wallet.balance = job.data.balance;
+          wallet.available_balance = job.data.balance;
+        }
+      } 
 
       const amount = parseFloat(data.amount);
 
@@ -363,55 +412,27 @@ export class AppService {
           balance = wallet.available_balance - amount;
           break;
       }
-      await this.walletRepository.update(
-        {
-          user_id: data.userId,
-          client_id: data.clientId,
-        },
-        {
-          // balance,
-          [walletBalance]: balance,
-        }
-      );
-
       const transactionNo = generateTrxNo();
+      
+      let jobId = `update-wallet:${data.userId}:${timestamp}`;
 
-      // to-do save transaction log
-      await this.helperService.saveTransaction({
-        clientId: data.clientId,
-        transactionNo: generateTrxNo(),
-        amount: parseFloat(data.amount),
-        description: data.description,
-        subject: data.subject,
-        channel: data.channel,
-        source: data.source,
-        fromUserId: data.userId,
-        fromUsername: data.username,
-        fromUserBalance: balance,
-        toUserId: 0,
-        toUsername: "System",
-        toUserBalance: 0,
-        status: 1,
-        walletType,
-      });
-
-      // send deposit to trackier
-      try {
-        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
-
-        if (keys.success){
-          await this.helperService.sendActivity({
-            subject: data.subject,
-            username: data.username,
-            amount: parseFloat(data.amount),
-            transactionId: transactionNo,
-            clientId: data.clientId
-          }, keys.data);
-        }
-      } catch (e) {
-        console.log('trackier error: Debit User', e.message)
+      // console.log(walletBalance, data.wallet)
+      const jobData: any = {...data};
+      jobData.balance = balance;
+      jobData.wallet = walletBalance;
+      jobData.walletType = walletType;
+      jobData.transactionNo = transactionNo;
+      // add request to queue
+      if (job && !isCompleted) {
+        console.log('update job data')
+        await job.updateData(jobData);
+      } else {
+        await this.withdrawalQueue.add('debit-wallet', jobData, {
+          jobId,
+          removeOnComplete: true
+        });
       }
-
+      
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet debited");
     } catch (e) {
@@ -437,7 +458,7 @@ export class AppService {
           break;
       }
 
-      const wallet = await this.walletRepository.findOne({where: {user_id: data.userId}});
+      const wallet = await this.walletRepository.findOne({ where: { user_id: data.userId } });
 
       const balance = parseFloat(wallet.available_balance.toString()) + parseFloat(data.amount);
 
@@ -472,7 +493,7 @@ export class AppService {
         status: 1,
         walletType: 'Main',
       });
-      
+
     } catch (e) {
       console.log('Error awarding bonus', e.message);
       return {
@@ -612,7 +633,7 @@ export class AppService {
         offset = offset + 1;
       }
 
-      // console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
       const transactions = await query
         .orderBy("transaction.created_at", "DESC")
