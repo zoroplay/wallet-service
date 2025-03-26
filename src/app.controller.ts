@@ -53,6 +53,7 @@ import {
   FlutterwaveWebhookRequest,
   KoraPayWebhookRequest,
   TigoWebhookRequest,
+  PawapayRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -67,6 +68,7 @@ import { FlutterwaveService } from './services/flutterwave.service';
 import { KorapayService } from './services/kora.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
 import { TigoService } from './services/tigo.service';
+import { PawapayService } from './services/pawapay.service';
 
 @Controller()
 export class AppController {
@@ -83,7 +85,8 @@ export class AppController {
     private flutterwaveService: FlutterwaveService,
     private korapayService: KorapayService,
     private pitch90Service: Pitch90SMSService,
-    private tigoService: TigoService
+    private tigoService: TigoService,
+    private pawapayService: PawapayService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -104,6 +107,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')
   tigoWebhook(param: TigoWebhookRequest) {
     return this.tigoService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayCallback')
+  pawapayCallback(param: PawapayRequest) {
+    return this.pawapayService.verifyTransaction(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchDepositCount')

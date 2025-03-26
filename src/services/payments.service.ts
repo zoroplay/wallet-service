@@ -65,7 +65,8 @@ export class PaymentService {
   async inititateDeposit(
     param: InitiateDepositRequest,
   ): Promise<InitiateDepositResponse> {
-    let transactionNo = generateTrxNo();
+    // let transactionNo = generateTrxNo();
+    let transactionNo: string;
     let link = '',
       description,
       status = 0;
@@ -97,10 +98,11 @@ export class PaymentService {
     try {
       switch (param.paymentMethod) {
         case 'paystack':
+          transactionNo = generateTrxNo();
           const pRes: any = await this.paystackService.generatePaymentLink(
             {
               amount: param.amount * 100,
-              email: user.email || `${user.username}@${user.siteUrl}`,
+              email: user.email,
               reference: transactionNo,
               callback_url: user.callbackUrl + '/payment-verification/paystack',
             },
@@ -114,23 +116,59 @@ export class PaymentService {
 
           break;
         case 'pawapay':
+          console.log(user.callbackUrl);  
+          console.log(user.siteUrl);
+          console.log(user.currency);
+          const depositId = uuidv4(); // Use UUID for pawaPay
+          transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
             {
-              amount: param.amount,
-              reference: transactionNo,
-              callback_url: user.callbackUrl + '/payment-verification/paystack',
-              currency: user.currency,
+              depositId: depositId,
+              amount: param.amount.toString(),
+              returnUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/4/pawapay/callback`,
+              country: user.country || 'GHA',
+              reason: 'Pawapay Deposit',
             },
             param.clientId,
+            //reference: transactionNo,
           );
 
           description = 'Online Deposit (Pawapay)';
+
           if (!res.success) return res as any;
 
-          link = res.data.redirectUrl;
-          transactionNo = res.depositId;
+          link = res.data;
+
           break;
+
+        // const res = await this.pawapayService.generatePaymentLink(
+        //   {
+        //     depositId: uuidv4(),
+        //     amount: param.amount.toString(),
+        //     currency: user.currency || 'ZMW',
+        //     correspondent: "MTN_MOMO_ZMB",
+
+        //     payer: {
+        //       address: { value: user.username },
+        //       type: 'MSISDN',
+        //     },
+        //     customerTimestamp: new Date().toISOString(),
+        //     statementDescription:"Pawapay Deposit",
+        //     country: user.country || 'ZMB',
+        //   },
+        //   param.clientId,
+        //   //reference: transactionNo,
+        // );
+
+        // description = 'Online Deposit (Pawapay)';
+
+        // if (!res.success) return res as any;
+
+        // link = res.data;
+
+        // break;
         case 'flutterwave':
+          transactionNo = generateTrxNo();
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
@@ -155,6 +193,7 @@ export class PaymentService {
 
         case 'korapay':
           console.log('KORAPAY');
+          transactionNo = generateTrxNo();
           const koraRes = await this.korapayService.createPayment(
             {
               amount: param.amount,
@@ -188,6 +227,7 @@ export class PaymentService {
         case 'tigo':
           console.log('TIGO_PAYMENT');
           description = 'Online Deposit (Tigo )';
+          transactionNo = generateTrxNo();
           const tigoRes = await this.tigoService.initiatePayment(
             {
               CustomerMSISDN: user.username,
@@ -199,12 +239,13 @@ export class PaymentService {
           );
 
           link = tigoRes;
-          console.log(tigoRes.ReferenceID)
+          console.log(tigoRes.ReferenceID);
           console.log('THE_LINK', JSON.stringify(link, null, 2));
           console.log('THE_RES', JSON.stringify(tigoRes, null, 2));
           break;
 
         case 'monnify':
+          transactionNo = generateTrxNo();
           const mRes: any = await this.monnifyService.generatePaymentLink(
             {
               amount: param.amount,
@@ -245,6 +286,7 @@ export class PaymentService {
 
           break;
         case 'stkpush':
+          transactionNo = generateTrxNo();
           const stkRes = await this.pitch90smsService.deposit({
             amount: param.amount,
             user,
@@ -594,6 +636,8 @@ export class PaymentService {
             return this.flutterwaveService.verifyTransaction(param);
           case 'korapay':
             return this.korapayService.verifyTransaction(param);
+          case 'pawapay':
+            return this.pawapayService.verifyTransaction(param);
             break;
           default:
             break;
