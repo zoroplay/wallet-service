@@ -116,7 +116,7 @@ export class PaymentService {
 
           break;
         case 'pawapay':
-          console.log(user.callbackUrl);  
+          console.log(user.callbackUrl);
           console.log(user.siteUrl);
           console.log(user.currency);
           const depositId = uuidv4(); // Use UUID for pawaPay
@@ -126,7 +126,7 @@ export class PaymentService {
               depositId: depositId,
               amount: param.amount.toString(),
               returnUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/4/pawapay/callback`,
-              country: user.country || 'GHA',
+              country: user.country || 'TZA',
               reason: 'Pawapay Deposit',
             },
             param.clientId,
