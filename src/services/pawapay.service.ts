@@ -53,7 +53,7 @@ export class PawapayService {
       console.log(data.depositId);
 
       const res = await axios.post(
-        `	https://api.sandbox.pawapay.io/v1/widget/sessions`,
+        settings.base_url,
         data,
         {
           headers: {
