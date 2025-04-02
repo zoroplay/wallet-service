@@ -2719,6 +2719,11 @@ expect@^29.0.0, expect@^29.7.0:
     jest-message-util "^29.7.0"
     jest-util "^29.7.0"
 
+express-useragent@^1.0.15:
+  version "1.0.15"
+  resolved "https://registry.npmjs.org/express-useragent/-/express-useragent-1.0.15.tgz"
+  integrity sha512-eq5xMiYCYwFPoekffMjvEIk+NWdlQY9Y38OsTyl13IvA728vKT+q/CSERYWzcw93HGBJcIqMIsZC5CZGARPVdg==
+
 express@4.18.2:
   version "4.18.2"
   resolved "https://registry.npmjs.org/express/-/express-4.18.2.tgz"
@@ -4926,7 +4931,7 @@ safe-json-stringify@~1:
 
 "sbe-service-proto@github:zoroplay/sbe-service-proto":
   version "1.0.0"
-  resolved "git+ssh://git@github.com/zoroplay/sbe-service-proto.git#51503e5db869f3cd0091558aa693cd7438c74b66"
+  resolved "git+ssh://git@github.com/zoroplay/sbe-service-proto.git#b8ecf471cc69585592db025a35b6d55bd8f01281"
 
 schema-utils@^3.1.1, schema-utils@^3.2.0:
   version "3.3.0"

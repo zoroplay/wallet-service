@@ -93,6 +93,8 @@ export class TigoService {
   }
 
   async handleWebhook(data) {
+    console.log('TIGO-WEBHOOK');
+
     console.log('TEST');
     try {
       const paymentSettings = await this.tigoSettings(data.client_id);
