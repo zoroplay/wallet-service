@@ -188,7 +188,6 @@ export class PawapayService {
       }
 
       if (tanzaniaBalance < data.balance) {
-        
       }
 
       console.log('PawaPay Balances:', response.data);
@@ -227,6 +226,44 @@ export class PawapayService {
         success: false,
         message: error.response ? error.response.data : error.message,
       };
+    }
+  }
+
+  async requestRefund(depositId, amount) {
+    try {
+      const refundId = uuidv4(); // Generate a unique refund ID
+
+      const payload = {
+        refundId: refundId,
+        depositId: depositId,
+        amount: amount.toString(), // Convert amount to string
+        metadata: [
+          { fieldName: 'orderId', fieldValue: 'ORD-123456789' },
+          {
+            fieldName: 'customerId',
+            fieldValue: 'customer@email.com',
+            isPII: true,
+          },
+        ],
+      };
+
+      const response = await axios.post(
+        'https://api.sandbox.pawapay.io/v1/refunds',
+        payload,
+        {
+          headers: {
+            Authorization: 'Bearer YOUR_API_KEY',
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      console.log('Refund Request Response:', response.data);
+    } catch (error) {
+      console.error(
+        'Refund Request Failed:',
+        error.response ? error.response.data : error.message,
+      );
     }
   }
 
