@@ -52,16 +52,12 @@ export class PawapayService {
       console.log('DATA:::', data);
       console.log(data.depositId);
 
-      const res = await axios.post(
-        settings.base_url,
-        data,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${settings.secret_key}`,
-          },
+      const res = await axios.post(settings.base_url, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.secret_key}`,
         },
-      );
+      });
 
       console.log('CHECK-3');
 
@@ -88,7 +84,7 @@ export class PawapayService {
           message: 'PawaPay has not been configured for client',
         };
 
-        console.log(param.depositId )
+      console.log(param.depositId);
 
       if (param.depositId !== '') {
         const transaction = await this.transactionRepository.findOne({
@@ -152,6 +148,84 @@ export class PawapayService {
       return {
         success: false,
         message: `Unable to verify transaction: ${error.message}`,
+      };
+    }
+  }
+
+  async initiatePayout(data, client_id) {
+    try {
+      console.log('🔄 Initiating Payout');
+
+      const settings = await this.pawapaySettings(client_id);
+      if (!settings) {
+        return {
+          success: false,
+          message: 'PawaPay has not been configured for client',
+        };
+      }
+
+      const response = await axios.get(
+        'https://api.sandbox.pawapay.io/v1/wallet-balances',
+        {
+          headers: {
+            Authorization: `Bearer ${settings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      const balances = response.data.balances;
+
+      // Find the balance for Tanzanian Shillings (TZS)
+      const tanzaniaBalance = balances.find((b) => b.currency === 'TZS');
+
+      if (tanzaniaBalance) {
+        console.log(
+          `PawaPay Balance for Tanzania: ${tanzaniaBalance.amount} TZS`,
+        );
+      } else {
+        console.log('No balance found for Tanzanian Shillings (TZS)');
+      }
+
+      if (tanzaniaBalance < data.balance) {
+        
+      }
+
+      console.log('PawaPay Balances:', response.data);
+
+      const payload = {
+        payoutId: data.payoutId,
+        amount: data.amount,
+        currency: data.currency,
+        correspondent: data.correspondent,
+        recipient: {
+          address: data.recipient.address,
+        },
+        customerTimestamp: new Date().toISOString(),
+        statementDescription: data.statementDescription,
+        country: data.country || undefined,
+        metadata: data.metadata || [],
+      };
+
+      console.log('📤 Sending Payout Request:', payload);
+
+      const res = await axios.post(`${settings.base_url}/payouts`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.secret_key}`,
+        },
+      });
+
+      console.log('✅ Payout Response:', res.data);
+      return { success: true, data: res.data };
+    } catch (error) {
+      console.error(
+        '❌ PawaPay Payout Error:',
+        error.response ? error.response.data : error.message,
+      );
+      return {
+        success: false,
+        message: error.response ? error.response.data : error.message,
       };
     }
   }

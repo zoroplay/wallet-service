@@ -13,7 +13,6 @@ import {
   CommonResponseObj as IdentityCommonResponseObj,
   GetAgentUsersRequest,
   SingleItemRequest,
-  CreateLogRequest,
 } from 'src/proto/identity.pb';
 
 @Injectable()
@@ -58,9 +57,5 @@ export class IdentityService {
   async getTrackierKeys(param: SingleItemRequest) {
     // console.log(param)
     return firstValueFrom(this.svc.getTrackierKeys(param));
-  }
-
-  async createLog(data: CreateLogRequest) {
-    return firstValueFrom(this.svc.createlog(data));
   }
 }
