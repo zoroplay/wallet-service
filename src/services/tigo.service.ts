@@ -92,6 +92,132 @@ export class TigoService {
     }
   }
 
+  async handleW2aWebhook(data) {
+    console.log('TIGO-W2A-WEBHOOK');
+    console.log(data);
+
+    try {
+      const paymentSettings = await this.tigoSettings(data.client_id);
+      if (!paymentSettings)
+        return {
+          success: false,
+          message: 'Tigo has not been configured for client',
+        };
+      console.log('TEST 2');
+
+      const user = await this.walletRepository.findOne({
+        where: { username: data.msisdn },
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          message: 'User not found',
+          status: HttpStatus.NOT_FOUND,
+        };
+      }
+      console.log('THE_USER:::', user);
+      console.log('THE_USER_ID:::', user.user_id);
+      const existingTransaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: data.clientId,
+          transaction_no: data.txnId,
+          tranasaction_type: 'credit',
+        },
+      });
+      console.log('CHECK_EXIST:::', existingTransaction);
+
+      if (
+        existingTransaction &&
+        existingTransaction.transaction_no === data.txnId &&
+        existingTransaction.status === 1
+      ) {
+        return {
+          success: false,
+          refId: data.txnId,
+          message: 'Transaction already successful',
+        };
+      }
+
+      const trx = await this.helperService.saveTransaction({
+        amount: data.amount,
+        channel: 'tigo-w2a',
+        clientId: data.clientId,
+        toUserId: user.user_id,
+        toUsername: data.msisdn,
+        toUserBalance: user.available_balance,
+        fromUserId: user.user_id,
+        fromUsername: 'System',
+        fromUserbalance: 0,
+        status: 0,
+        source: 'mobile',
+        subject: 'Deposit',
+        description: 'Mobile Deposit (Tigo)',
+        transactionNo: data.txnId,
+      });
+
+      console.log('TRX', trx);
+
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: data.clientId,
+          transaction_no: data.txnId,
+          tranasaction_type: 'credit',
+        },
+      });
+
+      console.log('TRX', transaction);
+      console.log('TRX-USER-ID', transaction.user_id);
+
+      if (!transaction)
+        return {
+          success: false,
+          message: 'Transaction not found',
+          status: HttpStatus.NOT_FOUND,
+        };
+
+      if (transaction.status === 1)
+        return {
+          success: true,
+          message: 'Transaction already successful',
+        };
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          success: false,
+          message: 'Wallet not found for this user',
+          status: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+
+      return {
+        success: true,
+        refId: data.txnId,
+        message: 'Transaction successfully verified and processed',
+      };
+    } catch (error) {
+      console.log('Tigo error', error);
+      return { success: false, message: 'error occurred' };
+    }
+  }
+
   async handleWebhook(data) {
     console.log('TIGO-WEBHOOK');
 

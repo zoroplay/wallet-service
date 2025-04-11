@@ -37,7 +37,6 @@ import { Pitch90SMSService } from './pitch90sms.service';
 import { FlutterwaveService } from './flutterwave.service';
 import { KorapayService } from './kora.service';
 import { TigoService } from './tigo.service';
-import * as useragent from 'express-useragent';
 
 @Injectable()
 export class PaymentService {
@@ -213,6 +212,13 @@ export class PaymentService {
             },
             param.clientId,
           );
+
+          if (!tigoRes.ResponseStatus) {
+            return {
+              success: false,
+              message: tigoRes.ResponseDescription || 'Tigo payment failed',
+            };
+          }
 
           link = tigoRes;
           console.log(tigoRes.ReferenceID);
