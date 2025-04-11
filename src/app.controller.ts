@@ -55,6 +55,7 @@ import {
   KoraPayWebhookRequest,
   TigoWebhookRequest,
   PawapayRequest,
+  TigoW2aRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -110,6 +111,12 @@ export class AppController {
   tigoWebhook(param: TigoWebhookRequest) {
     return this.tigoService.handleWebhook(param);
   }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')
+  tigoW2A(param: TigoW2aRequest) {
+    return this.tigoService.handleW2aWebhook(param);
+  }
+
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayCallback')
   pawapayCallback(param: PawapayRequest) {
