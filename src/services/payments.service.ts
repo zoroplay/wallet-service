@@ -126,12 +126,10 @@ export class PaymentService {
             {
               depositId: depositId,
               amount: param.amount.toString(),
-              returnUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/4/pawapay/callback`,
-              country: user.country || 'TZA',
+              returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
             },
             param.clientId,
-            //reference: transactionNo,
           );
 
           description = 'Online Deposit (Pawapay)';

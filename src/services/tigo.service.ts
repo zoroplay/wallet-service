@@ -287,4 +287,67 @@ export class TigoService {
       return { success: false, message: 'error occurred' };
     }
   }
+
+  async handleWithdrawal(data) {
+    console.log('TIGO-WEBHOOK');
+
+    console.log('TEST');
+
+    const paymentSettings = await this.tigoSettings(data.client_id);
+    if (!paymentSettings)
+      return {
+        success: false,
+        message: 'Tigo has not been configured for client',
+      };
+    console.log('TEST 2');
+
+    try {
+      const TIGO_TOKEN =
+        'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-GetToken';
+      const requestBody = new URLSearchParams();
+      requestBody.append('username', paymentSettings.public_key);
+      requestBody.append('password', paymentSettings.secret_key);
+      requestBody.append('grant_type', 'password');
+      const token = await axios.post(TIGO_TOKEN, requestBody, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      if (!token) {
+        console.error('❌ Failed to retrieve access token');
+        return {
+          success: false,
+          message: 'Authentication failed',
+        };
+      }
+
+      const payload = {
+        ...data,
+        BillerMSISDN: paymentSettings.merchant_id,
+      };
+
+      const payUrl =
+        'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-PushBillPay';
+      const response = await axios.post(payUrl, payload, {
+        headers: {
+          Authorization: `Bearer ${token.data.access_token}`, // ✅ Missing authorization header added
+          Username: paymentSettings.public_key,
+          Password: paymentSettings.secret_key,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('✅ Withdrawal successful:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        '❌ Error during Tigo payment Withdrawal:',
+        error.response?.data || error.message,
+      );
+      return {
+        success: false,
+        message: 'Payment request failed',
+        error: error.response?.data || error.message,
+      };
+    }
+  }
 }
