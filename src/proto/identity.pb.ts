@@ -59,6 +59,13 @@ export interface GetAllLogsRequest {
   clientId: number;
   page?: number | undefined;
   limit?: number | undefined;
+  ipAddress: string;
+  userAgent: string;
+  os: string;
+  browser: string;
+  platform: string;
+  endpoint: string;
+  method: string;
 }
 
 /** GetAllLogsResponse */
@@ -73,6 +80,13 @@ export interface GetLogsByUserRequest {
   clientId: number;
   page?: number | undefined;
   limit?: number | undefined;
+  ipAddress: string;
+  userAgent: string;
+  os: string;
+  browser: string;
+  platform: string;
+  endpoint: string;
+  method: string;
 }
 
 /** GetLogByUserResponse */

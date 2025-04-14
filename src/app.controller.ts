@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Controller } from '@nestjs/common';
 import { AppService } from './app.service';
-import { Metadata, ServerUnaryCall } from '@grpc/grpc-js';
+
 import {
   BranchRequest,
   CashbookApproveCashInOutRequest,
@@ -55,6 +55,7 @@ import {
   KoraPayWebhookRequest,
   TigoWebhookRequest,
   PawapayRequest,
+  TigoW2aRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -70,7 +71,7 @@ import { KorapayService } from './services/kora.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
 import { TigoService } from './services/tigo.service';
 import { PawapayService } from './services/pawapay.service';
-import * as useragent from 'express-useragent';
+
 
 @Controller()
 export class AppController {
@@ -110,6 +111,12 @@ export class AppController {
   tigoWebhook(param: TigoWebhookRequest) {
     return this.tigoService.handleWebhook(param);
   }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')
+  tigoW2A(param: TigoW2aRequest) {
+    return this.tigoService.handleW2aWebhook(param);
+  }
+
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayCallback')
   pawapayCallback(param: PawapayRequest) {
@@ -161,32 +168,8 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'InititateDeposit')
-  InititateDeposit(
-    param: InitiateDepositRequest,
-    metadata: Metadata,
-    call: ServerUnaryCall<any, any>,
-  ) {
-    const userAgentHeader = metadata.get('user-agent')[0] as string;
-    const ipAddress = call.getPeer(); // Get client IP
-    const endpoint = metadata.get('endpoint')[0] as string;
-
-    // Parse the user-agent if available
-    const ua = userAgentHeader
-      ? useragent.parse(userAgentHeader)
-      : {
-          browser: 'Unknown',
-          os: 'Unknown',
-          platform: 'Unknown',
-        };
-
-    return this.paymentService.inititateDeposit(param, {
-      browser: ua.browser,
-      os: ua.os,
-      platform: ua.platform,
-      ipAddress,
-      userAgent: userAgentHeader || 'N/A',
-      endpoint,
-    });
+  InititateDeposit(param: InitiateDepositRequest) {
+    return this.paymentService.inititateDeposit(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'VerifyDeposit')
@@ -210,28 +193,8 @@ export class AppController {
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'RequestWithdrawal')
-  RequestWithdrawal(
-    param: WithdrawRequest,
-    metadata: Metadata,
-    call: ServerUnaryCall<any, any>,
-  ) {
-    const userAgentHeader = metadata.get('user-agent')[0] as string;
-    const endpoint = metadata.get('endpoint')[0] as string;
-    const ipAddress = call.getPeer();
-    const ua = userAgentHeader
-      ? useragent.parse(userAgentHeader)
-      : { browser: 'Unknown', os: 'Unknown', platform: 'Unknown' };
-
-
-    return this.withdrawalService.requestWithdrawal(param,{
-      browser: ua.browser,
-      os: ua.os,
-      platform: ua.platform,
-      ipAddress,
-      userAgent: userAgentHeader || 'N/A',
-      endpoint,
-    
-  });
+  RequestWithdrawal(param: WithdrawRequest) {
+    return this.withdrawalService.requestWithdrawal(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'UpdateWithdrawal')
@@ -457,26 +420,8 @@ export class AppController {
     return this.reportingService.getSystemTransaction(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandleCreatePawaPay')
-  HandleCreatePawaPay(
-    param: CreatePawapayRequest,
-    metadata: Metadata,
-    call: ServerUnaryCall<any, any>,
-  ) {
-    const userAgentHeader = metadata.get('user-agent')[0] as string;
-    const endpoint = metadata.get('endpoint')[0] as string;
-    const ipAddress = call.getPeer();
-    const ua = userAgentHeader
-      ? useragent.parse(userAgentHeader)
-      : { browser: 'Unknown', os: 'Unknown', platform: 'Unknown' };
-
-    return this.paymentService.createRequest(param, {
-      browser: ua.browser,
-      os: ua.os,
-      platform: ua.platform,
-      ipAddress,
-      userAgent: userAgentHeader || 'N/A',
-      endpoint,
-    });
+  HandleCreatePawaPay(param: CreatePawapayRequest) {
+    return this.paymentService.createRequest(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandleCreateBulkPawaPay')
   HandleCreateBulkPawaPay(param: CreateBulkPawapayRequest) {
@@ -507,26 +452,8 @@ export class AppController {
     return this.paymentService.fetchActiveConf(param.clientId);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreateVirtualAccount')
-  CreateVirtualAccount(
-    param: WayaBankRequest,
-    metadata: Metadata,
-    call: ServerUnaryCall<any, any>,
-  ) {
-    const userAgentHeader = metadata.get('user-agent')[0] as string;
-    const endpoint = metadata.get('endpoint')[0] as string;
-    const ipAddress = call.getPeer();
-    const ua = userAgentHeader
-      ? useragent.parse(userAgentHeader)
-      : { browser: 'Unknown', os: 'Unknown', platform: 'Unknown' };
-
-    return this.paymentService.createVirtualAccount(param, {
-      browser: ua.browser,
-      os: ua.os,
-      platform: ua.platform,
-      ipAddress,
-      userAgent: userAgentHeader || 'N/A',
-      endpoint,
-    });
+  CreateVirtualAccount(param: WayaBankRequest) {
+    return this.paymentService.createVirtualAccount(param);
   }
   @GrpcMethod(WALLET_SERVICE_NAME, 'WayabankAccountEnquiry')
   WayabankAccountEnquiry(param: WayaBankRequest) {
