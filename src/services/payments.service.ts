@@ -36,6 +36,7 @@ import { WayaBankService } from './wayabank.service';
 import { Pitch90SMSService } from './pitch90sms.service';
 import { FlutterwaveService } from './flutterwave.service';
 import { KorapayService } from './kora.service';
+import { TigoService } from './tigo.service';
 
 @Injectable()
 export class PaymentService {
@@ -58,14 +59,17 @@ export class PaymentService {
     private pitch90smsService: Pitch90SMSService,
     private flutterwaveService: FlutterwaveService,
     private korapayService: KorapayService,
+    private tigoService: TigoService,
   ) {}
 
   async inititateDeposit(
     param: InitiateDepositRequest,
   ): Promise<InitiateDepositResponse> {
-    let transactionNo = generateTrxNo();
+    // let transactionNo = generateTrxNo();
+    let transactionNo: string;
     let link = '',
-      description, status = 0;
+      description,
+      status = 0;
     // console.log(param);
     // find user wallet
     // find wallet
@@ -90,14 +94,16 @@ export class PaymentService {
 
     if (user.username === '')
       return { success: false, message: 'User does not exist' };
+    console.log('CHECK');
 
     try {
       switch (param.paymentMethod) {
         case 'paystack':
+          transactionNo = generateTrxNo();
           const pRes: any = await this.paystackService.generatePaymentLink(
             {
               amount: param.amount * 100,
-              email: user.email || `${user.username}@${user.siteUrl}`,
+              email: user.email,
               reference: transactionNo,
               callback_url: user.callbackUrl + '/payment-verification/paystack',
             },
@@ -111,23 +117,31 @@ export class PaymentService {
 
           break;
         case 'pawapay':
+          console.log(user.callbackUrl);
+          console.log(user.siteUrl);
+          console.log(user.currency);
+          const depositId = uuidv4(); // Use UUID for pawaPay
+          transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
             {
-              amount: param.amount,
-              reference: transactionNo,
-              callback_url: user.callbackUrl + '/payment-verification/paystack',
-              currency: user.currency,
+              depositId: depositId,
+              amount: param.amount.toString(),
+              returnUrl: user.callbackUrl + '/payment-verification/pawapay',
+              reason: 'Pawapay Deposit',
             },
             param.clientId,
           );
 
           description = 'Online Deposit (Pawapay)';
+
           if (!res.success) return res as any;
 
-          link = res.data.redirectUrl;
-          transactionNo = res.depositId;
+          link = res.data;
+
           break;
+
         case 'flutterwave':
+          transactionNo = generateTrxNo();
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
@@ -151,6 +165,8 @@ export class PaymentService {
           break;
 
         case 'korapay':
+          console.log('KORAPAY');
+          transactionNo = generateTrxNo();
           const koraRes = await this.korapayService.createPayment(
             {
               amount: param.amount,
@@ -176,9 +192,40 @@ export class PaymentService {
           if (!koraRes.success) return koraRes as any;
 
           link = koraRes.data.link;
+          console.log(link);
+          console.log(koraRes);
 
           break;
+
+        case 'tigo':
+          console.log('TIGO_PAYMENT');
+          description = 'Online Deposit (Tigo )';
+          transactionNo = generateTrxNo();
+          const tigoRes = await this.tigoService.initiatePayment(
+            {
+              CustomerMSISDN: user.username, // '255713123892',
+              Amount: param.amount,
+              Remarks: description,
+              ReferenceID: `${'KML'}${transactionNo}`,
+            },
+            param.clientId,
+          );
+
+          if (!tigoRes.ResponseStatus) {
+            return {
+              success: false,
+              message: tigoRes.ResponseDescription || 'Tigo payment failed',
+            };
+          }
+
+          link = tigoRes;
+          console.log(tigoRes.ReferenceID);
+          console.log('THE_LINK', JSON.stringify(link, null, 2));
+          console.log('THE_RES', JSON.stringify(tigoRes, null, 2));
+          break;
+
         case 'monnify':
+          transactionNo = generateTrxNo();
           const mRes: any = await this.monnifyService.generatePaymentLink(
             {
               amount: param.amount,
@@ -219,10 +266,11 @@ export class PaymentService {
 
           break;
         case 'stkpush':
+          transactionNo = generateTrxNo();
           const stkRes = await this.pitch90smsService.deposit({
             amount: param.amount,
             user,
-            clientId: param.clientId
+            clientId: param.clientId,
           });
 
           if (!stkRes.success) return stkRes;
@@ -261,6 +309,7 @@ export class PaymentService {
       };
     } catch (e) {
       console.log(e.message);
+
       return { success: false, message: 'Unable to complete transaction' };
     }
   }
@@ -442,7 +491,6 @@ export class PaymentService {
               message: 'Withdrawal request updated',
               status: HttpStatus.CREATED,
             };
-
         }
       } else {
         return {
@@ -569,6 +617,8 @@ export class PaymentService {
             return this.flutterwaveService.verifyTransaction(param);
           case 'korapay':
             return this.korapayService.verifyTransaction(param);
+          case 'pawapay':
+            return this.pawapayService.verifyTransaction(param);
             break;
           default:
             break;

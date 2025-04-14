@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
@@ -28,46 +28,288 @@ export class PawapayService {
     private helperService: HelperService,
   ) {}
 
-  async generatePaymentLink(
-    data,
-    clientId,
-  ): Promise<{
-    success: boolean;
-    data?: any;
-    depositId?: string;
-    message?: string;
-  }> {
-    try {
-      const settings = await this.pawapaySettings(clientId);
+  private async pawapaySettings(client_id: number) {
+    return await this.paymentMethodRepository.findOne({
+      where: {
+        provider: 'pawapay',
+        client_id,
+      },
+    });
+  }
 
-      const depositId = uuidv4();
-      const requestBody = {
-        depositId,
-        returnUrl: data.callback_url,
-        statementDescription: 'Online Deposit',
-        amount: data.amount,
-        msisdn: data.username,
-        currency: data.currency,
-        reason: 'Deposit',
-      };
-      const res = await axios.post(
-        `${settings.base_url}/widget/sessions`,
-        requestBody,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${settings.secret_key}`,
-          },
+  async generatePaymentLink(data, client_id) {
+    try {
+      console.log('CHECK-1');
+      const settings = await this.pawapaySettings(client_id);
+
+      if (!settings)
+        return {
+          success: false,
+          message: 'PawaPay has not been configured for client',
+        };
+      console.log('CHECK-2');
+
+      console.log('DATA:::', data);
+      console.log(data.depositId);
+
+      const res = await axios.post(settings.base_url, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.secret_key}`,
         },
-      );
-      return { success: true, data: res.data, depositId };
+      });
+
+      console.log('CHECK-3');
+
+      console.log('DONE', res.data);
+      return { success: true, data: res.data.redirectUrl };
     } catch (error) {
+      console.error(
+        'PawaPay Error:',
+        error.response ? error.response.data : error.message,
+      );
       return {
         success: false,
-        message: error.message,
+        message: error.response ? error.response.data : error.message,
       };
     }
   }
+
+  async verifyTransaction(param) {
+    try {
+      const paymentSettings = await this.pawapaySettings(param.client_id);
+      if (!paymentSettings)
+        return {
+          success: false,
+          message: 'PawaPay has not been configured for client',
+        };
+
+      console.log(param.depositId);
+
+      if (param.depositId !== '') {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: param.clientId,
+            transaction_no: param.depositId,
+            tranasaction_type: 'credit',
+          },
+        });
+        console.log('TRX', transaction.transaction_no);
+        console.log('TRX', transaction);
+
+        if (!transaction)
+          return {
+            success: false,
+            message: 'Transaction not found',
+            status: HttpStatus.NOT_FOUND,
+          };
+
+        if (transaction.status === 1)
+          return {
+            success: true,
+            message: 'Transaction already successful',
+          };
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            status: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+
+        return {
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
+    } catch (error) {
+      console.log(error);
+      return {
+        success: false,
+        message: `Unable to verify transaction: ${error.message}`,
+      };
+    }
+  }
+
+  async initiatePayout(data, client_id) {
+    try {
+      console.log('🔄 Initiating Payout');
+
+      const settings = await this.pawapaySettings(client_id);
+      if (!settings) {
+        return {
+          success: false,
+          message: 'PawaPay has not been configured for client',
+        };
+      }
+
+      const response = await axios.get(
+        'https://api.sandbox.pawapay.io/v1/wallet-balances',
+        {
+          headers: {
+            Authorization: `Bearer ${settings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      const balances = response.data.balances;
+
+      // Find the balance for Tanzanian Shillings (TZS)
+      const tanzaniaBalance = balances.find((b) => b.currency === 'TZS');
+
+      if (tanzaniaBalance) {
+        console.log(
+          `PawaPay Balance for Tanzania: ${tanzaniaBalance.amount} TZS`,
+        );
+      } else {
+        console.log('No balance found for Tanzanian Shillings (TZS)');
+      }
+
+      if (tanzaniaBalance < data.balance) {
+      }
+
+      console.log('PawaPay Balances:', response.data);
+
+      const payload = {
+        payoutId: data.payoutId,
+        amount: data.amount,
+        currency: data.currency,
+        correspondent: data.correspondent,
+        recipient: {
+          address: data.recipient.address,
+        },
+        customerTimestamp: new Date().toISOString(),
+        statementDescription: data.statementDescription,
+        country: data.country || undefined,
+        metadata: data.metadata || [],
+      };
+
+      console.log('📤 Sending Payout Request:', payload);
+
+      const res = await axios.post(`${settings.base_url}/payouts`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.secret_key}`,
+        },
+      });
+
+      console.log('✅ Payout Response:', res.data);
+      return { success: true, data: res.data };
+    } catch (error) {
+      console.error(
+        '❌ PawaPay Payout Error:',
+        error.response ? error.response.data : error.message,
+      );
+      return {
+        success: false,
+        message: error.response ? error.response.data : error.message,
+      };
+    }
+  }
+
+  async requestRefund(depositId, amount) {
+    try {
+      const refundId = uuidv4(); // Generate a unique refund ID
+
+      const payload = {
+        refundId: refundId,
+        depositId: depositId,
+        amount: amount.toString(), // Convert amount to string
+        metadata: [
+          { fieldName: 'orderId', fieldValue: 'ORD-123456789' },
+          {
+            fieldName: 'customerId',
+            fieldValue: 'customer@email.com',
+            isPII: true,
+          },
+        ],
+      };
+
+      const response = await axios.post(
+        'https://api.sandbox.pawapay.io/v1/refunds',
+        payload,
+        {
+          headers: {
+            Authorization: 'Bearer YOUR_API_KEY',
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      console.log('Refund Request Response:', response.data);
+    } catch (error) {
+      console.error(
+        'Refund Request Failed:',
+        error.response ? error.response.data : error.message,
+      );
+    }
+  }
+
+  // async generatePaymentLink(data, client_id) {
+  //   try {
+  //     console.log('CHECK-1');
+  //     const settings = await this.pawapaySettings(client_id);
+
+  //     if (!settings)
+  //       return {
+  //         success: false,
+  //         message: 'PawaPay has not been configured for client',
+  //       };
+  //     console.log('CHECK-2');
+
+  //     console.log('DATA:::', data);
+  //     console.log(data.depositId);
+
+  //     const res = await axios.post(
+  //       `	https://api.sandbox.pawapay.cloud/deposits`,
+  //       data,
+  //       {
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           Authorization: `Bearer ${process.env.PAWAPAY}`,
+  //         },
+  //       },
+  //     );
+  //    console.log(res)
+  //     console.log('CHECK-3');
+  //     if (res.status === 200) {
+  //       console.log("DONE", res.data)
+  //       return { success: true, data: res.data };
+
+  //     }
+  //   } catch (error) {
+  //     console.error(
+  //       'PawaPay Error:',
+  //       error.response ? error.response.data : error.message,
+  //     );
+  //     return {
+  //       success: false,
+  //       message: error.response ? error.response.data : error.message,
+  //     };
+  //   }
+  // }
 
   signRequest(
     contentDigest: string,
@@ -725,14 +967,5 @@ export class PawapayService {
         message: e.message,
       };
     }
-  }
-
-  private async pawapaySettings(client_id: number) {
-    return await this.paymentMethodRepository.findOne({
-      where: {
-        provider: 'pawapay',
-        client_id,
-      },
-    });
   }
 }

@@ -12,12 +12,50 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
+export interface TigoW2aRequest {
+  txnId: string;
+  msisdn: string;
+  amount: string;
+  customerReferenceId: string;
+  senderName: string;
+}
+
+export interface TigoW2aResponse {
+  success: boolean;
+  refId: string;
+  message: string;
+}
+
+export interface PawapayRequest {
+  clientId: number;
+  status: string;
+  depositId: string;
+}
+
+export interface PawapayResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface FlutterwaveWebhookRequest {
   clientId: number;
   txRef: string;
   event: string;
   body: string;
   flutterwaveKey: string;
+}
+
+export interface TigoWebhookRequest {
+  clientId: number;
+  reference: string;
+  event: string;
+  body: string;
+  Status: boolean;
+}
+
+export interface TigoResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface KoraPayWebhookRequest {
@@ -1038,6 +1076,12 @@ export interface WalletServiceClient {
   flutterWaveWebhook(request: FlutterwaveWebhookRequest): Observable<WebhookResponse>;
 
   korapayWebhook(request: KoraPayWebhookRequest): Observable<WebhookResponse>;
+
+  tigoWebhook(request: TigoWebhookRequest): Observable<TigoResponse>;
+
+  tigoW2A(request: TigoW2aRequest): Observable<TigoW2aResponse>;
+
+  pawapayCallback(request: PawapayRequest): Observable<PawapayResponse>;
 }
 
 export interface WalletServiceController {
@@ -1386,6 +1430,12 @@ export interface WalletServiceController {
   korapayWebhook(
     request: KoraPayWebhookRequest,
   ): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
+
+  tigoWebhook(request: TigoWebhookRequest): Promise<TigoResponse> | Observable<TigoResponse> | TigoResponse;
+
+  tigoW2A(request: TigoW2aRequest): Promise<TigoW2aResponse> | Observable<TigoW2aResponse> | TigoW2aResponse;
+
+  pawapayCallback(request: PawapayRequest): Promise<PawapayResponse> | Observable<PawapayResponse> | PawapayResponse;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1480,6 +1530,9 @@ export function WalletServiceControllerMethods() {
       "debitAgentBalance",
       "flutterWaveWebhook",
       "korapayWebhook",
+      "tigoWebhook",
+      "tigoW2A",
+      "pawapayCallback",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
