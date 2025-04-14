@@ -303,6 +303,7 @@ export class PaymentService {
 
           break;
         default:
+          transactionNo = generateTrxNo();
           description = 'Shop Deposit';
           break;
       }
