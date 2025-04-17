@@ -56,6 +56,7 @@ import {
   TigoWebhookRequest,
   PawapayRequest,
   TigoW2aRequest,
+  MtnmomoRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -71,7 +72,7 @@ import { KorapayService } from './services/kora.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
 import { TigoService } from './services/tigo.service';
 import { PawapayService } from './services/pawapay.service';
-
+import { MomoService } from './services/momo.service';
 
 @Controller()
 export class AppController {
@@ -90,6 +91,7 @@ export class AppController {
     private pitch90Service: Pitch90SMSService,
     private tigoService: TigoService,
     private pawapayService: PawapayService,
+    private momoService: MomoService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
@@ -117,6 +119,10 @@ export class AppController {
     return this.tigoService.handleW2aWebhook(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'MtnmomoCallback')
+  mtnMomo(param: MtnmomoRequest) {
+    return this.momoService.handleWebhook(param);
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayCallback')
   pawapayCallback(param: PawapayRequest) {

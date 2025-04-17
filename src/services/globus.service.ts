@@ -1,4 +1,4 @@
-// import { HttpStatus, Injectable } from '@nestjs/common';
+// import { Injectable } from '@nestjs/common';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { PaymentMethod } from 'src/entity/payment.method.entity';
 // import { Transaction } from 'src/entity/transaction.entity';
@@ -64,68 +64,68 @@
 //   }
 
 //   async initiatePayment(data, client_id) {
-//     try {
-//       const settings = await this.globusSettings(client_id);
+//     //     try {
+//     //       const settings = await this.globusSettings(client_id);
 
-//       if (!settings)
-//         return {
-//           success: false,
-//           message: 'PawaPay has not been configured for client',
-//         };
+//     //       if (!settings)
+//     //         return {
+//     //           success: false,
+//     //           message: 'PawaPay has not been configured for client',
+//     //         };
 
-//       const clientId = this.auth();
-//       const url =
-//         'https://tppservice.globusbank.com:2020/api/Account/generateVirtualAccountLite';
+//     const clientId = this.auth();
+//     const url =
+//       'https://tppservice.globusbank.com:2020/api/Account/generateVirtualAccountLite';
 
-//       //  const headers = {
-//       //    'Content-Type': 'application/json',
-//       //    ClientID: clientId,
-//       //  };
+//     //  const headers = {
+//     //    'Content-Type': 'application/json',
+//     //    ClientID: clientId,
+//     //  };
 
-//       const body = {
-//         AccountName: data.accountName,
-//         VirtualAccountNumber: data.virtualAccountNumber,
-//         NubanAccountNumber: data.linkedPartnerAccountNumber,
-//         CanExpire: data.canExpire ?? false,
-//         ExpiredTime: data.expiredTime ?? 60,
-//         hasTransactionAmount: data.hasTransactionAmount ?? false,
-//         TransactionAmount: data.transactionAmount ?? 0,
-//       };
+//     const body = {
+//       AccountName: data.accountName,
+//       VirtualAccountNumber: data.virtualAccountNumber,
+//       NubanAccountNumber: data.linkedPartnerAccountNumber,
+//       CanExpire: data.canExpire ?? false,
+//       ExpiredTime: data.expiredTime ?? 60,
+//       hasTransactionAmount: data.hasTransactionAmount ?? false,
+//       TransactionAmount: data.transactionAmount ?? 0,
+//     };
 
-//       const response = await axios.post(url, body, {
-//         headers: {
-//           'Content-Type': 'application/json',
-//           ClientID: this.auth(),
-//         },
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error(
-//         'Globus Error:',
-//         error.response ? error.response.data : error.message,
-//       );
-//       return {
-//         success: false,
-//         message: error.response ? error.response.data : error.message,
-//       };
-//     }
+//     const response = await axios.post(url, body, {
+//       headers: {
+//         'Content-Type': 'application/json',
+//         ClientID: clientId,
+//       },
+//     });
+//     return response.data;
+//   }
+//   catch(error) {
+//     console.error(
+//       'Globus Error:',
+//       error.response ? error.response.data : error.message,
+//     );
+//     return {
+//       success: false,
+//       message: error.response ? error.response.data : error.message,
+//     };
 //   }
 
-//   handleGlobusWebhook = async (data: any) => {
-//     const { reference } = data;
+//   //   handleGlobusWebhook = async (data: any) => {
+//   //     const { reference } = data;
 
-//     const token = await this.auth();
+//   //     const token = await this.auth();
 
-//     const res = await axios.get(
-//       `https://globus-api.com/api/TransactionStatus?reference=${reference}`,
-//       {
-//         headers: { Authorization: `Bearer ${token}` },
-//       },
-//     );
+//   //     const res = await axios.get(
+//   //       `https://globus-api.com/api/TransactionStatus?reference=${reference}`,
+//   //       {
+//   //         headers: { Authorization: `Bearer ${token}` },
+//   //       },
+//   //     );
 
-//     if (res.status === 'successful') {
-//       console.log('update wallet');
-//     }
-//     return { message: 'Wallet funded successfully' };
-//   };
+//   //     if (res.status === 'successful') {
+//   //       console.log('update wallet');
+//   //     }
+//   //     return { message: 'Wallet funded successfully' };
+//   //   };
 // }
