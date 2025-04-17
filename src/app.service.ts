@@ -274,10 +274,42 @@ export class AppService {
       );
 
       const transactionNo = generateTrxNo();
-      // add request to queue
-      // await this.depositQueue.add('credit-user', data, {
-      //   jobId: `credit-user:${transactionNo}`,
-      // });
+      //to-do save transaction log
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo,
+        amount: parseFloat(data.amount),
+        description: data.description,
+        subject: data.subject,
+        channel: data.channel,
+        source: data.source,
+        fromUserId: 0,
+        fromUsername: "System",
+        fromUserBalance: 0,
+        toUserId: data.userId,
+        toUsername: data.username,
+        toUserBalance: balance,
+        status: 1,
+        walletType,
+      });
+
+      // send deposit to trackier
+      try {
+        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+        if (keys.success){
+          await this.helperService.sendActivity({
+            subject: data.subject,
+            username: data.username,
+            amount: data.amount,
+            transactionId: transactionNo,
+            clientId: data.clientId,
+          },  keys.data);
+        }
+
+      } catch (e) {
+        console.log('Trackier error: Credit User', e.message)
+      }
 
       wallet.balance = balance;
       return handleResponse(wallet, "Wallet credited");
