@@ -33,12 +33,10 @@ export class MomoService {
     });
   }
 
-  BASE_URL = process.env.MTN_BASE_URL;
-  PRIMARY_KEY = process.env.MTN_PRY_KEY as string;
-  referenceId = uuidv4();
-
   async initiatePayment(data, client_id) {
     try {
+      const referenceId = uuidv4();
+
       const paymentSettings = await this.mtnmomoSettings(client_id);
       if (!paymentSettings)
         return {
@@ -49,31 +47,31 @@ export class MomoService {
       console.log('CHECK_1');
       // Step 1: Create API User
       await axios.post(
-        `${this.BASE_URL}/v1_0/apiuser`,
+        `${paymentSettings.base_url}/v1_0/apiuser`,
         {
           providerCallbackHost: 'api.staging.sportsbookengine.com',
         },
         {
           headers: {
-            'X-Reference-Id': this.referenceId,
+            'X-Reference-Id': referenceId,
             'Content-Type': 'application/json',
-            'Ocp-Apim-Subscription-Key': this.PRIMARY_KEY,
+            'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
           },
         },
       );
 
-      console.log('DATA:::', this.referenceId);
+      console.log('DATA:::', referenceId);
 
       console.log('CHECK_2');
 
       // Step 2: Generate API Key
       const apiKeyResponse = await axios.post(
-        `${this.BASE_URL}/v1_0/apiuser/${this.referenceId}/apikey`,
+        `${paymentSettings.base_url}/v1_0/apiuser/${referenceId}/apikey`,
         {},
         {
           headers: {
             'Content-Type': 'application/json',
-            'Ocp-Apim-Subscription-Key': this.PRIMARY_KEY,
+            'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
           },
         },
       );
@@ -82,15 +80,15 @@ export class MomoService {
 
       // Step 3: Get Access Token
       const tokenResponse = await axios.post(
-        `${this.BASE_URL}/collection/token/`,
+        `${paymentSettings.base_url}/collection/token/`,
         {}, // no body
         {
           auth: {
-            username: this.referenceId,
+            username: referenceId,
             password: apiKey,
           },
           headers: {
-            'Ocp-Apim-Subscription-Key': this.PRIMARY_KEY,
+            'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
             'Content-Type': 'application/json',
           },
         },
@@ -116,7 +114,7 @@ export class MomoService {
       // Step 5: Send Payment Request
       console.log('CHECK_5');
       const response = await axios.post(
-        `${this.BASE_URL}/collection/v1_0/requesttopay`,
+        `${paymentSettings.base_url}/collection/v1_0/requesttopay`,
         payload,
         {
           headers: {
@@ -124,9 +122,9 @@ export class MomoService {
             'X-Reference-Id': paymentId,
             'X-Target-Environment': 'sandbox',
             'Content-Type': 'application/json',
-            'Ocp-Apim-Subscription-Key': this.PRIMARY_KEY,
+            'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
             'X-Callback-Url':
-              'https://api.staging.sportsbookengine.com/webhook/4/mtnmomo/callback',
+              'https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback',
           },
         },
       );
