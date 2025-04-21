@@ -81,7 +81,9 @@ export class MomoService {
       // Step 3: Get Access Token
       const tokenResponse = await axios.post(
         `${paymentSettings.base_url}/collection/token/`,
-        {}, // no body
+        {
+          providerCallbackHost: 'http://api.staging.sportsbookengine.com',
+        },
         {
           auth: {
             username: referenceId,
@@ -124,7 +126,7 @@ export class MomoService {
             'Content-Type': 'application/json',
             'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
             'X-Callback-Url':
-              'https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback',
+              'http://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback',
           },
         },
       );
@@ -150,11 +152,11 @@ export class MomoService {
   }
 
   async handleWebhook(data) {
-    console.log('TIGO-WEBHOOK');
+    console.log('MOMO-WEBHOOK');
 
     console.log('TEST');
     try {
-      const paymentSettings = await this.mtnmomoSettings(data.client_id);
+      const paymentSettings = await this.mtnmomoSettings(data.clientId);
       if (!paymentSettings)
         return {
           success: false,
