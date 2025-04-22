@@ -56,6 +56,8 @@ import {
   TigoWebhookRequest,
   PawapayRequest,
   TigoW2aRequest,
+  MtnmomoRequest,
+  SummaryRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -71,7 +73,11 @@ import { KorapayService } from './services/kora.service';
 import { Pitch90SMSService } from './services/pitch90sms.service';
 import { TigoService } from './services/tigo.service';
 import { PawapayService } from './services/pawapay.service';
+import { MomoService } from './services/momo.service';
+import { SummeryService } from './services/summery.service';
 
+type RangeType = 'day' | 'week' | 'month' | 'year';
+const allowedRanges: RangeType[] = ['day', 'week', 'month', 'year'];
 
 @Controller()
 export class AppController {
@@ -90,7 +96,33 @@ export class AppController {
     private pitch90Service: Pitch90SMSService,
     private tigoService: TigoService,
     private pawapayService: PawapayService,
+    private momoService: MomoService,
+    private summeryService: SummeryService,
   ) {}
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
+  GetSummary(payload: SummaryRequest) {
+    const { clientId, range, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(range)
+      ? (range as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    return this.summeryService.getSummary(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
   FetchBetRange(payload: FetchBetRangeRequest) {
@@ -117,6 +149,10 @@ export class AppController {
     return this.tigoService.handleW2aWebhook(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'MtnmomoCallback')
+  mtnMomo(param: MtnmomoRequest) {
+    return this.momoService.handleWebhook(param);
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayCallback')
   pawapayCallback(param: PawapayRequest) {
