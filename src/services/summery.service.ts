@@ -7,7 +7,6 @@ import {
   CommonResponseObj,
   GetShopUserWalletSummaryRequest,
   GetShopUserWalletSummaryResponse,
-  SummaryResponse,
 } from 'src/proto/wallet.pb';
 import { Repository } from 'typeorm';
 
@@ -114,15 +113,15 @@ export class SummeryService {
         .getRawOne(),
     ]);
 
-    const totalDepositAmount = parseFloat(depositSum?.sum || '0');
-    const totalWithdrawalAmount = parseFloat(withdrawalSum?.sum || '0');
+    const totalDeposit = parseFloat(depositSum?.sum || '0');
+    const totalWithdrawal = parseFloat(withdrawalSum?.sum || '0');
 
     return {
       success: true,
       status: 200,
       message: 'Wallet summary fetched successfully',
-      totalDepositAmount,
-      totalWithdrawalAmount,
+      totalDeposit,
+      totalWithdrawal,
     };
   }
 
@@ -144,17 +143,12 @@ export class SummeryService {
 
       // Map the response to the correct type
       const users: CommonResponseObj = {
-        success: identityResponse.success || false, // Ensure `success` is always present
+        success: identityResponse.success || false,
         status: identityResponse.status,
         message: identityResponse.message,
-        data: identityResponse.data || [], // Ensure `data` is always present
+        data: identityResponse.data || [],
       };
 
-      console.log('Fetched users:', JSON.stringify(users, null, 2));
-      console.log('Fetched users:', JSON.stringify(users.data.id, null, 2));
-
-      // Ensure users.data is an array
-      // Ensure users.data exists and contains a nested 'data' property
       if (!users.data || !Array.isArray(users.data.data)) {
         return {
           success: false,
@@ -164,10 +158,7 @@ export class SummeryService {
         };
       }
 
-      // Use the nested 'data' property
       const userDataArray = users.data.data;
-
-      console.log('Converted users data:', userDataArray);
 
       if (userDataArray.length === 0) {
         return {
@@ -217,31 +208,40 @@ export class SummeryService {
         const totalWithdrawal = withdrawalSum
           ? parseFloat(withdrawalSum.sum || '0')
           : 0;
-        // const totalSales = totalDeposit - totalWithdrawal;
 
-        // Add the user's wallet summary to the array
-        agentUsersSummary.push({
+        console.log('Summary:', {
           userId: agentUser.id,
           totalDeposit,
           totalWithdrawal,
         });
+
+        // Push the full summary object to the array
+        agentUsersSummary.push({
+          userId: String(agentUser.id), // Convert userId to a string
+          totalDepositAmount: totalDeposit, // Rename to match .proto schema
+          totalWithdrawalAmount: totalWithdrawal, // Rename to match .proto schema
+        });
       }
 
-      console.log('Agent users summary:', agentUsersSummary);
+      // Log the final summary array for debugging
+      console.log(
+        'Final Agent Users Summary:',
+        JSON.stringify(agentUsersSummary, null, 2),
+      );
 
       // Step 3: Return the response with the agent users summary
       return {
         success: true,
         status: HttpStatus.OK,
         message: 'Wallet summary fetched successfully',
-        data: agentUsersSummary,
+        data: agentUsersSummary, // Matches the repeated DailyTotals field in .proto
       };
     } catch (e) {
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
         message: `Error fetching wallet summary: ${e.message}`,
-        data: [],
+        data: [], // Empty array for the repeated DailyTotals field
       };
     }
   }
