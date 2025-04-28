@@ -58,7 +58,6 @@ import {
   TigoW2aRequest,
   MtnmomoRequest,
   SummaryRequest,
-  GetShopUserWalletSummaryRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -123,13 +122,6 @@ export class AppController {
       from: fromDate,
       to: toDate,
     });
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ShopTransactionSummary')
-  AgentUsersSummaryRequest(payload: GetShopUserWalletSummaryRequest) {
-    console.log(payload);
-
-    return this.summeryService.getShopUserWalletSummary(payload);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
