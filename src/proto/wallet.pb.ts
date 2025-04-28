@@ -12,31 +12,6 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
-export interface GetShopUserWalletSummaryRequest {
-  clientId: number;
-  dateRange: string;
-}
-
-export interface GetShopUserWalletSummaryResponse {
-  /** Indicates success or failure of the request */
-  success: boolean;
-  /** HTTP status code (e.g., 200 for success, 500 for error) */
-  status: number;
-  /** Message with success/error information */
-  message: string;
-  /** Array of the summary data for each agent user */
-  data: DailyTotals[];
-}
-
-export interface DailyTotals {
-  /** User ID (as a string) */
-  userId: string;
-  /** Total deposit amount for the specified range */
-  totalDepositAmount: number;
-  /** Total withdrawal amount for the specified range */
-  totalWithdrawalAmount: number;
-}
-
 export interface SummaryRequest {
   clientId: number;
   /** optional: "day", "week", "month", "year" */
@@ -47,27 +22,13 @@ export interface SummaryRequest {
   to: string;
 }
 
-export interface TrxSummaryRequest {
-  /** "day", "week", "month", "year" */
-  rangeZ: string;
-  /** Optional ISO date */
-  from: string;
-  /** Optional ISO date */
-  to: string;
-  /** Defaults to 1 */
-  page: number;
-  /** Defaults to 10 */
-  pageSize: number;
-}
-
 export interface SummaryResponse {
-  /** Indicates success or failure of the request */
-  success: boolean;
-  /** HTTP status code (e.g., 200 for success, 500 for error) */
-  status: number;
-  message: string;
-  totalDeposit: number;
-  totalWithdrawal: number;
+  from: string;
+  to: string;
+  deposit: number;
+  withdrawal: number;
+  creditBalance: number;
+  playerBalance: number;
 }
 
 export interface MtnmomoRequest {
@@ -1141,8 +1102,6 @@ export interface WalletServiceClient {
 
   getTransactionSummary(request: SummaryRequest): Observable<SummaryResponse>;
 
-  shopTransactionSummary(request: GetShopUserWalletSummaryRequest): Observable<GetShopUserWalletSummaryResponse>;
-
   flutterWaveWebhook(request: FlutterwaveWebhookRequest): Observable<WebhookResponse>;
 
   korapayWebhook(request: KoraPayWebhookRequest): Observable<WebhookResponse>;
@@ -1499,13 +1458,6 @@ export interface WalletServiceController {
     request: SummaryRequest,
   ): Promise<SummaryResponse> | Observable<SummaryResponse> | SummaryResponse;
 
-  shopTransactionSummary(
-    request: GetShopUserWalletSummaryRequest,
-  ):
-    | Promise<GetShopUserWalletSummaryResponse>
-    | Observable<GetShopUserWalletSummaryResponse>
-    | GetShopUserWalletSummaryResponse;
-
   flutterWaveWebhook(
     request: FlutterwaveWebhookRequest,
   ): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
@@ -1614,7 +1566,6 @@ export function WalletServiceControllerMethods() {
       "processShopWithdrawal",
       "debitAgentBalance",
       "getTransactionSummary",
-      "shopTransactionSummary",
       "flutterWaveWebhook",
       "korapayWebhook",
       "tigoWebhook",

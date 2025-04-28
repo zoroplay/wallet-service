@@ -124,15 +124,12 @@ export class PaymentService {
           console.log(user.callbackUrl);
           console.log(user.siteUrl);
           console.log(user.currency);
-          console.log(user.username);
           const depositId = uuidv4(); // Use UUID for pawaPay
           transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
             {
               depositId: depositId,
               amount: param.amount.toString(),
-              country: 'TZA',
-              msisdn: user.username,
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
             },
