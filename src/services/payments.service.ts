@@ -131,6 +131,7 @@ export class PaymentService {
             {
               depositId: depositId,
               amount: param.amount.toString(),
+              country: "TZA",
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
             },
