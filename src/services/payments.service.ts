@@ -37,6 +37,8 @@ import { Pitch90SMSService } from './pitch90sms.service';
 import { FlutterwaveService } from './flutterwave.service';
 import { KorapayService } from './kora.service';
 import { TigoService } from './tigo.service';
+import { ProvidusService } from './providus.service';
+import { MomoService } from './momo.service';
 
 @Injectable()
 export class PaymentService {
@@ -60,6 +62,8 @@ export class PaymentService {
     private flutterwaveService: FlutterwaveService,
     private korapayService: KorapayService,
     private tigoService: TigoService,
+    private providusService: ProvidusService,
+    private momoService: MomoService,
   ) {}
 
   async inititateDeposit(
@@ -120,12 +124,20 @@ export class PaymentService {
           console.log(user.callbackUrl);
           console.log(user.siteUrl);
           console.log(user.currency);
-          const depositId = uuidv4(); // Use UUID for pawaPay
+          console.log(user.username);
+
+          let username = user.username;
+          if (!username.startsWith('255')) {
+            username = '255' + username.replace(/^0+/, '');
+          }
+          const depositId = uuidv4();
           transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
             {
               depositId: depositId,
               amount: param.amount.toString(),
+              country: 'TZA',
+              msisdn: username,
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
             },
@@ -222,6 +234,54 @@ export class PaymentService {
           console.log(tigoRes.ReferenceID);
           console.log('THE_LINK', JSON.stringify(link, null, 2));
           console.log('THE_RES', JSON.stringify(tigoRes, null, 2));
+          break;
+
+        case 'mtnmomo':
+          console.log('MTN_MOMO_PAYMENT');
+          description = 'Online Deposit (MTMMOMO )';
+
+          transactionNo = uuidv4();
+          const mtnmomoRes = await this.momoService.initiatePayment(
+            {
+              amount: param.amount,
+              externalId: transactionNo,
+              currency: 'EUR',
+              payer: {
+                partyId: user.username,
+              },
+            },
+            param.clientId,
+          );
+
+          if (!mtnmomoRes.success) {
+            return {
+              success: false,
+              message: mtnmomoRes.message || 'Mtn Momo payment failed',
+            };
+          }
+
+          link = mtnmomoRes.message;
+          console.log(mtnmomoRes.externalId);
+          console.log('THE_LINK', JSON.stringify(link, null, 2));
+
+          break;
+
+        case 'providus':
+          console.log('Providus_PAYMENT');
+          description = 'Online Deposit (Providus )';
+          transactionNo = generateTrxNo();
+          const providusRes = await this.providusService.initiatePayment(
+            {
+              initiationTranRef: transactionNo,
+              amount: param.amount,
+            },
+            param.clientId,
+          );
+
+          link = providusRes;
+          console.log(providusRes.initiationTranRef);
+          console.log('THE_LINK', JSON.stringify(link, null, 2));
+          console.log('THE_RES', JSON.stringify(providusRes, null, 2));
           break;
 
         case 'monnify':

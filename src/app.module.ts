@@ -46,6 +46,8 @@ import { ConfigModule } from '@nestjs/config';
 import { KorapayService } from './services/kora.service';
 import { CallbackLog } from './entity/callback-log.entity';
 import { TigoService } from './services/tigo.service';
+import { ProvidusService } from './services/providus.service';
+import { SummeryService } from './services/summery.service';
 
 
 @Module({
@@ -131,6 +133,8 @@ import { TigoService } from './services/tigo.service';
     WayaBankService,
     WithdrawalConsumer,
     ReportingService,
+    ProvidusService,
+    SummeryService,
   ],
 })
 export class AppModule {}
