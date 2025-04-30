@@ -245,4 +245,103 @@ export class SummeryService {
       };
     }
   }
+
+  async getNetCashFlow(
+    clientId: number,
+    options: {
+      rangeZ?: 'day' | 'week' | 'month' | 'year' | 'yesterday';
+      from?: Date;
+      to?: Date;
+    } = {},
+  ) {
+    let start: Date, end: Date;
+
+    if (options.from && options.to) {
+      start = new Date(options.from);
+      start.setUTCHours(0, 0, 0, 0);
+      end = new Date(options.to);
+      end.setUTCHours(23, 59, 59, 999);
+    } else {
+      const { start: defaultStart, end: defaultEnd } = this.getDateRange(
+        options.rangeZ || 'day',
+      );
+      start = defaultStart;
+      end = defaultEnd;
+    }
+
+    // Step 1: Fetch all shop users for the client
+    const identityResponse = await this.identityService.getAgents({
+      clientId,
+    });
+
+    const users: CommonResponseObj = {
+      success: identityResponse.success || false,
+      status: identityResponse.status,
+      message: identityResponse.message,
+      data: identityResponse.data || [],
+    };
+
+    if (!users.data || !Array.isArray(users.data.data)) {
+      return {
+        success: false,
+        status: HttpStatus.BAD_REQUEST,
+        message: 'Invalid data structure: users.data.data is not an array',
+        data: [],
+      };
+    }
+
+    const shopUsers = users.data.data;
+
+    if (shopUsers.length === 0) {
+      return {
+        success: false,
+        status: HttpStatus.NOT_FOUND,
+        message: 'No shop users found for the client',
+        data: [],
+      };
+    }
+
+    const summary = [];
+
+    for (const shopUser of shopUsers) {
+      const userId = shopUser.id;
+
+      const deposit = await this.transactionRepository
+        .createQueryBuilder('t')
+        .select(['COUNT(*) AS count', 'SUM(t.amount) AS total'])
+        .where('t.client_id = :clientId', { clientId })
+        .andWhere('t.user_id = :userId', { userId })
+        .andWhere('t.tranasaction_type = :type', { type: 'credit' })
+        .andWhere('t.subject = :subject', { subject: 'Deposit' })
+        .andWhere('t.status = 1')
+        .andWhere('t.created_at BETWEEN :start AND :end', { start, end })
+        .getRawOne();
+
+      const withdrawal = await this.transactionRepository
+        .createQueryBuilder('t')
+        .select(['COUNT(*) AS count', 'SUM(t.amount) AS total'])
+        .where('t.client_id = :clientId', { clientId })
+        .andWhere('t.user_id = :userId', { userId })
+        .andWhere('t.tranasaction_type = :type', { type: 'debit' })
+        .andWhere('t.subject = :subject', { subject: 'Withdrawal' })
+        .andWhere('t.status = 1')
+        .andWhere('t.created_at BETWEEN :start AND :end', { start, end })
+        .getRawOne();
+
+      summary.push({
+        userId,
+        numberOfDeposits: parseInt(deposit?.count || '0', 10),
+        totalDeposits: parseFloat(deposit?.total || '0'),
+        numberOfWithdrawals: parseInt(withdrawal?.count || '0', 10),
+        totalWithdrawals: parseFloat(withdrawal?.total || '0'),
+      });
+    }
+
+    return {
+      success: true,
+      status: HttpStatus.OK,
+      message: 'Shop user net cash flow summary fetched successfully',
+      data: summary,
+    };
+  }
 }
