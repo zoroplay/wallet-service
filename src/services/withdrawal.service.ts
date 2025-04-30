@@ -100,12 +100,9 @@ export class WithdrawalService {
 
       // console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}:${jobData.withdrawalCode}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}`,
         delay: 5000,
       });
-
-
-     
 
       return {
         success: true,
@@ -117,8 +114,7 @@ export class WithdrawalService {
         },
       };
     } catch (e) {
-      console.log(e.message);
-      
+      // console.log(e.message);
       
       return {
         success: false,

@@ -319,7 +319,7 @@ export class AppService {
     }
   }
 
-  async debitUser(data: any): Promise<WalletResponse> {
+  async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
     try {
       // console.log(data);
       const wallet = await this.walletRepository.findOne({
@@ -327,27 +327,39 @@ export class AppService {
       });
 
       const amount = parseFloat(data.amount);
+      
 
       let balance = 0;
       let walletBalance = "available_balance";
       let walletType = "Main";
       switch (data.wallet) {
         case "sport-bonus":
+          if (wallet.sport_bonus_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
           walletBalance = "sport_bonus_balance";
           walletType = "Sport Bonus";
           balance = wallet.sport_bonus_balance - amount;
           break;
         case "virtual":
+          if (wallet.virtual_bonus_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+
           walletBalance = "virtual_bonus_balance";
           walletType = "Virtual Bonus";
           balance = wallet.virtual_bonus_balance - amount;
           break;
         case "casino":
+          if (wallet.casino_bonus_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+
           walletBalance = "casino_bonus_balance";
           walletType = "Casino Bonus";
           balance = wallet.casino_bonus_balance - amount;
           break;
         case "trust":
+          if (wallet.trust_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+          
           walletBalance = "trust_balance";
           walletType = "Trust";
           balance = wallet.trust_balance - amount;
