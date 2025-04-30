@@ -59,6 +59,7 @@ import {
   MtnmomoRequest,
   SummaryRequest,
   GetShopUserWalletSummaryRequest,
+  ShopUsersSummaryRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -119,6 +120,31 @@ export class AppController {
     const toDate = to ? new Date(to) : undefined;
 
     return this.summeryService.getSummary(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ShopUsersSummary')
+  GetNetCashFlow(payload: ShopUsersSummaryRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    return this.summeryService.getNetCashFlow(clientId, {
       rangeZ: safeRange,
       from: fromDate,
       to: toDate,

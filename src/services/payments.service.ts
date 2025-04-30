@@ -130,6 +130,7 @@ export class PaymentService {
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
           }
+          console.log(username)
           const depositId = uuidv4();
           transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
