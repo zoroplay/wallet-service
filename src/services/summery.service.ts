@@ -290,7 +290,14 @@ export class SummeryService {
       };
     }
 
-    const shopUsers = users.data.data;
+    let shopUsers = users.data.data;
+
+    // Filter only shop users (rolename: 'Shop' and role_id: 11)
+    shopUsers = shopUsers.filter(
+      (user) => user.rolename === 'Shop' && user.role_id === 11,
+    );
+
+    console.log('Filtered Shop Users:', shopUsers);
 
     if (shopUsers.length === 0) {
       return {
