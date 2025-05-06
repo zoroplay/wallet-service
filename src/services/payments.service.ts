@@ -39,6 +39,7 @@ import { KorapayService } from './kora.service';
 import { TigoService } from './tigo.service';
 import { ProvidusService } from './providus.service';
 import { MomoService } from './momo.service';
+import { OPayService } from './opay.service';
 
 @Injectable()
 export class PaymentService {
@@ -64,6 +65,7 @@ export class PaymentService {
     private tigoService: TigoService,
     private providusService: ProvidusService,
     private momoService: MomoService,
+    private oPayService: OPayService,
   ) {}
 
   async inititateDeposit(
@@ -130,7 +132,7 @@ export class PaymentService {
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
           }
-          console.log(username)
+          console.log(username);
           const depositId = uuidv4();
           transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
@@ -174,6 +176,40 @@ export class PaymentService {
           console.log(result);
 
           link = result.data.link;
+
+          break;
+
+        case 'opay':
+          console.log('Opay');
+          transactionNo = generateTrxNo();
+
+          const opayRes = await this.oPayService.initiatePayment(
+            {
+              country: 'NG',
+              reference: transactionNo,
+              amount: {
+                total: param.amount,
+                currency: 'NGN',
+              },
+              returnUrl: 'https://m.staging.sportsbookengine.com',
+              callbackUrl:
+                'https://api.staging.sportsbookengine.com/api/v2/webhook/4/opay/callback',
+              cancelUrl: 'https://m.staging.sportsbookengine.com',
+              evokeOpay: true,
+              expireAt: 300,
+              product: {
+                description: 'Online Deposit (Opay)',
+                name: 'Sbe',
+              },
+              payMethod: 'OpayWalletNg',
+            },
+            param.clientId,
+          );
+          description = 'Online Deposit (Opay)';
+          if (!opayRes.success) return opayRes as any;
+
+          link = opayRes.data;
+          console.log(opayRes);
 
           break;
 

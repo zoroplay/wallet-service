@@ -60,6 +60,7 @@ import {
   SummaryRequest,
   GetShopUserWalletSummaryRequest,
   ShopUsersSummaryRequest,
+  OpayRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -100,6 +101,7 @@ export class AppController {
     private pawapayService: PawapayService,
     private momoService: MomoService,
     private summeryService: SummeryService,
+    private oPayService: OPayService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
@@ -125,7 +127,6 @@ export class AppController {
       to: toDate,
     });
   }
-
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ShopUsersSummary')
   GetNetCashFlow(payload: ShopUsersSummaryRequest) {
@@ -176,6 +177,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')
   tigoWebhook(param: TigoWebhookRequest) {
     return this.tigoService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OpayCallback')
+  opayWebhook(param: OpayRequest) {
+    return this.oPayService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')
