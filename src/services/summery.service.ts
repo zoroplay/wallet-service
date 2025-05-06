@@ -1,7 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Transaction } from 'src/entity/transaction.entity';
-import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { IdentityService } from 'src/identity/identity.service';
 import {
   CommonResponseObj,
@@ -15,8 +14,6 @@ export class SummeryService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-    @InjectRepository(Withdrawal)
-    private readonly withdrawalRepository: Repository<Withdrawal>,
 
     private readonly identityService: IdentityService,
   ) {}
@@ -71,7 +68,7 @@ export class SummeryService {
   async getSummary(
     clientId: number,
     options: {
-      rangeZ?: 'day' | 'week' | 'month' | 'year' | 'yesterday';
+      rangeZ?: 'day' | 'week' | 'month' | 'year';
       from?: Date;
       to?: Date;
     } = {},

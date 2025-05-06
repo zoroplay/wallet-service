@@ -123,10 +123,7 @@ export class PaymentService {
 
           break;
         case 'pawapay':
-          console.log(user.callbackUrl);
-          console.log(user.siteUrl);
-          console.log(user.currency);
-          console.log(user.username);
+          
 
           let username = user.username;
           if (!username.startsWith('255')) {
@@ -139,8 +136,6 @@ export class PaymentService {
             {
               depositId: depositId,
               amount: param.amount.toString(),
-              country: 'TZA',
-              msisdn: username,
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
             },
