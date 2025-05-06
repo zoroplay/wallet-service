@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { generateTrxNo } from 'src/common/helpers';
 import { Transaction } from 'src/entity/transaction.entity';
@@ -7,6 +7,9 @@ import { Repository } from 'typeorm';
 import { HelperService } from './helper.service';
 import * as dayjs from 'dayjs';
 import { OpayWebhookRequest } from 'src/proto/wallet.pb';
+import { PaymentMethod } from 'src/entity/payment.method.entity';
+import axios from 'axios';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class OPayService {
@@ -15,6 +18,8 @@ export class OPayService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
+    @InjectRepository(PaymentMethod)
+    private readonly paymentMethodRepository: Repository<PaymentMethod>,
 
     private helperService: HelperService,
   ) {}
@@ -39,7 +44,6 @@ export class OPayService {
           .getOne();
 
         if (wallet) {
-
           const amount = parseFloat(param.amount) / 100;
           const balance =
             parseFloat(wallet.available_balance.toString()) +
@@ -142,6 +146,131 @@ export class OPayService {
         responseMessage: 'Transaction not found',
         data: {},
       };
+    }
+  }
+
+  private async opaySettings(client_id: number) {
+    return await this.paymentMethodRepository.findOne({
+      where: {
+        provider: 'opay',
+        client_id,
+      },
+    });
+  }
+
+  async initiatePayment(data, client_id) {
+    try {
+      const settings = await this.opaySettings(client_id);
+
+      const response = await axios.post(settings.base_url, data, {
+        headers: {
+          Authorization: `Bearer ${settings.public_key}`,
+          MerchantId: settings.merchant_id,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('CHECK_3');
+      console.log('DONE', response.data.data.cashierUrl);
+      console.log('DONE', response.data.data);
+      return { success: true, data: response.data.data.cashierUrl };
+    } catch (error) {
+      console.error('Opay error:', error.response?.data || error.message);
+      return {
+        success: false,
+        message: 'Unable to initiate deposit with Opay',
+      };
+    }
+  }
+
+  async handleWebhook(data) {
+    try {
+      console.log('I GOT HERE');
+      console.log(data);
+      const settings = await this.opaySettings(data.clientId);
+
+      const rawPayload = JSON.stringify(data);
+      const hash = crypto
+        .createHmac('sha512', settings.secret_key)
+        .update(rawPayload)
+        .digest('hex');
+
+      if (hash === data.sha512) {
+        return {
+          success: false,
+          message: 'Invalid signature',
+          status: HttpStatus.FORBIDDEN,
+        };
+      }
+
+      if (data.type !== 'transaction-status') {
+        return {
+          success: false,
+          message: 'Invalid webhook',
+          status: HttpStatus.BAD_REQUEST,
+        };
+      }
+
+      if (data.status === 'SUCCESS') {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: data.clientId,
+            transaction_no: data.reference,
+            tranasaction_type: 'credit',
+          },
+        });
+
+        console.log('TRX', transaction);
+
+        if (!transaction)
+          return {
+            success: false,
+            message: 'Transaction not found',
+            status: HttpStatus.NOT_FOUND,
+          };
+
+        if (transaction.status === 1)
+          return {
+            success: true,
+            message: 'Transaction already successful',
+          };
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            status: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+
+        return {
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
+    } catch (error) {
+      console.log('Opay error', error.message);
+      return { success: false, message: 'error occurred' };
     }
   }
 }

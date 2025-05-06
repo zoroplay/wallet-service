@@ -58,4 +58,17 @@ export class IdentityService {
     // console.log(param)
     return firstValueFrom(this.svc.getTrackierKeys(param));
   }
+
+
+  async getAgents(data) {
+    console.log('Fetching agents with:', data);
+    console.log(data)
+    return await firstValueFrom(this.svc.listAgents(data));
+  }
+
+  async getAgentUsers(data) {
+    console.log('Fetching agents with:', data);
+    console.log(data)
+    return await firstValueFrom(this.svc.listAgentUsers(data));
+  }
 }

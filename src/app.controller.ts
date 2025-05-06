@@ -58,6 +58,9 @@ import {
   TigoW2aRequest,
   MtnmomoRequest,
   SummaryRequest,
+  GetShopUserWalletSummaryRequest,
+  ShopUsersSummaryRequest,
+  OpayRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -98,6 +101,7 @@ export class AppController {
     private pawapayService: PawapayService,
     private momoService: MomoService,
     private summeryService: SummeryService,
+    private oPayService: OPayService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
@@ -124,6 +128,37 @@ export class AppController {
     });
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ShopUsersSummary')
+  GetNetCashFlow(payload: ShopUsersSummaryRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    return this.summeryService.getNetCashFlow(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ShopTransactionSummary')
+  AgentUsersSummaryRequest(payload: GetShopUserWalletSummaryRequest) {
+    console.log(payload);
+
+    return this.summeryService.getShopUserWalletSummary(payload);
+  }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'FetchBetRange')
   FetchBetRange(payload: FetchBetRangeRequest) {
     return this.depositService.fetchBetRange(payload);
@@ -142,6 +177,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')
   tigoWebhook(param: TigoWebhookRequest) {
     return this.tigoService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OpayCallback')
+  opayWebhook(param: OpayRequest) {
+    return this.oPayService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')
