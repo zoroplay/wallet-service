@@ -195,13 +195,13 @@ export class OPayService {
         .update(rawPayload)
         .digest('hex');
 
-      // if (hash === data.sha512) {
-      //   return {
-      //     success: false,
-      //     message: 'Invalid signature',
-      //     status: HttpStatus.FORBIDDEN,
-      //   };
-      // }
+      if (hash === data.sha512) {
+        return {
+          success: false,
+          message: 'Invalid signature',
+          status: HttpStatus.FORBIDDEN,
+        };
+      }
 
       if (data.type !== 'transaction-status') {
         return {
