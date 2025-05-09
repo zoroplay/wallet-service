@@ -50,7 +50,7 @@ export class IdentityService {
   }
 
   async getAgentUser(param: GetAgentUsersRequest) {
-     console.log(param)
+    // console.log(param)
     return await firstValueFrom(this.svc.listAgentUsers(param));
   }
 
@@ -71,5 +71,4 @@ export class IdentityService {
     console.log(data)
     return await firstValueFrom(this.svc.listAgentUsers(data));
   }
-
 }
