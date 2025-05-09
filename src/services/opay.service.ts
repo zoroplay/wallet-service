@@ -188,20 +188,26 @@ export class OPayService {
       console.log('I GOT HERE');
       console.log(data);
       const settings = await this.opaySettings(data.clientId);
+      const webhookBody = JSON.stringify(data);
 
-      const rawPayload = JSON.stringify(data);
-      const hash = crypto
-        .createHmac('sha512', settings.secret_key)
-        .update(rawPayload)
+      const secret = settings.secret_key;
+      const computedSignature = crypto
+        .createHmac('sha512', secret)
+        .update(webhookBody)
         .digest('hex');
 
-      if (hash === data.sha512) {
+      if (data.sha512 !== computedSignature) {
+        console.error('❌ OPay Signature mismatch');
         return {
           success: false,
           message: 'Invalid signature',
-          status: HttpStatus.FORBIDDEN,
+          statusCode: HttpStatus.FORBIDDEN,
         };
       }
+
+      console.log('Check1');
+
+      console.log('Check2');
 
       if (data.type !== 'transaction-status') {
         return {
@@ -210,6 +216,8 @@ export class OPayService {
           status: HttpStatus.BAD_REQUEST,
         };
       }
+
+      console.log('Check3');
 
       if (data.status === 'SUCCESS') {
         const transaction = await this.transactionRepository.findOne({
@@ -266,6 +274,31 @@ export class OPayService {
         return {
           success: true,
           message: 'Transaction successfully verified and processed',
+        };
+      }
+    } catch (error) {
+      console.log('Opay error', error.message);
+      return { success: false, message: 'error occurred' };
+    }
+  }
+
+  async handlePaymentStatus(data) {
+    try {
+      console.log('I GOT HERE');
+      console.log(data);
+      const settings = await this.opaySettings(data.clientId);
+
+      const rawPayload = JSON.stringify(data);
+      const hash = crypto
+        .createHmac('sha512', settings.secret_key)
+        .update(rawPayload)
+        .digest('hex');
+
+      if (hash === data.sha512) {
+        return {
+          success: false,
+          message: 'Invalid signature',
+          status: HttpStatus.FORBIDDEN,
         };
       }
     } catch (error) {

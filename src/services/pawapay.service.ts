@@ -70,7 +70,7 @@ export class PawapayService {
       );
       return {
         success: false,
-        message: error.response ? error.response.data : error.message,
+        message: error.response?.data?.errorMessage || error.message,
       };
     }
   }
