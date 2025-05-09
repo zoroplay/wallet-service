@@ -123,8 +123,6 @@ export class PaymentService {
 
           break;
         case 'pawapay':
-          
-
           let username = user.username;
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
@@ -136,6 +134,9 @@ export class PaymentService {
             {
               depositId: depositId,
               amount: param.amount.toString(),
+              msisdn: username,
+              language: 'EN',
+              country: 'TZA',
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
             },
@@ -183,12 +184,12 @@ export class PaymentService {
               country: 'NG',
               reference: transactionNo,
               amount: {
-                total: param.amount,
+                total: param.amount * 100,
                 currency: 'NGN',
               },
-              returnUrl: 'https://m.staging.sportsbookengine.com',
+              returnUrl: user.callbackUrl + '/payment-verification/opay',
               callbackUrl:
-                'https://api.staging.sportsbookengine.com/api/v2/webhook/4/opay/callback',
+                'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
               cancelUrl: 'https://m.staging.sportsbookengine.com',
               evokeOpay: true,
               expireAt: 300,
