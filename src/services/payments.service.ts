@@ -133,12 +133,25 @@ export class PaymentService {
           const res = await this.pawapayService.generatePaymentLink(
             {
               depositId: depositId,
+              returnUrl: user.callbackUrl + '/payment-verification/pawapay',
+              statementDescription: 'Deposit via 77bet',
               amount: param.amount.toString(),
               msisdn: username,
               language: 'EN',
               country: 'TZA',
-              returnUrl: user.callbackUrl + '/payment-verification/pawapay',
               reason: 'Pawapay Deposit',
+              //currency: 'TZS',
+              metadata: [
+                {
+                  fieldName: 'userId',
+                  fieldValue: username,
+                },
+                {
+                  fieldName: 'email',
+                  fieldValue: user.email,
+                  isPII: true,
+                },
+              ],
             },
             param.clientId,
           );
