@@ -186,7 +186,8 @@ export class OPayService {
   async handleWebhook(data) {
     try {
       console.log('I GOT HERE');
-      console.log(data);
+      console.log('DATA', data);
+      console.log('TYPE:::', data.type);
       const settings = await this.opaySettings(data.clientId);
       const webhookBody = JSON.stringify(data);
 
@@ -219,63 +220,58 @@ export class OPayService {
 
       console.log('Check3');
 
-      if (data.status === 'SUCCESS') {
-        const transaction = await this.transactionRepository.findOne({
-          where: {
-            client_id: data.clientId,
-            transaction_no: data.reference,
-            tranasaction_type: 'credit',
-          },
-        });
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: data.clientId,
+          transaction_no: data.reference,
+          tranasaction_type: 'credit',
+        },
+      });
 
-        console.log('TRX', transaction);
+      console.log('TRX', transaction);
 
-        if (!transaction)
-          return {
-            success: false,
-            message: 'Transaction not found',
-            status: HttpStatus.NOT_FOUND,
-          };
+      if (!transaction)
+        return {
+          success: false,
+          message: 'Transaction not found',
+          status: HttpStatus.NOT_FOUND,
+        };
 
-        if (transaction.status === 1)
-          return {
-            success: true,
-            message: 'Transaction already successful',
-          };
-
-        const wallet = await this.walletRepository.findOne({
-          where: { user_id: transaction.user_id },
-        });
-
-        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
-
-        if (!wallet) {
-          console.error(
-            '❌ Wallet not found for user_id:',
-            transaction.user_id,
-          );
-          return {
-            success: false,
-            message: 'Wallet not found for this user',
-            status: HttpStatus.NOT_FOUND,
-          };
-        }
-
-        const balance =
-          parseFloat(wallet.available_balance.toString()) +
-          parseFloat(transaction.amount.toString());
-
-        await this.helperService.updateWallet(balance, transaction.user_id);
-        await this.transactionRepository.update(
-          { transaction_no: transaction.transaction_no },
-          { status: 1, balance },
-        );
-
+      if (transaction.status === 1)
         return {
           success: true,
-          message: 'Transaction successfully verified and processed',
+          message: 'Transaction already successful',
+        };
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          success: false,
+          message: 'Wallet not found for this user',
+          status: HttpStatus.NOT_FOUND,
         };
       }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+
+      return {
+        success: true,
+        message: 'Transaction successfully verified and processed',
+      };
     } catch (error) {
       console.log('Opay error', error.message);
       return { success: false, message: 'error occurred' };
