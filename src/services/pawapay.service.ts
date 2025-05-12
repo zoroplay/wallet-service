@@ -47,22 +47,23 @@ export class PawapayService {
           success: false,
           message: 'PawaPay has not been configured for client',
         };
-      console.log('CHECK-2');
 
-      console.log('DATA:::', data);
-      console.log(data.depositId);
-
-      const res = await axios.post(settings.base_url, data, {
+      
+      const response = await fetch(`${settings.base_url}/v1/widget/sessions`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${settings.secret_key}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(data),
       });
+
+      const responseData = await response.json();
+      
 
       console.log('CHECK-3');
 
-      console.log('DONE', res.data);
-      return { success: true, data: res.data.redirectUrl };
+      return { success: true, data: responseData.redirectUrl };
     } catch (error) {
       console.error(
         'PawaPay Error:',
@@ -70,7 +71,7 @@ export class PawapayService {
       );
       return {
         success: false,
-        message: error.response ? error.response.data : error.message,
+        message: error.response?.data?.errorMessage || error.message,
       };
     }
   }

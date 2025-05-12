@@ -12,6 +12,40 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
+export interface OpayRequest {
+  clientId: number;
+  sha512: string;
+  rawBody: { [key: string]: any } | undefined;
+}
+
+export interface OpayResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+}
+
+export interface ShopUsersSummaryRequest {
+  clientId: number;
+  rangeZ: string;
+  from: string;
+  to: string;
+}
+
+export interface ShopUserSummary {
+  userId: number;
+  numberOfDeposits: number;
+  totalDeposits: number;
+  numberOfWithdrawals: number;
+  totalWithdrawals: number;
+}
+
+export interface ShopUsersSummaryResponse {
+  data: ShopUserSummary[];
+  success: boolean;
+  status: number;
+  message: string;
+}
+
 export interface GetShopUserWalletSummaryRequest {
   clientId: number;
   dateRange: string;
@@ -1143,6 +1177,8 @@ export interface WalletServiceClient {
 
   shopTransactionSummary(request: GetShopUserWalletSummaryRequest): Observable<GetShopUserWalletSummaryResponse>;
 
+  shopUsersSummary(request: ShopUsersSummaryRequest): Observable<ShopUsersSummaryResponse>;
+
   flutterWaveWebhook(request: FlutterwaveWebhookRequest): Observable<WebhookResponse>;
 
   korapayWebhook(request: KoraPayWebhookRequest): Observable<WebhookResponse>;
@@ -1154,6 +1190,8 @@ export interface WalletServiceClient {
   pawapayCallback(request: PawapayRequest): Observable<PawapayResponse>;
 
   mtnmomoCallback(request: MtnmomoRequest): Observable<WebhookResponse>;
+
+  opayCallback(request: OpayRequest): Observable<OpayResponse>;
 }
 
 export interface WalletServiceController {
@@ -1506,6 +1544,10 @@ export interface WalletServiceController {
     | Observable<GetShopUserWalletSummaryResponse>
     | GetShopUserWalletSummaryResponse;
 
+  shopUsersSummary(
+    request: ShopUsersSummaryRequest,
+  ): Promise<ShopUsersSummaryResponse> | Observable<ShopUsersSummaryResponse> | ShopUsersSummaryResponse;
+
   flutterWaveWebhook(
     request: FlutterwaveWebhookRequest,
   ): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
@@ -1521,6 +1563,8 @@ export interface WalletServiceController {
   pawapayCallback(request: PawapayRequest): Promise<PawapayResponse> | Observable<PawapayResponse> | PawapayResponse;
 
   mtnmomoCallback(request: MtnmomoRequest): Promise<WebhookResponse> | Observable<WebhookResponse> | WebhookResponse;
+
+  opayCallback(request: OpayRequest): Promise<OpayResponse> | Observable<OpayResponse> | OpayResponse;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1615,12 +1659,14 @@ export function WalletServiceControllerMethods() {
       "debitAgentBalance",
       "getTransactionSummary",
       "shopTransactionSummary",
+      "shopUsersSummary",
       "flutterWaveWebhook",
       "korapayWebhook",
       "tigoWebhook",
       "tigoW2A",
       "pawapayCallback",
       "mtnmomoCallback",
+      "opayCallback",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

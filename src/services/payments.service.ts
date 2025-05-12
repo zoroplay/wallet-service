@@ -39,6 +39,7 @@ import { KorapayService } from './kora.service';
 import { TigoService } from './tigo.service';
 import { ProvidusService } from './providus.service';
 import { MomoService } from './momo.service';
+import { OPayService } from './opay.service';
 
 @Injectable()
 export class PaymentService {
@@ -64,6 +65,7 @@ export class PaymentService {
     private tigoService: TigoService,
     private providusService: ProvidusService,
     private momoService: MomoService,
+    private oPayService: OPayService,
   ) {}
 
   async inititateDeposit(
@@ -121,25 +123,35 @@ export class PaymentService {
 
           break;
         case 'pawapay':
-          console.log(user.callbackUrl);
-          console.log(user.siteUrl);
-          console.log(user.currency);
-          console.log(user.username);
-
           let username = user.username;
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
           }
+          console.log(username);
           const depositId = uuidv4();
           transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
             {
               depositId: depositId,
-              amount: param.amount.toString(),
-              country: 'TZA',
-              msisdn: username,
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
+              statementDescription: 'Deposit via 77bet',
+              amount: param.amount.toString(),
+              msisdn: username,
+              language: 'EN',
+              country: 'TZA',
               reason: 'Pawapay Deposit',
+              //currency: 'TZS',
+              metadata: [
+                {
+                  fieldName: 'userId',
+                  fieldValue: username,
+                },
+                {
+                  fieldName: 'email',
+                  fieldValue: user.email,
+                  isPII: true,
+                },
+              ],
             },
             param.clientId,
           );
@@ -173,6 +185,40 @@ export class PaymentService {
           console.log(result);
 
           link = result.data.link;
+
+          break;
+
+        case 'opay':
+          console.log('Opay');
+          transactionNo = generateTrxNo();
+
+          const opayRes = await this.oPayService.initiatePayment(
+            {
+              country: 'NG',
+              reference: transactionNo,
+              amount: {
+                total: param.amount * 100,
+                currency: 'NGN',
+              },
+              returnUrl: user.callbackUrl + '/payment-verification/opay',
+              callbackUrl:
+                'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
+              cancelUrl: 'https://m.staging.sportsbookengine.com',
+              evokeOpay: true,
+              expireAt: 300,
+              product: {
+                description: 'Online Deposit (Opay)',
+                name: 'Sbe',
+              },
+              payMethod: 'OpayWalletNg',
+            },
+            param.clientId,
+          );
+          description = 'Online Deposit (Opay)';
+          if (!opayRes.success) return opayRes as any;
+
+          link = opayRes.data;
+          console.log(opayRes);
 
           break;
 
