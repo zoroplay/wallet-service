@@ -14,10 +14,8 @@ export const protobufPackage = "wallet";
 
 export interface OpayRequest {
   clientId: number;
-  status: string;
-  reference: string;
-  type: string;
   sha512: string;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface OpayResponse {
