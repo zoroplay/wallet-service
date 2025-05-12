@@ -6,7 +6,11 @@ import { Wallet } from 'src/entity/wallet.entity';
 import { Repository } from 'typeorm';
 import { HelperService } from './helper.service';
 import * as dayjs from 'dayjs';
-import { OpayWebhookRequest } from 'src/proto/wallet.pb';
+import {
+  OpayRequest,
+  OpayResponse,
+  OpayWebhookRequest,
+} from 'src/proto/wallet.pb';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import axios from 'axios';
 import * as crypto from 'crypto';
@@ -183,18 +187,15 @@ export class OPayService {
     }
   }
 
-  async handleWebhook(data) {
+  async handleWebhook(data: OpayRequest): Promise<OpayResponse> {
     try {
-      console.log('I GOT HERE');
-      console.log('DATA', data);
-      console.log('TYPE:::', data.type);
-      const settings = await this.opaySettings(data.clientId);
-      const webhookBody = JSON.stringify(data);
+      console.log('RAW_BODY:::', data.rawBody.payload);
 
+      const settings = await this.opaySettings(data.clientId);
       const secret = settings.secret_key;
       const computedSignature = crypto
         .createHmac('sha512', secret)
-        .update(webhookBody)
+        .update(JSON.stringify(data.rawBody.payload))
         .digest('hex');
 
       if (data.sha512 !== computedSignature) {
@@ -206,55 +207,41 @@ export class OPayService {
         };
       }
 
-      console.log('Check1');
-
-      console.log('Check2');
-
-      if (data.type !== 'transaction-status') {
-        return {
-          success: false,
-          message: 'Invalid webhook',
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-
-      console.log('Check3');
-
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: data.clientId,
-          transaction_no: data.reference,
+          transaction_no: data.rawBody.payload.reference,
           tranasaction_type: 'credit',
         },
       });
 
-      console.log('TRX', transaction);
-
-      if (!transaction)
+      if (!transaction) {
         return {
           success: false,
           message: 'Transaction not found',
-          status: HttpStatus.NOT_FOUND,
+          statusCode: HttpStatus.NOT_FOUND,
         };
+      }
 
-      if (transaction.status === 1)
+      if (transaction.status === 1) {
+        console.log('ℹ️ Transaction already marked successful.');
         return {
           success: true,
           message: 'Transaction already successful',
+          statusCode: HttpStatus.OK,
         };
+      }
 
       const wallet = await this.walletRepository.findOne({
         where: { user_id: transaction.user_id },
       });
-
-      console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
         return {
           success: false,
           message: 'Wallet not found for this user',
-          status: HttpStatus.NOT_FOUND,
+          statusCode: HttpStatus.NOT_FOUND,
         };
       }
 
@@ -263,19 +250,24 @@ export class OPayService {
         parseFloat(transaction.amount.toString());
 
       await this.helperService.updateWallet(balance, transaction.user_id);
+
       await this.transactionRepository.update(
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
-
+      console.log('FINALLY');
       return {
         statusCode: HttpStatus.OK,
         success: true,
         message: 'Transaction successfully verified and processed',
       };
     } catch (error) {
-      console.log('Opay error', error.message);
-      return { success: false, message: 'error occurred' };
+      console.error('❌ OPay webhook processing error:', error.message);
+      return {
+        success: false,
+        message: 'Error occurred during processing',
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
     }
   }
 
