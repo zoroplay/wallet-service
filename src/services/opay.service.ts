@@ -269,6 +269,7 @@ export class OPayService {
       );
 
       return {
+        statusCode: HttpStatus.OK,
         success: true,
         message: 'Transaction successfully verified and processed',
       };
