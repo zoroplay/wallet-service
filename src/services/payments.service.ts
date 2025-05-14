@@ -136,13 +136,13 @@ export class PaymentService {
             {
               depositId: depositId,
               returnUrl: user.callbackUrl + '/payment-verification/pawapay',
-              statementDescription: 'Deposit via 77bet',
+              statementDescription: 'Deposit via 777bet',
               amount: param.amount.toString(),
               msisdn: username,
               language: 'EN',
               country: 'TZA',
               reason: 'Pawapay Deposit',
-              //currency: 'TZS',
+              
               metadata: [
                 {
                   fieldName: 'userId',

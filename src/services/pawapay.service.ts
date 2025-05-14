@@ -66,11 +66,11 @@ export class PawapayService {
     } catch (error) {
       console.error(
         'PawaPay Error:',
-        error.response ? error.response.data : error.message,
+        error.response ? error.responseData.data : error.message,
       );
       return {
         success: false,
-        message: error.response?.data?.errorMessage || error.message,
+        message: error.responseData?.data.errorMessage || error.message,
       };
     }
   }
