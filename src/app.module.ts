@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -48,6 +48,7 @@ import { CallbackLog } from './entity/callback-log.entity';
 import { TigoService } from './services/tigo.service';
 import { ProvidusService } from './services/providus.service';
 import { SummeryService } from './services/summery.service';
+import { CoralPayService } from './services/coralpay.service';
 
 
 @Module({
@@ -135,6 +136,8 @@ import { SummeryService } from './services/summery.service';
     ReportingService,
     ProvidusService,
     SummeryService,
+    CoralPayService,
+    Logger
   ],
 })
 export class AppModule {}
