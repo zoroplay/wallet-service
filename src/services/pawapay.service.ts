@@ -48,7 +48,6 @@ export class PawapayService {
           message: 'PawaPay has not been configured for client',
         };
 
-      
       const response = await fetch(`${settings.base_url}/v1/widget/sessions`, {
         method: 'POST',
         headers: {
@@ -59,7 +58,7 @@ export class PawapayService {
       });
 
       const responseData = await response.json();
-      
+      console.log(responseData.redirectUrl);
 
       console.log('CHECK-3');
 

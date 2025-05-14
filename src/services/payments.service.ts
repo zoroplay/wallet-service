@@ -40,6 +40,7 @@ import { TigoService } from './tigo.service';
 import { ProvidusService } from './providus.service';
 import { MomoService } from './momo.service';
 import { OPayService } from './opay.service';
+import { CoralPayService } from './coralpay.service';
 
 @Injectable()
 export class PaymentService {
@@ -66,6 +67,7 @@ export class PaymentService {
     private providusService: ProvidusService,
     private momoService: MomoService,
     private oPayService: OPayService,
+    private coralPayService: CoralPayService,
   ) {}
 
   async inititateDeposit(
@@ -161,6 +163,7 @@ export class PaymentService {
           if (!res.success) return res as any;
 
           link = res.data;
+          console.log('THE-LINK:::', link);
 
           break;
 
@@ -188,6 +191,49 @@ export class PaymentService {
 
           break;
 
+        case 'coralpay':
+          const traceId = generateTrxNo();
+          transactionNo = traceId;
+          const formattedAmount = param.amount.toFixed(2);
+          const coralRes = await this.coralPayService.initiatePayment(
+            {
+              customer: {
+                email: user.email,
+                name: user.username,
+                phone: user.username,
+                tokenUserId: user.username,
+              },
+
+              customization: {
+                logoUrl:
+                  'https://media.licdn.com/dms/image/v2/D4D3DAQEkSrKPapHPiQ/image-scale_191_1128/image-scale_191_1128/0/1708725457499/streetbeat_com_cover?e=1747753200&v=beta&t=rvOSHb7HCX-f2b18RmNQWP_bk-aOQRXS0O3j3QZdH3Q',
+                title: 'Coralpay Payment',
+                description: 'Payment via Virtual Account',
+              },
+              metaData: {
+                data1: 'sample data',
+                data2: 'another sample data',
+                data3: 'sample info',
+              },
+              traceId: traceId,
+              productId: uuidv4(),
+              amount: formattedAmount,
+              currency: 'NGN',
+              feeBearer: 'M',
+              returnUrl: 'https://api.staging.sportsbookengine.com/',
+            },
+            param.clientId,
+          );
+
+          description = 'Online Deposit (Coralpay)';
+
+          if (!coralRes.success) return coralRes as any;
+
+          link = coralRes.data;
+          console.log('THE-LINK:::', link);
+
+          break;
+
         case 'opay':
           console.log('Opay');
           transactionNo = generateTrxNo();
@@ -203,7 +249,7 @@ export class PaymentService {
               returnUrl: user.callbackUrl + '/payment-verification/opay',
               callbackUrl:
                 'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
-              cancelUrl: 'https://m.staging.sportsbookengine.com',
+              cancelUrl: 'https://m.staging.sportsbookengine.com', //TODO:  add the actual one
               evokeOpay: true,
               expireAt: 300,
               product: {
@@ -218,7 +264,7 @@ export class PaymentService {
           if (!opayRes.success) return opayRes as any;
 
           link = opayRes.data;
-          console.log(opayRes);
+          console.log('OPAY RESPONSE::', opayRes);
 
           break;
 

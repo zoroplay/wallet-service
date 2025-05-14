@@ -191,23 +191,6 @@ export class OPayService {
     try {
       console.log('RAW_BODY:::', data.rawBody.payload);
 
-      const settings = await this.opaySettings(data.clientId);
-      const secret = settings.secret_key;
-      console.log(secret);
-      const computedSignature = crypto
-        .createHmac('sha512', secret)
-        .update(JSON.stringify(data.rawBody.payload))
-        .digest('hex');
-
-      // if (data.sha512 !== computedSignature) {
-      //   console.error('❌ OPay Signature mismatch');
-      //   return {
-      //     success: false,
-      //     message: 'Invalid signature',
-      //     statusCode: HttpStatus.FORBIDDEN,
-      //   };
-      // }
-
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: data.clientId,
