@@ -61,6 +61,7 @@ import {
   GetShopUserWalletSummaryRequest,
   ShopUsersSummaryRequest,
   OpayRequest,
+  CorapayWebhookRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -78,6 +79,7 @@ import { TigoService } from './services/tigo.service';
 import { PawapayService } from './services/pawapay.service';
 import { MomoService } from './services/momo.service';
 import { SummeryService } from './services/summery.service';
+import { CoralPayService } from './services/coralpay.service';
 
 type RangeType = 'day' | 'week' | 'month' | 'year';
 const allowedRanges: RangeType[] = ['day', 'week', 'month', 'year'];
@@ -102,6 +104,7 @@ export class AppController {
     private momoService: MomoService,
     private summeryService: SummeryService,
     private oPayService: OPayService,
+    private coralPayService: CoralPayService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
@@ -182,6 +185,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'OpayCallback')
   opayWebhook(param: OpayRequest) {
     return this.oPayService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'CorapayWebhook')
+  corapayWebhook(param: CorapayWebhookRequest) {
+    return this.coralPayService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')
