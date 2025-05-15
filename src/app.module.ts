@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Logger, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -49,7 +49,7 @@ import { TigoService } from './services/tigo.service';
 import { ProvidusService } from './services/providus.service';
 import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
-
+import { FidelityService } from './services/fidelity.service';
 
 @Module({
   imports: [
@@ -101,7 +101,7 @@ import { CoralPayService } from './services/coralpay.service';
       CashIn,
       CashOut,
       SalesReport,
-      CallbackLog
+      CallbackLog,
     ]),
     IdentityModule,
     RetailModule,
@@ -137,7 +137,7 @@ import { CoralPayService } from './services/coralpay.service';
     ProvidusService,
     SummeryService,
     CoralPayService,
-    Logger
+    FidelityService,
   ],
 })
 export class AppModule {}

@@ -47,6 +47,7 @@ export class PawapayService {
           success: false,
           message: 'PawaPay has not been configured for client',
         };
+        console.log("FINAL_PHONE NUMBER::",data.msisdn)
 
       const response = await fetch(`${settings.base_url}/v1/widget/sessions`, {
         method: 'POST',
@@ -58,6 +59,7 @@ export class PawapayService {
       });
 
       const responseData = await response.json();
+      console.log("FULL RESPONSE:::::::",responseData);
       console.log(responseData.redirectUrl);
 
       console.log('CHECK-3');

@@ -41,6 +41,7 @@ import { ProvidusService } from './providus.service';
 import { MomoService } from './momo.service';
 import { OPayService } from './opay.service';
 import { CoralPayService } from './coralpay.service';
+import { FidelityService } from './fidelity.service';
 
 @Injectable()
 export class PaymentService {
@@ -68,6 +69,7 @@ export class PaymentService {
     private momoService: MomoService,
     private oPayService: OPayService,
     private coralPayService: CoralPayService,
+    private fidelityService: FidelityService,
   ) {}
 
   async inititateDeposit(
@@ -125,10 +127,14 @@ export class PaymentService {
 
           break;
         case 'pawapay':
+          console.log('1st log:::', user);
           let username = user.username;
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
           }
+
+          const email = user.email || `noemail+${username}@example.com`;
+
           console.log(username);
           const depositId = uuidv4();
           transactionNo = depositId;
@@ -142,7 +148,7 @@ export class PaymentService {
               language: 'EN',
               country: 'TZA',
               reason: 'Pawapay Deposit',
-              
+
               metadata: [
                 {
                   fieldName: 'userId',
@@ -150,7 +156,7 @@ export class PaymentService {
                 },
                 {
                   fieldName: 'email',
-                  fieldValue: user.email,
+                  fieldValue: email,
                   isPII: true,
                 },
               ],
@@ -191,6 +197,37 @@ export class PaymentService {
 
           break;
 
+        case 'fidelity':
+          transactionNo = generateTrxNo();
+          const fRes = await this.fidelityService.initiatePay(
+            {
+              service_payload: {
+                first_name: user.username,
+                last_name: user.username,
+                email_address: user.email,
+                phone_number: user.username,
+                transaction_reference: transactionNo,
+                amount: param.amount,
+                currency: 'NGN',
+                description: 'Online Deposit (Fidelity)',
+                callback_url:
+                  user.callbackUrl + '/payment-verification/fidelity',
+                card: {
+                  cardNumber: '4508750015741019',
+                  expiryMonth: '01',
+                  expiryYear: '39',
+                  securityCode: '100',
+                },
+              },
+            },
+            param.clientId,
+          );
+          description = 'Online Deposit (Fidelity)';
+          if (!fRes.success) return fRes as any;
+          link = fRes.data.link;
+
+          break;
+
         case 'coralpay':
           const traceId = generateTrxNo();
           transactionNo = traceId;
@@ -205,22 +242,15 @@ export class PaymentService {
               },
 
               customization: {
-                logoUrl:
-                  'https://media.licdn.com/dms/image/v2/D4D3DAQEkSrKPapHPiQ/image-scale_191_1128/image-scale_191_1128/0/1708725457499/streetbeat_com_cover?e=1747753200&v=beta&t=rvOSHb7HCX-f2b18RmNQWP_bk-aOQRXS0O3j3QZdH3Q',
                 title: 'Coralpay Payment',
                 description: 'Payment via Virtual Account',
-              },
-              metaData: {
-                data1: 'sample data',
-                data2: 'another sample data',
-                data3: 'sample info',
               },
               traceId: traceId,
               productId: uuidv4(),
               amount: formattedAmount,
               currency: 'NGN',
               feeBearer: 'M',
-              returnUrl: 'https://api.staging.sportsbookengine.com/',
+              returnUrl: user.callbackUrl + '/payment-verification/coralpay',
             },
             param.clientId,
           );
