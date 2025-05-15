@@ -259,9 +259,10 @@ export class CoralPayService {
     data: any,
     secretKey: string,
   ): Promise<boolean> {
+    const signatureBase = `${data.MerchantId}${data.TraceId}${data.TimeStamp}`;
     const expectedSignature = crypto
-      .createHash('sha256')
-      .update(`${data.MerchantId}${data.TraceId}${data.TimeStamp}${secretKey}`)
+      .createHmac('sha256', secretKey)
+      .update(signatureBase)
       .digest('hex');
 
     const isValid = data.Signature === expectedSignature;
