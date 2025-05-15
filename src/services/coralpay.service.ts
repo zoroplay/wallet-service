@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
@@ -13,10 +13,6 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class CoralPayService {
-  private readonly logger = new Logger(CoralPayService.name);
-  private cachedToken: string | null = null;
-  private cachedKey: string | null = null;
-  private tokenExpiry: number | null = null;
   constructor(
     @InjectRepository(PaymentMethod)
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
@@ -148,7 +144,7 @@ export class CoralPayService {
       // 4. Verify signature
       const signatureValid = await this.verifySignature(
         param.callbackData,
-        param.Signature,
+        settings.secret_key,
       );
       if (!signatureValid) {
         return {
@@ -162,7 +158,7 @@ export class CoralPayService {
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: param.clientId,
-          transaction_no: param.rawBody.payload.reference,
+          transaction_no: param.callbackData.TraceId,
           tranasaction_type: 'credit',
         },
       });
@@ -268,6 +264,15 @@ export class CoralPayService {
       .update(`${data.MerchantId}${data.TraceId}${data.TimeStamp}${secretKey}`)
       .digest('hex');
 
-    return data.Signature === expectedSignature;
+    const isValid = data.Signature === expectedSignature;
+
+    if (!isValid) {
+      console.error('❌ Invalid Signature', {
+        expected: expectedSignature,
+        received: data.Signature,
+      });
+    }
+
+    return isValid;
   }
 }
