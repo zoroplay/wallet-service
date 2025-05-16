@@ -802,6 +802,9 @@ export class PaymentService {
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
             return this.pawapayService.verifyTransaction(param);
+          case 'coralpay':
+            return this.coralPayService.verifyTransaction(param);
+
             break;
           default:
             break;

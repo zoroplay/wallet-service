@@ -142,16 +142,6 @@ export class CoralPayService {
       }
 
       // 4. Verify signature
-      const signatureValid = await this.verifySignature(
-        param.callbackData,
-        settings.secret_key,
-      );
-      if (!signatureValid) {
-        return {
-          success: false,
-          message: 'Invalid signature',
-        };
-      }
 
       console.log('I GOT BEFORE TRX ');
 
@@ -275,5 +265,84 @@ export class CoralPayService {
     }
 
     return isValid;
+  }
+
+  async verifyTransaction(param) {
+    try {
+      // const paymentSettings = await this.pawapaySettings(param.client_id);
+      // if (!paymentSettings)
+      //   return {
+      //     success: false,
+      //     message: 'PawaPay has not been configured for client',
+      //   };
+
+      console.log(param);
+
+      console.log(param.transactionRef);
+
+      if (param.transactionRef !== '') {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: param.clientId,
+            transaction_no: param.transactionRef,
+            tranasaction_type: 'credit',
+          },
+        });
+        console.log('TRX', transaction.transaction_no);
+        console.log('TRX', transaction);
+
+        if (!transaction)
+          return {
+            success: false,
+            message: 'Transaction not found',
+            status: HttpStatus.NOT_FOUND,
+          };
+
+        if (transaction.status === 1)
+          return {
+            success: true,
+            message: 'Transaction already successful',
+          };
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            status: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+
+        return {
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
+    } catch (error) {
+      console.log(error);
+      return {
+        success: false,
+        message: `Unable to verify transaction: ${error.message}`,
+      };
+    }
   }
 }

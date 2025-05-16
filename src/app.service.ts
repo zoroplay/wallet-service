@@ -487,6 +487,8 @@ export class AppService {
       const limit = 100;
       const skip = (page - 1) * limit;
 
+      console.log("I GOT HEAR")
+
       let query = this.transactionRepository
         .createQueryBuilder("transaction")
         .where("client_id = :clientId", { clientId })
@@ -523,6 +525,10 @@ export class AppService {
         ...item,
         created_at: dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss"),
       }));
+
+      console.log("I GOT HEAR")
+
+      console.log(results)
 
       return paginateResponse([results, total], page, limit);
     } catch (e) {
