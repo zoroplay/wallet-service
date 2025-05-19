@@ -141,14 +141,20 @@ export class PaymentService {
           const res = await this.pawapayService.generatePaymentLink(
             {
               depositId: depositId,
-              returnUrl: user.callbackUrl + '/payment-verification/pawapay',
-              statementDescription: 'Deposit via 777bet',
               amount: param.amount.toString(),
-              msisdn: username,
-              language: 'EN',
+              currency: 'TZS',
               country: 'TZA',
-              reason: 'Pawapay Deposit',
-
+              correspondent:
+                await this.helperService.getCorrespondent(username),
+              msisdn: username,
+              payer: {
+                type: 'MSISDN',
+                address: {
+                  value: username,
+                },
+              },
+              customerTimestamp: new Date().toISOString(),
+              statementDescription: 'Deposit via 777bet',
               metadata: [
                 {
                   fieldName: 'userId',
@@ -168,8 +174,9 @@ export class PaymentService {
 
           if (!res.success) return res as any;
 
-          link = res.data;
-          console.log('THE-LINK:::', link);
+          console.log('PAYMENT::', res.data.status);
+
+          link = res.data.status;
 
           break;
 
@@ -279,7 +286,7 @@ export class PaymentService {
               returnUrl: user.callbackUrl + '/payment-verification/opay',
               callbackUrl:
                 'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
-              cancelUrl: 'https://m.staging.sportsbookengine.com', //TODO:  add the actual one
+              cancelUrl: user.callbackUrl + '/payment-verification/opay',
               evokeOpay: true,
               expireAt: 300,
               product: {
@@ -335,9 +342,16 @@ export class PaymentService {
           console.log('TIGO_PAYMENT');
           description = 'Online Deposit (Tigo )';
           transactionNo = generateTrxNo();
+          console.log(user.username);
+
+          let userName = user.username;
+          if (!userName.startsWith('255')) {
+            userName = '255' + userName.replace(/^0+/, '');
+          }
+
           const tigoRes = await this.tigoService.initiatePayment(
             {
-              CustomerMSISDN: user.username, // '255713123892',
+              CustomerMSISDN: userName, // '255713123892',
               Amount: param.amount,
               Remarks: description,
               ReferenceID: `${'KML'}${transactionNo}`,
@@ -352,7 +366,7 @@ export class PaymentService {
             };
           }
 
-          link = tigoRes;
+          link = tigoRes.ResponseDescription;
           console.log(tigoRes.ReferenceID);
           console.log('THE_LINK', JSON.stringify(link, null, 2));
           console.log('THE_RES', JSON.stringify(tigoRes, null, 2));
