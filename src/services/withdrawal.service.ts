@@ -104,9 +104,6 @@ export class WithdrawalService {
         delay: 5000,
       });
 
-
-     
-
       return {
         success: true,
         status: HttpStatus.OK,
@@ -118,8 +115,7 @@ export class WithdrawalService {
       };
     } catch (e) {
       console.log(e.message);
-      
-      
+
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -179,60 +175,156 @@ export class WithdrawalService {
     }
   }
 
+  // async listWithdrawalRequest(
+  //   data: ListWithdrawalRequests,
+  // ): Promise<ListWithdrawalRequestResponse> {
+  //   try {
+  //     console.log("WITHDRAWAL")
+  //     const { clientId, from, to, userId, status } = data;
+
+  //     const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format(
+  //       'YYYY-MM-DD HH:mm:ss',
+  //     );
+  //     const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format(
+  //       'YYYY-MM-DD HH:mm:ss',
+  //     );
+
+  //     // console.log(start, end);
+
+  //     let requests = [];
+  //     const res = await this.withdrawalRepository.find({
+  //       where: {
+  //         client_id: clientId,
+  //         created_at: Between(start, end),
+  //       },
+  //       take: 100,
+  //       order: { created_at: 'DESC' },
+  //     });
+  //     if (res.length) {
+  //       for (const request of res) {
+  //         requests.push({
+  //           id: request.id,
+  //           username: request.username,
+  //           userId: request.user_id,
+  //           amount: request.amount,
+  //           accountNumber: request.account_number,
+  //           accountName: request.account_name,
+  //           bankName: request.bank_name,
+  //           updatedBy: request.updated_by,
+  //           status: request.status,
+  //           created: request.created_at,
+  //         });
+  //       }
+  //     }
+  //     return {
+  //       success: true,
+  //       status: HttpStatus.OK,
+  //       message: 'Success',
+  //       data: requests,
+  //     };
+  //   } catch (e) {
+  //     return {
+  //       success: false,
+  //       status: HttpStatus.INTERNAL_SERVER_ERROR,
+  //       message: 'Something went wrong',
+  //       data: null,
+  //     };
+  //   }
+  // }
+
   async listWithdrawalRequest(
     data: ListWithdrawalRequests,
   ): Promise<ListWithdrawalRequestResponse> {
-    try {
-      const { clientId, from, to, userId, status } = data;
+    const {
+      clientId,
+      from,
+      to,
+      status,
+      userId,
+      username,
+      bankName,
+      page = 1,
+      limit = 10,
+    } = data;
 
-      const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format(
-        'YYYY-MM-DD HH:mm:ss',
-      );
-      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format(
-        'YYYY-MM-DD HH:mm:ss',
-      );
+    const skip = (page - 1) * limit;
 
-      // console.log(start, end);
+    const queryBuilder = this.withdrawalRepository
+      .createQueryBuilder('withdrawal')
+      .andWhere('withdrawal.client_id = :clientId', { clientId });
 
-      let requests = [];
-      const res = await this.withdrawalRepository.find({
-        where: {
-          client_id: clientId,
-          created_at: Between(start, end),
-        },
-        take: 100,
-        order: { created_at: 'DESC' },
+    if (from && to) {
+      queryBuilder.andWhere('withdrawal.created_at BETWEEN :from AND :to', {
+        from,
+        to,
       });
-      if (res.length) {
-        for (const request of res) {
-          requests.push({
-            id: request.id,
-            username: request.username,
-            userId: request.user_id,
-            amount: request.amount,
-            accountNumber: request.account_number,
-            accountName: request.account_name,
-            bankName: request.bank_name,
-            updatedBy: request.updated_by,
-            status: request.status,
-            created: request.created_at,
-          });
-        }
-      }
-      return {
-        success: true,
-        status: HttpStatus.OK,
-        message: 'Success',
-        data: requests,
-      };
-    } catch (e) {
-      return {
-        success: false,
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Something went wrong',
-        data: null,
-      };
     }
+
+    if (status !== undefined && status !== null) {
+      queryBuilder.andWhere('withdrawal.status = :status', { status });
+    }
+
+    if (userId) {
+      queryBuilder.andWhere('withdrawal.user_id = :userId', { userId });
+    }
+
+    if (username) {
+      queryBuilder.andWhere('withdrawal.username = :username', {
+        username: `%${username}%`,
+      });
+    }
+
+    if (bankName) {
+      queryBuilder.andWhere('withdrawal.bank_name = :bankName', {
+        bankName: `%${bankName}%`,
+      });
+    }
+
+    const [dataList, total] = await queryBuilder
+      .orderBy('withdrawal.created_at', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    // Total amount aggregation
+    const totalAmountResult = await this.withdrawalRepository
+      .createQueryBuilder('withdrawal')
+      .select('SUM(withdrawal.amount)', 'total')
+      .andWhere('withdrawal.client_id = :clientId', { clientId });
+
+    if (from && to) {
+      totalAmountResult.andWhere('withdrawal.created_at BETWEEN :from AND :to', {
+        from,
+        to,
+      });
+    }
+
+    const totalAmountRow = await totalAmountResult.getRawOne();
+    const totalAmount = parseFloat(totalAmountRow?.total || 0);
+
+    const mappedData = dataList.map((withdrawal) => ({
+      id: withdrawal.id,
+      userId: withdrawal.user_id,
+      username: withdrawal.username,
+      amount: Number(withdrawal.amount),
+      accountNumber: withdrawal.account_number,
+      accountName: withdrawal.account_name,
+      bankName: withdrawal.bank_name,
+      updatedBy: withdrawal.updated_at,
+      status: withdrawal.status,
+      created: withdrawal.created_at,
+    }));
+
+    return {
+      success: true,
+      status: 200,
+      message: 'Withdrawal requests fetched successfully',
+      data: mappedData,
+      totalAmount,
+      total,
+      page,
+      limit,
+    };
   }
 
   async getUserBankAccounts(data): Promise<GetUserAccountsResponse> {

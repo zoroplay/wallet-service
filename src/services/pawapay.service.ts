@@ -37,6 +37,74 @@ export class PawapayService {
     });
   }
 
+  // async generatePaymentLink(data, client_id) {
+  //   try {
+  //     console.log('CHECK-1');
+  //     const settings = await this.pawapaySettings(client_id);
+
+  //     if (!settings)
+  //       return {
+  //         success: false,
+  //         message: 'PawaPay has not been configured for client',
+  //       };
+
+  //     const contentDigest = this.generateContentDigest(data);
+  //     const contentType = 'application/json; charset=UTF-8';
+  //     const signatureDate = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  //     const signatureBase =
+  //       `"content-digest": ${contentDigest}\n` +
+  //       `"content-type": ${contentType}\n` +
+  //       `"signature-date": ${signatureDate}`;
+
+  //     //const privateKey = settings.public_key;
+  //     const privateKey = settings.public_key.replace(/\\n/g, '\n');
+
+  //     const signer = crypto.createSign('RSA-SHA512');
+  //     signer.update(signatureBase);
+  //     signer.end();
+  //     const signature = signer.sign(privateKey, 'base64');
+
+  //     const created = Math.floor(Date.now() / 1000);
+  //     const expires = created + 300;
+  //     const signatureInput = `sig-pp=("content-digest" "content-type" "signature-date");keyid="${settings.merchant_id}";alg="rsa-v1_5-sha512";created=${created};expires=${expires}`;
+  //     const signatureHeader = `sig-pp=:${signature}:`;
+
+  //     console.log('Signature Base:', signatureBase);
+  //     console.log('Signature:', signature);
+  //     console.log('Signature Input:', signatureInput);
+  //     console.log('Signature Header:', signatureHeader);
+
+  //     const response = await fetch(`${settings.base_url}/deposits`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Digest': contentDigest,
+  //         'Content-Type': contentType,
+  //         'Signature-Date': signatureDate,
+  //         'Signature-Input': signatureInput,
+  //         Signature: signatureHeader,
+  //         Authorization: `Bearer ${settings.secret_key}`,
+  //       },
+  //       body: JSON.stringify(data),
+  //     });
+
+  //     const responseData = await response.json();
+  //     console.log('FULL RESPONSE:::::::', responseData);
+
+  //     console.log('CHECK-3');
+
+  //     return { success: true, data: responseData };
+  //   } catch (error) {
+  //     console.error(
+  //       'PawaPay Error:',
+  //       error.response ? error.responseData.data : error.message,
+  //     );
+  //     return {
+  //       success: false,
+  //       message: error.responseData?.data.errorMessage || error.message,
+  //     };
+  //   }
+  // }
+
   async generatePaymentLink(data, client_id) {
     try {
       console.log('CHECK-1');
@@ -47,9 +115,9 @@ export class PawapayService {
           success: false,
           message: 'PawaPay has not been configured for client',
         };
-        console.log("FINAL_PHONE NUMBER::",data.msisdn)
+      console.log('FINAL_PHONE NUMBER::', data.msisdn);
 
-      const response = await fetch(`${settings.base_url}/v1/widget/sessions`, {
+      const response = await fetch(`${settings.base_url}/deposits`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${settings.secret_key}`,
@@ -59,12 +127,18 @@ export class PawapayService {
       });
 
       const responseData = await response.json();
-      console.log("FULL RESPONSE:::::::",responseData);
-      console.log(responseData.redirectUrl);
+      console.log('FULL RESPONSE:::::::', responseData);
 
       console.log('CHECK-3');
 
-      return { success: true, data: responseData.redirectUrl };
+      return {
+        success: true,
+        message: 'Payment link generated successfully',
+        data: {
+          depositId: responseData.depositId,
+          status: responseData.status,
+        },
+      };
     } catch (error) {
       console.error(
         'PawaPay Error:',
@@ -333,7 +407,7 @@ export class PawapayService {
     const data = typeof body === 'string' ? body : JSON.stringify(body);
     hash.update(data);
     const digest = hash.digest('base64');
-    return `${algorithm}=:${digest}:`;
+    return `${algorithm}=:${digest}`; // removed final colon
   }
 
   async createRefund(
