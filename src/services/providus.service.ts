@@ -34,19 +34,9 @@ export class ProvidusService {
     });
   }
 
-  private generateSignature(
-    timestamp: string,
-    clientId: string,
-    secretKey: string,
-  ): string {
-    const dataToSign = `${clientId}:${timestamp}`;
-    // const secretKey = process.env.PROVIDUS_CLIENT_SECRET;
-
-    return crypto
-      .createHmac('sha512', secretKey)
-      .update(dataToSign)
-      .digest('hex')
-      .toUpperCase();
+  async generateSignature(clientId: string, secret: string): Promise<string> {
+    const raw = `${clientId}:${secret}`;
+    return crypto.createHash('sha512').update(raw).digest('hex');
   }
 
   async initiatePayment(data, client_id) {
@@ -59,27 +49,22 @@ export class ProvidusService {
     }
     console.log('THE-DATA', data);
 
-    const timestamp = new Date().toISOString();
-
     const url = `${settings.base_url}/PiPCreateDynamicAccountNumber`;
-
     const clientIdEncoded = settings.merchant_id;
-    const clientIdDecoded = Buffer.from(clientIdEncoded, 'base64').toString(
-      'utf-8',
-    );
-    const sectKey = settings.secret_key;
+    const clientId = Buffer.from(clientIdEncoded, 'base64').toString(); // 'test_Providus'
+    const clientSecret = settings.secret_key;
 
-    const signature = this.generateSignature(
-      timestamp,
-      clientIdDecoded,
-      sectKey,
-    );
+    const rawSignature = `${clientId}:${clientSecret}`;
+
+    const signature = await this.generateSignature(clientId, rawSignature);
 
     const headers = {
       'Content-Type': 'application/json',
       'Client-Id': clientIdEncoded,
       'X-Auth-Signature': signature,
     };
+
+    console.log(headers);
 
     try {
       const response = await axios.post(url, data, { headers });
