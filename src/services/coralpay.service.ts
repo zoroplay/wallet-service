@@ -119,6 +119,7 @@ export class CoralPayService {
           message: 'Coralpay has not been configured for client',
         };
       }
+      console.log(param);
 
       const authValid = this.verifyBasicAuth(
         param.authHeader,
