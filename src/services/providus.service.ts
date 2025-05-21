@@ -85,7 +85,6 @@ export class ProvidusService {
       const response = await axios.post(url, data, { headers });
       console.log('RESPONSE', response.data);
 
-      console.log('RESPONSE2', response);
       return response.data;
     } catch (error) {
       console.error(
