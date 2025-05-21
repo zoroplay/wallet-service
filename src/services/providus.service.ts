@@ -39,7 +39,7 @@ export class ProvidusService {
     return crypto.createHash('sha512').update(raw).digest('hex');
   }
 
-  async initiatePayment(data, client_id) {
+  async initiatePayment(client_id) {
     const settings = await this.providusSettings(client_id);
     if (!settings) {
       return {
@@ -47,7 +47,7 @@ export class ProvidusService {
         message: `Payment method not found`,
       };
     }
-    console.log('THE-DATA', data);
+    //console.log('THE-DATA', data);
 
     const url = `${settings.base_url}/PiPCreateDynamicAccountNumber`;
     const clientIdEncoded = settings.merchant_id;
@@ -65,12 +65,12 @@ export class ProvidusService {
     };
 
     console.log('HEADERS:', headers);
-    console.log('DATA:', data);
+    //console.log('DATA:', data);
     console.log('SIGNATURE INPUT:', `${clientId}:${clientSecret}`);
     console.log('SIGNATURE:::', signature);
 
     try {
-      const response = await axios.post(url, data, { headers });
+      const response = await axios.post(url, { headers });
       console.log('RESPONSE', response.data);
 
       return response.data;
