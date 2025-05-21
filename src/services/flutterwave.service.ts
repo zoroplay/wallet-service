@@ -44,12 +44,17 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      console.log(data);
+      const payload = {
+        ...data,
+        meta: {
+          client_id: paymentSettings.client_id,
+        },
+      };
 
       try {
         const response = await axios.post(
           `${paymentSettings.base_url}/payments`,
-          data,
+          payload,
           {
             headers: {
               Authorization: `Bearer ${paymentSettings.secret_key}`,
@@ -57,6 +62,8 @@ export class FlutterwaveService {
             },
           },
         );
+
+        console.log(response);
 
         console.log(response.data);
 
@@ -66,8 +73,6 @@ export class FlutterwaveService {
             message: 'Payment initiation failed',
           };
         }
-
-        console.log('Flutterwave Response:', response.data);
 
         if (!response.data || !response.data.data) {
           return {

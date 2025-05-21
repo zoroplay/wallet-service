@@ -207,6 +207,12 @@ export class CoralPayService {
           message: 'Transaction successfully verified and processed',
         };
       }
+
+      return {
+        success: false,
+        message: 'Transaction not successful',
+        statusCode: HttpStatus.BAD_REQUEST,
+      };
       // 4. Verify signature
     } catch (error) {
       console.error('❌ OPay webhook processing error:', error.message);
