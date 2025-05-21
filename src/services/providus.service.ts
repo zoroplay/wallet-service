@@ -61,7 +61,7 @@ export class ProvidusService {
 
     const timestamp = new Date().toISOString();
 
-    const url = `${settings.base_url}/api/PiPCreateDynamicAccountNumber`;
+    const url = `${settings.base_url}/PiPCreateDynamicAccountNumber`;
 
     const clientIdEncoded = settings.merchant_id;
     const clientIdDecoded = Buffer.from(clientIdEncoded, 'base64').toString(
