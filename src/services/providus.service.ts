@@ -57,6 +57,7 @@ export class ProvidusService {
         message: `Payment method not found`,
       };
     }
+    console.log('THE-DATA', data);
 
     const timestamp = new Date().toISOString();
 
@@ -82,7 +83,9 @@ export class ProvidusService {
 
     try {
       const response = await axios.post(url, data, { headers });
-      console.log(response.data);
+      console.log('RESPONSE', response.data);
+
+      console.log('RESPONSE2', response);
       return response.data;
     } catch (error) {
       console.error(

@@ -426,10 +426,12 @@ export class PaymentService {
             param.clientId,
           );
 
-          link = providusRes;
           console.log(providusRes.initiationTranRef);
           console.log('THE_LINK', JSON.stringify(link, null, 2));
           console.log('THE_RES', JSON.stringify(providusRes, null, 2));
+
+          link = providusRes;
+          
           break;
 
         case 'monnify':
