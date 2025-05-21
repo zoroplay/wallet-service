@@ -182,6 +182,7 @@ export class PaymentService {
 
         case 'flutterwave':
           transactionNo = generateTrxNo();
+           const userEmail = user.email || `noemail+${username}@example.com`;
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
@@ -190,7 +191,7 @@ export class PaymentService {
               redirect_url:
                 user.callbackUrl + '/payment-verification/flutterwave',
               customer: {
-                email: user.email,
+                email: userEmail,
                 phone_number: '+234' + user.username,
               },
             },
@@ -198,7 +199,6 @@ export class PaymentService {
           );
           description = 'Online Deposit (Flutterwave)';
           if (!result.success) return result as any;
-          console.log(result);
 
           link = result.data.link;
 
@@ -418,14 +418,11 @@ export class PaymentService {
           description = 'Online Deposit (Providus )';
           transactionNo = generateTrxNo();
           const providusRes = await this.providusService.initiatePayment(
-           
             param.clientId,
           );
 
-         
-
           link = providusRes.data;
-          
+
           break;
 
         case 'monnify':
