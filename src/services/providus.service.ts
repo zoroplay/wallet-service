@@ -51,7 +51,7 @@ export class ProvidusService {
 
     const url = `${settings.base_url}/PiPCreateDynamicAccountNumber`;
     const clientIdEncoded = settings.merchant_id;
-    const clientId = Buffer.from(clientIdEncoded, 'base64').toString(); // 'test_Providus'
+    const clientId = Buffer.from(clientIdEncoded, 'base64').toString();
     const clientSecret = settings.secret_key;
 
     const rawSignature = `${clientId}:${clientSecret}`;
@@ -70,7 +70,7 @@ export class ProvidusService {
 
     try {
       const response = await axios.post(url, data, { headers });
-      console.log('RESPONSE', response);
+      console.log('RESPONSE', response.data);
 
       return response.data;
     } catch (error) {
