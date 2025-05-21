@@ -34,32 +34,59 @@ export class ProvidusService {
     });
   }
 
-  async initiatePayment(data, client_id) {
-    console.log(client_id);
-    const timestamp = new Date().toISOString();
-    const baseUrl = process.env.PROVIDUS_BASE_URL as string;
-    const url = `${baseUrl}/api/PiPCreateDynamicAccountNumber`;
-    const clientId = process.env.PROVIDUS_CLIENT_ID as string;
+  private generateSignature(
+    timestamp: string,
+    clientId: string,
+    secretKey: string,
+  ): string {
+    const dataToSign = `${clientId}:${timestamp}`;
+    // const secretKey = process.env.PROVIDUS_CLIENT_SECRET;
 
-    const signature = this.generateSignature(timestamp);
+    return crypto
+      .createHmac('sha512', secretKey)
+      .update(dataToSign)
+      .digest('hex')
+      .toUpperCase();
+  }
+
+  async initiatePayment(data, client_id) {
+    const settings = await this.providusSettings(client_id);
+    if (!settings) {
+      return {
+        status: false,
+        message: `Payment method not found`,
+      };
+    }
+
+    const timestamp = new Date().toISOString();
+
+    const url = `${settings.base_url}/api/PiPCreateDynamicAccountNumber`;
+
+    const clientIdEncoded = settings.merchant_id;
+    const clientIdDecoded = Buffer.from(clientIdEncoded, 'base64').toString(
+      'utf-8',
+    );
+    const sectKey = settings.secret_key;
+
+    const signature = this.generateSignature(
+      timestamp,
+      clientIdDecoded,
+      sectKey,
+    );
 
     const headers = {
       'Content-Type': 'application/json',
-      'Client-Id': clientId,
+      'Client-Id': clientIdEncoded,
       'X-Auth-Signature': signature,
     };
-    const payload = { account_name: data.username, ...data };
 
     try {
-      const response = await axios.post(url, payload, {
-        headers,
-      });
+      const response = await axios.post(url, data, { headers });
       console.log(response.data);
-
       return response.data;
     } catch (error) {
       console.error(
-        '❌ Error during Tigo payment initiation:',
+        '❌ Error during Providus payment initiation:',
         error.response?.data || error.message,
       );
       return {
@@ -68,14 +95,5 @@ export class ProvidusService {
         error: error.response?.data || error.message,
       };
     }
-  }
-
-  private generateSignature(timestamp: string): string {
-    const dataToSign = `${process.env.PROVIDUS_CLIENT_ID}:${timestamp}`;
-    return crypto
-      .createHmac('sha512', process.env.PROVIDUS_CLIENT_ID)
-      .update(dataToSign)
-      .digest('hex')
-      .toUpperCase();
   }
 }

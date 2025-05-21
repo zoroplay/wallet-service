@@ -236,18 +236,29 @@ export class PaymentService {
           break;
 
         case 'coralpay':
-          const traceId = generateTrxNo();
+          function generateTrxNumber(): string {
+            const timestamp = Date.now().toString(36);
+            const randomPart = Math.random()
+              .toString(36)
+              .substr(2, 10)
+              .toUpperCase();
+            return `TRX${timestamp}${randomPart}`;
+          }
+
+          const traceId = generateTrxNumber();
           transactionNo = traceId;
           const formattedAmount = param.amount.toFixed(2);
+          const customEmail =
+            user.email || `noemail+${user.username}@example.com`;
+
           const coralRes = await this.coralPayService.initiatePayment(
             {
               customer: {
-                email: user.email,
+                email: customEmail,
                 name: user.username,
                 phone: user.username,
                 tokenUserId: user.username,
               },
-
               customization: {
                 title: 'Coralpay Payment',
                 description: 'Payment via Virtual Account',
@@ -408,6 +419,7 @@ export class PaymentService {
           transactionNo = generateTrxNo();
           const providusRes = await this.providusService.initiatePayment(
             {
+              account_name: 'CharlyWize(Adewale)',
               initiationTranRef: transactionNo,
               amount: param.amount,
             },
@@ -816,8 +828,6 @@ export class PaymentService {
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
             return this.pawapayService.verifyTransaction(param);
-          case 'coralpay':
-            return this.coralPayService.verifyTransaction(param);
 
             break;
           default:
