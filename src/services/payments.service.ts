@@ -426,11 +426,9 @@ export class PaymentService {
             param.clientId,
           );
 
-          console.log(providusRes.initiationTranRef);
-          console.log('THE_LINK', JSON.stringify(link, null, 2));
-          console.log('THE_RES', JSON.stringify(providusRes, null, 2));
+         
 
-          link = providusRes;
+          link = providusRes.data;
           
           break;
 
