@@ -276,6 +276,7 @@ export class FlutterwaveService {
 
   async handleWebhook(data) {
     try {
+      console.log('FLUTRWAVE', data);
       const isValid = this.verifySignature(data);
 
       if (!isValid) {
