@@ -67,6 +67,7 @@ export class ProvidusService {
     console.log('HEADERS:', headers);
     console.log('DATA:', data);
     console.log('SIGNATURE INPUT:', `${clientId}:${clientSecret}`);
+    console.log('SIGNATURE:::', signature);
 
     try {
       const response = await axios.post(url, data, { headers });
