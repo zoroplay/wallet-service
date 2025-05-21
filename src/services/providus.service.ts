@@ -34,7 +34,7 @@ export class ProvidusService {
     });
   }
 
-  async generateSignature(clientId: string, secret: string): Promise<string> {
+  private generateSignature(clientId: string, secret: string): string {
     const raw = `${clientId}:${secret}`;
     return crypto.createHash('sha512').update(raw).digest('hex');
   }
@@ -60,15 +60,17 @@ export class ProvidusService {
 
     const headers = {
       'Content-Type': 'application/json',
-      'Client-Id': clientIdEncoded,
+      'Client-Id': clientId,
       'X-Auth-Signature': signature,
     };
 
-    console.log(headers);
+    console.log('HEADERS:', headers);
+    console.log('DATA:', data);
+    console.log('SIGNATURE INPUT:', `${clientId}:${clientSecret}`);
 
     try {
       const response = await axios.post(url, data, { headers });
-      console.log('RESPONSE', response.data);
+      console.log('RESPONSE', response);
 
       return response.data;
     } catch (error) {
