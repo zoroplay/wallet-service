@@ -553,7 +553,7 @@ export class AppService {
           transactionId,
         });
 
-      console.log(skip, limit)
+      // console.log(skip, limit)
 
       const result = await query
         .orderBy("created_at", "DESC")
@@ -567,8 +567,6 @@ export class AppService {
         ...item,
         created_at: dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss"),
       }));
-
-      console.log(results, total);
 
       return paginateResponse([results, total], page, limit);
     } catch (e) {
