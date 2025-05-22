@@ -39,7 +39,7 @@ export class ProvidusService {
     return crypto.createHash('sha512').update(raw).digest('hex');
   }
 
-  async initiatePayment(client_id) {
+  async initiatePayment(data, client_id) {
     const settings = await this.providusSettings(client_id);
     if (!settings) {
       return {
@@ -50,27 +50,28 @@ export class ProvidusService {
     //console.log('THE-DATA', data);
 
     const url = `${settings.base_url}/PiPCreateDynamicAccountNumber`;
-    const clientIdEncoded = settings.merchant_id;
-    const clientId = Buffer.from(clientIdEncoded, 'base64').toString();
+    const clientId = settings.merchant_id;
     const clientSecret = settings.secret_key;
 
-    const rawSignature = `${clientId}:${clientSecret}`;
+    const signatureInput = `${clientId}:${clientSecret}`;
+    const xAuthSignature = crypto
+      .createHash('sha512')
+      .update(signatureInput)
+      .digest('hex');
 
-    const signature = await this.generateSignature(clientId, rawSignature);
+    console.log('X-Auth-Signature:', xAuthSignature);
 
     const headers = {
       'Content-Type': 'application/json',
       'Client-Id': clientId,
-      'X-Auth-Signature': signature,
+      'X-Auth-Signature': xAuthSignature,
     };
 
     console.log('HEADERS:', headers);
     //console.log('DATA:', data);
-    console.log('SIGNATURE INPUT:', `${clientId}:${clientSecret}`);
-    console.log('SIGNATURE:::', signature);
 
     try {
-      const response = await axios.post(url, { headers });
+      const response = await axios.post(url, data, { headers });
       console.log('RESPONSE', response.data);
 
       return response.data;
