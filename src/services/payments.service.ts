@@ -420,8 +420,8 @@ export class PaymentService {
           const providusRes = await this.providusService.initiatePayment(
             {
               account_name: 'CustomerWize',
-              amount: param.amount,
-              initiationTranRef: transactionNo,
+              // amount: param.amount,
+              // initiationTranRef: transactionNo,
             },
             param.clientId,
           );
