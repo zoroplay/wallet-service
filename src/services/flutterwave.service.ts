@@ -274,12 +274,18 @@ export class FlutterwaveService {
 
   async handleWebhook(data) {
     try {
-      console.log('FLUTRWAVE', data);
+      console.log('FLUTRWAVE', JSON.stringify(data));
+      console.log('FLUTRWAVE', data.body);
       const isValid = this.verifySignature(data);
 
       if (!isValid) {
-        throw new BadRequestException('Invalid webhook signature');
+        return {
+          success: false,
+          message: 'Invalid webhook signature',
+        };
       }
+
+      console.log('FIRE');
 
       switch (data.event) {
         case 'charge.completed':
@@ -301,9 +307,10 @@ export class FlutterwaveService {
       return { success: true, message: 'Webhook processed successfully' };
     } catch (error) {
       console.error('Webhook processing error:', error.message);
-      throw new BadRequestException(
-        `Webhook handling failed: ${error.message}`,
-      );
+      return {
+        success: false,
+        message: `Webhook handling failed: ${error.message}`,
+      };
     }
   }
 
@@ -311,7 +318,7 @@ export class FlutterwaveService {
     const paymentSettings = await this.flutterwaveSettings(data.clientId);
     const hash = crypto
       .createHmac('sha256', paymentSettings.secret_key)
-      .update(JSON.stringify(data.body))
+      .update(data.body)
       .digest('hex');
 
     return hash === data.flutterwaveKey;
@@ -319,6 +326,7 @@ export class FlutterwaveService {
 
   // Handlers for different webhook events
   private async handleChargeCompleted(data: any): Promise<void> {
+    console.log('I GOT TO TRX');
     const transaction = await this.transactionRepository.findOne({
       where: { transaction_no: data.tx_ref },
     });
@@ -337,6 +345,8 @@ export class FlutterwaveService {
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
+
+      console.log('I GOT TO TRX AND EXIT');
 
       await this.notifyTrackier(transaction, data.clientId);
     }
