@@ -325,11 +325,20 @@ export class FlutterwaveService {
   }
 
   // Handlers for different webhook events
-  private async handleChargeCompleted(data: any): Promise<void> {
+  private async handleChargeCompleted(data: any) {
     console.log('I GOT TO TRX');
     const transaction = await this.transactionRepository.findOne({
       where: { transaction_no: data.tx_ref },
     });
+
+    if (transaction.status === 1) {
+      console.log('ℹ️ Transaction already marked successful.');
+      return {
+        success: true,
+        message: 'Transaction already successful',
+        statusCode: HttpStatus.OK,
+      };
+    }
 
     if (transaction && transaction.status === 0) {
       const wallet = await this.walletRepository.findOne({
