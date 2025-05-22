@@ -44,17 +44,10 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      const payload = {
-        ...data,
-        meta: {
-          client_id: paymentSettings.client_id,
-        },
-      };
-
       try {
         const response = await axios.post(
           `${paymentSettings.base_url}/payments`,
-          payload,
+          data,
           {
             headers: {
               Authorization: `Bearer ${paymentSettings.secret_key}`,
