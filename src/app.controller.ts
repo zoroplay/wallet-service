@@ -167,7 +167,7 @@ export class AppController {
     return this.depositService.fetchBetRange(payload);
   }
 
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterwaveWebhook')
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FlutterWaveWebhook')
   flutterWaveWebhook(param: FlutterwaveWebhookRequest) {
     return this.flutterwaveService.handleWebhook(param);
   }
