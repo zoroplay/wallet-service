@@ -418,6 +418,11 @@ export class PaymentService {
           description = 'Online Deposit (Providus )';
           transactionNo = generateTrxNo();
           const providusRes = await this.providusService.initiatePayment(
+            {
+              account_name: 'CustomerWize',
+              amount: param.amount,
+              initiationTranRef: transactionNo,
+            },
             param.clientId,
           );
 
