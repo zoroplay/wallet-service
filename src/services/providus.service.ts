@@ -72,7 +72,7 @@ export class ProvidusService {
 
     try {
       const response = await axios.post(url, data, { headers });
-      console.log('RESPONSE', response.data);
+      console.log('RESPONSE', response);
 
       return response.data;
     } catch (error) {
