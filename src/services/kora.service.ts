@@ -219,10 +219,14 @@ export class KorapayService {
 
   async processWebhook(data) {
     try {
-      const isValid = this.verifySignature(data);
+      console.log('KORAPAY WEBHOOK:', JSON.stringify(data));
+      const isValid = await this.verifySignature(data);
 
       if (!isValid) {
-        throw new BadRequestException('Invalid webhook signature');
+        return {
+          success: false,
+          message: 'Invalid webhook signature',
+        };
       }
 
       switch (data.event) {
@@ -255,17 +259,27 @@ export class KorapayService {
 
     const hash = crypto
       .createHmac('sha256', paymentSettings.secret_key)
-      .update(JSON.stringify(data.body))
+      .update(data.body)
       .digest('hex');
 
     return hash === data.korapayKey;
   }
 
   // Handlers for different webhook events
-  private async handleChargeCompleted(data: any): Promise<void> {
+  private async handleChargeCompleted(data: any) {
+    console.log('I GOT TO TRX');
     const transaction = await this.transactionRepository.findOne({
       where: { transaction_no: data.tx_ref },
     });
+
+    if (transaction.status === 1) {
+      console.log('ℹ️ Transaction already marked successful.');
+      return {
+        success: true,
+        message: 'Transaction already successful',
+        statusCode: HttpStatus.OK,
+      };
+    }
 
     if (transaction && transaction.status === 0) {
       const wallet = await this.walletRepository.findOne({
@@ -281,7 +295,7 @@ export class KorapayService {
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
-
+      console.log('I GOT TO TRX AND EXIT');
       await this.notifyTrackier(transaction, data.clientId);
     }
   }
