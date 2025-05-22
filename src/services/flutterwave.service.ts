@@ -276,7 +276,7 @@ export class FlutterwaveService {
     try {
       console.log('FLUTRWAVE', JSON.stringify(data));
       console.log('FLUTRWAVE', data.body);
-      const isValid = this.verifySignature(data);
+      const isValid = await this.verifySignature(data);
 
       if (!isValid) {
         return {
@@ -306,7 +306,8 @@ export class FlutterwaveService {
 
       return { success: true, message: 'Webhook processed successfully' };
     } catch (error) {
-      console.error('Webhook processing error:', error.message);
+      console.error('Webhook processing error:', error);
+
       return {
         success: false,
         message: `Webhook handling failed: ${error.message}`,
