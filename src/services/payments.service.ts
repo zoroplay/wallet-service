@@ -110,10 +110,12 @@ export class PaymentService {
       switch (param.paymentMethod) {
         case 'paystack':
           transactionNo = generateTrxNo();
+          const paystackEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const pRes: any = await this.paystackService.generatePaymentLink(
             {
               amount: param.amount * 100,
-              email: user.email,
+              email: paystackEmail,
               reference: transactionNo,
               callback_url: user.callbackUrl + '/payment-verification/paystack',
             },
@@ -133,7 +135,7 @@ export class PaymentService {
             username = '255' + username.replace(/^0+/, '');
           }
 
-          const email = user.email || `noemail+${username}@example.com`;
+          const email = user.email || `noemail+${username}@${user.siteUrl}`;
 
           console.log(username);
           const depositId = uuidv4();
@@ -182,7 +184,7 @@ export class PaymentService {
 
         case 'flutterwave':
           transactionNo = generateTrxNo();
-          const userEmail = user.email || `noemail+${username}@example.com`;
+          const userEmail = user.email || `noemail+${username}@${user.siteUrl}`;
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
@@ -206,12 +208,14 @@ export class PaymentService {
 
         case 'fidelity':
           transactionNo = generateTrxNo();
+          const fidelityEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const fRes = await this.fidelityService.initiatePay(
             {
               service_payload: {
                 first_name: user.username,
                 last_name: user.username,
-                email_address: user.email,
+                email_address: fidelityEmail,
                 phone_number: user.username,
                 transaction_reference: transactionNo,
                 amount: param.amount,
@@ -249,7 +253,7 @@ export class PaymentService {
           transactionNo = traceId;
           const formattedAmount = param.amount.toFixed(2);
           const customEmail =
-            user.email || `noemail+${user.username}@example.com`;
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
 
           const coralRes = await this.coralPayService.initiatePayment(
             {
@@ -319,6 +323,8 @@ export class PaymentService {
         case 'korapay':
           console.log('KORAPAY');
           transactionNo = generateTrxNo();
+          const korapayEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const koraRes = await this.korapayService.createPayment(
             {
               amount: param.amount,
@@ -333,7 +339,7 @@ export class PaymentService {
               },
               narration: 'Online Deposit (Korapay)',
               customer: {
-                email: user.email,
+                email: korapayEmail,
               },
               merchant_bears_cost: false,
             },
@@ -432,11 +438,13 @@ export class PaymentService {
 
         case 'monnify':
           transactionNo = generateTrxNo();
+          const monifyEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const mRes: any = await this.monnifyService.generatePaymentLink(
             {
               amount: param.amount,
               name: user.username,
-              email: user.email || `${user.username}@${user.siteUrl}`,
+              email: monifyEmail,
               reference: transactionNo,
               callback_url: user.callbackUrl + '/payment-verification/monnify',
             },
