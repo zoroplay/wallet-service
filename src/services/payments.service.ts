@@ -184,7 +184,8 @@ export class PaymentService {
 
         case 'flutterwave':
           transactionNo = generateTrxNo();
-          const userEmail = user.email || `noemail+${username}@${user.siteUrl}`;
+          const userEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
