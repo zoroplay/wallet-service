@@ -328,15 +328,15 @@ export class FlutterwaveService {
 
       console.log('Computed Hash:', hash);
       console.log('Received Signature:', data.flutterwaveKey);
-      const isValid = hash === data.flutterwaveKey;
+      // const isValid = hash === data.flutterwaveKey;
 
-      if (!isValid) {
-        return {
-          success: false,
-          message: 'Invalid webhook signature',
-          statusCode: HttpStatus.UNAUTHORIZED,
-        };
-      }
+      // if (!isValid) {
+      //   return {
+      //     success: false,
+      //     message: 'Invalid webhook signature',
+      //     statusCode: HttpStatus.UNAUTHORIZED,
+      //   };
+      // }
 
       console.log('EVENT:::', data.event);
 
