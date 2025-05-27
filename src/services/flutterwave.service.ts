@@ -317,8 +317,7 @@ export class FlutterwaveService {
 
   async handleWebhook(data) {
     try {
-      console.log('FLUTRWAVE', JSON.stringify(data));
-      console.log('FLUTRWAVE BODY', data.body);
+      console.log('FLUTRWAVE', data);
 
       const paymentSettings = await this.flutterwaveSettings(data.clientId);
 
@@ -327,6 +326,8 @@ export class FlutterwaveService {
         .update(data.body) // make sure data.body is a raw JSON string
         .digest('hex');
 
+      console.log('Computed Hash:', hash);
+      console.log('Received Signature:', data.flutterwaveKey);
       const isValid = hash === data.flutterwaveKey;
 
       if (!isValid) {
@@ -336,6 +337,8 @@ export class FlutterwaveService {
           statusCode: HttpStatus.UNAUTHORIZED,
         };
       }
+
+      console.log('EVENT:::', data.event);
 
       if (data.event === 'charge.completed') {
         console.log('FIRE');
