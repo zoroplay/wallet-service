@@ -830,7 +830,7 @@ export class PaymentService {
           case 'wayaquick':
             return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
-           // return this.flutterwaveService.verifyTransaction(param);
+            return this.flutterwaveService.verifyTransaction(param);
           case 'korapay':
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
