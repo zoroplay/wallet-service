@@ -261,22 +261,22 @@ export class KorapayService {
 
       console.log('FLUTRWAVE BODY', data.body.reference);
 
-      const paymentSettings = await this.korapaySettings(data.clientId);
+      // const paymentSettings = await this.korapaySettings(data.clientId);
 
-      const hash = crypto
-        .createHmac('sha256', paymentSettings.secret_key)
-        .update(data.body) // make sure data.body is a raw JSON string
-        .digest('hex');
+      // const hash = crypto
+      //   .createHmac('sha256', paymentSettings.secret_key)
+      //   .update(data.body) // make sure data.body is a raw JSON string
+      //   .digest('hex');
 
-      const isValid = hash === data.flutterwaveKey;
+      // const isValid = hash === data.flutterwaveKey;
 
-      if (!isValid) {
-        return {
-          success: false,
-          message: 'Invalid webhook signature',
-          statusCode: HttpStatus.UNAUTHORIZED,
-        };
-      }
+      // if (!isValid) {
+      //   return {
+      //     success: false,
+      //     message: 'Invalid webhook signature',
+      //     statusCode: HttpStatus.UNAUTHORIZED,
+      //   };
+      // }
 
       if (data.event === 'charge.completed') {
         console.log('FIRE');
