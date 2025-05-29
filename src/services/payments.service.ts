@@ -851,7 +851,7 @@ export class PaymentService {
       // find payment method for withdrawal
       const paymentMethod = await this.paymentMethodRepository.findOne({
         where: {
-          client_id: 1,
+          client_id: param.clientId,
           for_disbursement: 1,
         },
       });

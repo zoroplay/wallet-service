@@ -351,11 +351,13 @@ export class MonnifyService {
             Accept: 'application/json',
           },
         );
+        console.log('response from monnify', resp);
         return { success: true, data: resp.responseBody.checkoutUrl };
       } else {
         return { success: false, data: null };
       }
     } catch (e) {
+      console.log('monnify error', e.message);
       return {
         success: false,
         message: 'Unable to initiate deposit with monnify',

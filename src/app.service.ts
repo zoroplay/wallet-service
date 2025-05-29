@@ -274,10 +274,42 @@ export class AppService {
       );
 
       const transactionNo = generateTrxNo();
-      // add request to queue
-      // await this.depositQueue.add('credit-user', data, {
-      //   jobId: `credit-user:${transactionNo}`,
-      // });
+      //to-do save transaction log
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo,
+        amount: parseFloat(data.amount),
+        description: data.description,
+        subject: data.subject,
+        channel: data.channel,
+        source: data.source,
+        fromUserId: 0,
+        fromUsername: "System",
+        fromUserBalance: 0,
+        toUserId: data.userId,
+        toUsername: data.username,
+        toUserBalance: balance,
+        status: 1,
+        walletType,
+      });
+
+      // send deposit to trackier
+      try {
+        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+
+        if (keys.success){
+          await this.helperService.sendActivity({
+            subject: data.subject,
+            username: data.username,
+            amount: data.amount,
+            transactionId: transactionNo,
+            clientId: data.clientId,
+          },  keys.data);
+        }
+
+      } catch (e) {
+        console.log('Trackier error: Credit User', e.message)
+      }
 
       wallet.balance = balance;
       return handleResponse(wallet, 'Wallet credited');
@@ -287,7 +319,7 @@ export class AppService {
     }
   }
 
-  async debitUser(data: any): Promise<WalletResponse> {
+  async debitUser(data: DebitUserRequest): Promise<WalletResponse> {
     try {
       // console.log(data);
       const wallet = await this.walletRepository.findOne({
@@ -295,29 +327,41 @@ export class AppService {
       });
 
       const amount = parseFloat(data.amount);
+      
 
       let balance = 0;
       let walletBalance = 'available_balance';
       let walletType = 'Main';
       switch (data.wallet) {
-        case 'sport-bonus':
-          walletBalance = 'sport_bonus_balance';
-          walletType = 'Sport Bonus';
+        case "sport-bonus":
+          if (wallet.sport_bonus_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+          walletBalance = "sport_bonus_balance";
+          walletType = "Sport Bonus";
           balance = wallet.sport_bonus_balance - amount;
           break;
-        case 'virtual':
-          walletBalance = 'virtual_bonus_balance';
-          walletType = 'Virtual Bonus';
+        case "virtual":
+          if (wallet.virtual_bonus_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+
+          walletBalance = "virtual_bonus_balance";
+          walletType = "Virtual Bonus";
           balance = wallet.virtual_bonus_balance - amount;
           break;
-        case 'casino':
-          walletBalance = 'casino_bonus_balance';
-          walletType = 'Casino Bonus';
+        case "casino":
+          if (wallet.casino_bonus_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+
+          walletBalance = "casino_bonus_balance";
+          walletType = "Casino Bonus";
           balance = wallet.casino_bonus_balance - amount;
           break;
-        case 'trust':
-          walletBalance = 'trust_balance';
-          walletType = 'Trust';
+        case "trust":
+          if (wallet.trust_balance < amount)
+            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+          
+          walletBalance = "trust_balance";
+          walletType = "Trust";
           balance = wallet.trust_balance - amount;
           break;
         default:
@@ -701,7 +745,7 @@ export class AppService {
     startDate,
     endDate,
     page = 1,
-    limit = 20,
+    limit = 50,
   }): Promise<UserTransactionResponse> {
     // console.log(startDate, endDate, userId, clientId)
     try {
@@ -723,7 +767,7 @@ export class AppService {
 
       if (page > 1) {
         offset = (page - 1) * limit;
-        offset = offset + 1;
+        // offset = offset + 1;
       }
 
       console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);

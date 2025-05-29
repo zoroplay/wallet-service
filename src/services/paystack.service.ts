@@ -51,6 +51,7 @@ export class PaystackService {
       );
       return { success: true, data: resp.data };
     } catch (e) {
+      console.log('paystack error', e.message);
       return {
         success: false,
         message: 'Unable to initiate deposit with paystack',
