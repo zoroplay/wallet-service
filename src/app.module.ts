@@ -48,7 +48,8 @@ import { CallbackLog } from './entity/callback-log.entity';
 import { TigoService } from './services/tigo.service';
 import { ProvidusService } from './services/providus.service';
 import { SummeryService } from './services/summery.service';
-
+import { CoralPayService } from './services/coralpay.service';
+import { FidelityService } from './services/fidelity.service';
 
 @Module({
   imports: [
@@ -100,7 +101,7 @@ import { SummeryService } from './services/summery.service';
       CashIn,
       CashOut,
       SalesReport,
-      CallbackLog
+      CallbackLog,
     ]),
     IdentityModule,
     RetailModule,
@@ -135,6 +136,8 @@ import { SummeryService } from './services/summery.service';
     ReportingService,
     ProvidusService,
     SummeryService,
+    CoralPayService,
+    FidelityService,
   ],
 })
 export class AppModule {}

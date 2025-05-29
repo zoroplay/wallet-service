@@ -34,32 +34,50 @@ export class ProvidusService {
     });
   }
 
-  async initiatePayment(data, client_id) {
-    console.log(client_id);
-    const timestamp = new Date().toISOString();
-    const baseUrl = process.env.PROVIDUS_BASE_URL as string;
-    const url = `${baseUrl}/api/PiPCreateDynamicAccountNumber`;
-    const clientId = process.env.PROVIDUS_CLIENT_ID as string;
+  private generateSignature(clientId: string, secret: string): string {
+    const raw = `${clientId}:${secret}`;
+    return crypto.createHash('sha512').update(raw).digest('hex');
+  }
 
-    const signature = this.generateSignature(timestamp);
+  async initiatePayment(data, client_id) {
+    const settings = await this.providusSettings(client_id);
+    if (!settings) {
+      return {
+        status: false,
+        message: `Payment method not found`,
+      };
+    }
+    //console.log('THE-DATA', data);
+
+    const url = `${settings.base_url}/PiPCreateDynamicAccountNumber`;
+    const clientId = settings.merchant_id;
+    const clientSecret = settings.secret_key;
+
+    const signatureInput = `${clientId}:${clientSecret}`;
+    const xAuthSignature = crypto
+      .createHash('sha512')
+      .update(signatureInput)
+      .digest('hex');
+
+    console.log('X-Auth-Signature:', xAuthSignature);
 
     const headers = {
       'Content-Type': 'application/json',
       'Client-Id': clientId,
-      'X-Auth-Signature': signature,
+      'X-Auth-Signature': xAuthSignature,
     };
-    const payload = { account_name: data.username, ...data };
+
+    console.log('HEADERS:', headers);
+    //console.log('DATA:', data);
 
     try {
-      const response = await axios.post(url, payload, {
-        headers,
-      });
-      console.log(response.data);
+      const response = await axios.post(url, data, { headers });
+      console.log('RESPONSE', response.data);
 
       return response.data;
     } catch (error) {
       console.error(
-        '❌ Error during Tigo payment initiation:',
+        '❌ Error during Providus payment initiation:',
         error.response?.data || error.message,
       );
       return {
@@ -68,14 +86,5 @@ export class ProvidusService {
         error: error.response?.data || error.message,
       };
     }
-  }
-
-  private generateSignature(timestamp: string): string {
-    const dataToSign = `${process.env.PROVIDUS_CLIENT_ID}:${timestamp}`;
-    return crypto
-      .createHmac('sha512', process.env.PROVIDUS_CLIENT_ID)
-      .update(dataToSign)
-      .digest('hex')
-      .toUpperCase();
   }
 }

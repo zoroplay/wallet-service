@@ -44,8 +44,6 @@ export class FlutterwaveService {
           message: 'Flutterwave has not been configured for client',
         };
 
-      console.log(data);
-
       try {
         const response = await axios.post(
           `${paymentSettings.base_url}/payments`,
@@ -58,6 +56,8 @@ export class FlutterwaveService {
           },
         );
 
+        console.log(response);
+
         console.log(response.data);
 
         if (!response.data) {
@@ -66,8 +66,6 @@ export class FlutterwaveService {
             message: 'Payment initiation failed',
           };
         }
-
-        console.log('Flutterwave Response:', response.data);
 
         if (!response.data || !response.data.data) {
           return {
@@ -274,37 +272,151 @@ export class FlutterwaveService {
     }
   }
 
+  // async handleWebhook(data) {
+  //   try {
+  //     console.log('FLUTRWAVE', JSON.stringify(data));
+  //     console.log('FLUTRWAVE', data.body);
+  //     const isValid = await this.verifySignature(data);
+
+  //     if (!isValid) {
+  //       return {
+  //         success: false,
+  //         message: 'Invalid webhook signature',
+  //       };
+  //     }
+
+  //     console.log('FIRE');
+
+  //     switch (data.event) {
+  //       case 'charge.completed':
+  //         await this.handleChargeCompleted(data);
+  //         break;
+  //       case 'transfer.success':
+  //         await this.handleTransferSuccess(data);
+  //         break;
+  //       case 'transfer.failed':
+  //         await this.handleTransferFailed(data);
+  //         break;
+  //       case 'transfer.reversed':
+  //         await this.handleTransferReversed(data);
+  //         break;
+  //       default:
+  //         console.log(`Unhandled event type: ${event}`);
+  //     }
+
+  //     return { success: true, message: 'Webhook processed successfully' };
+  //   } catch (error) {
+  //     console.error('Webhook processing error:', error);
+
+  //     return {
+  //       success: false,
+  //       message: `Webhook handling failed: ${error.message}`,
+  //     };
+  //   }
+  // }
+
   async handleWebhook(data) {
     try {
-      const isValid = this.verifySignature(data);
+      console.log('FLUTRWAVE', data);
 
-      if (!isValid) {
-        throw new BadRequestException('Invalid webhook signature');
+      const paymentSettings = await this.flutterwaveSettings(data.clientId);
+
+      const hash = crypto
+        .createHmac('sha256', paymentSettings.secret_key)
+        .update(data.body) // make sure data.body is a raw JSON string
+        .digest('hex');
+
+      console.log('Computed Hash:', hash);
+      console.log('Received Signature:', data.flutterwaveKey);
+      // const isValid = hash === data.flutterwaveKey;
+
+      // if (!isValid) {
+      //   return {
+      //     success: false,
+      //     message: 'Invalid webhook signature',
+      //     statusCode: HttpStatus.UNAUTHORIZED,
+      //   };
+      // }
+
+      console.log('EVENT:::', data.event);
+
+      if (data.event === 'charge.completed') {
+        console.log('FIRE');
+        console.log('I GOT TO TRX');
+
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: data.clientId,
+            transaction_no: data.tx_ref,
+            tranasaction_type: 'credit',
+          },
+        });
+
+        if (!transaction) {
+          return {
+            success: false,
+            message: 'Transaction not found',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        if (transaction.status === 1) {
+          console.log('ℹ️ Transaction already marked successful.');
+          return {
+            success: true,
+            message: 'Transaction already successful',
+            statusCode: HttpStatus.OK,
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+
+        console.log('FINALLY');
+        return {
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
       }
 
-      switch (data.event) {
-        case 'charge.completed':
-          await this.handleChargeCompleted(data);
-          break;
-        case 'transfer.success':
-          await this.handleTransferSuccess(data);
-          break;
-        case 'transfer.failed':
-          await this.handleTransferFailed(data);
-          break;
-        case 'transfer.reversed':
-          await this.handleTransferReversed(data);
-          break;
-        default:
-          console.log(`Unhandled event type: ${event}`);
-      }
-
-      return { success: true, message: 'Webhook processed successfully' };
+      return {
+        success: false,
+        message: 'Transaction not successful',
+        statusCode: HttpStatus.BAD_REQUEST,
+      };
     } catch (error) {
-      console.error('Webhook processing error:', error.message);
-      throw new BadRequestException(
-        `Webhook handling failed: ${error.message}`,
-      );
+      console.error('Webhook processing error:', error);
+
+      return {
+        success: false,
+        message: `Webhook handling failed: ${error.message}`,
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
     }
   }
 
@@ -312,17 +424,27 @@ export class FlutterwaveService {
     const paymentSettings = await this.flutterwaveSettings(data.clientId);
     const hash = crypto
       .createHmac('sha256', paymentSettings.secret_key)
-      .update(JSON.stringify(data.body))
+      .update(data.body)
       .digest('hex');
 
     return hash === data.flutterwaveKey;
   }
 
   // Handlers for different webhook events
-  private async handleChargeCompleted(data: any): Promise<void> {
+  private async handleChargeCompleted(data: any) {
+    console.log('I GOT TO TRX');
     const transaction = await this.transactionRepository.findOne({
       where: { transaction_no: data.tx_ref },
     });
+
+    if (transaction.status === 1) {
+      console.log('ℹ️ Transaction already marked successful.');
+      return {
+        success: true,
+        message: 'Transaction already successful',
+        statusCode: HttpStatus.OK,
+      };
+    }
 
     if (transaction && transaction.status === 0) {
       const wallet = await this.walletRepository.findOne({
@@ -339,7 +461,9 @@ export class FlutterwaveService {
         { status: 1, balance },
       );
 
-      await this.notifyTrackier(transaction, data.clientId);
+      console.log('I GOT TO TRX AND EXIT');
+
+      //await this.notifyTrackier(transaction, data.clientId);
     }
   }
 

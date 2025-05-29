@@ -40,6 +40,8 @@ import { TigoService } from './tigo.service';
 import { ProvidusService } from './providus.service';
 import { MomoService } from './momo.service';
 import { OPayService } from './opay.service';
+import { CoralPayService } from './coralpay.service';
+import { FidelityService } from './fidelity.service';
 
 @Injectable()
 export class PaymentService {
@@ -66,6 +68,8 @@ export class PaymentService {
     private providusService: ProvidusService,
     private momoService: MomoService,
     private oPayService: OPayService,
+    private coralPayService: CoralPayService,
+    private fidelityService: FidelityService,
   ) {}
 
   async inititateDeposit(
@@ -106,10 +110,12 @@ export class PaymentService {
       switch (param.paymentMethod) {
         case 'paystack':
           transactionNo = generateTrxNo();
+          const paystackEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const pRes: any = await this.paystackService.generatePaymentLink(
             {
               amount: param.amount * 100,
-              email: user.email,
+              email: paystackEmail,
               reference: transactionNo,
               callback_url: user.callbackUrl + '/payment-verification/paystack',
             },
@@ -123,24 +129,34 @@ export class PaymentService {
 
           break;
         case 'pawapay':
+          console.log('1st log:::', user);
           let username = user.username;
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
           }
+
+          const email = user.email || `noemail+${username}@${user.siteUrl}`;
+
           console.log(username);
           const depositId = uuidv4();
           transactionNo = depositId;
           const res = await this.pawapayService.generatePaymentLink(
             {
               depositId: depositId,
-              returnUrl: user.callbackUrl + '/payment-verification/pawapay',
-              statementDescription: 'Deposit via 77bet',
               amount: param.amount.toString(),
-              msisdn: username,
-              language: 'EN',
+              currency: 'TZS',
               country: 'TZA',
-              reason: 'Pawapay Deposit',
-              //currency: 'TZS',
+              correspondent:
+                await this.helperService.getCorrespondent(username),
+              msisdn: username,
+              payer: {
+                type: 'MSISDN',
+                address: {
+                  value: username,
+                },
+              },
+              customerTimestamp: new Date().toISOString(),
+              statementDescription: 'Deposit via 777bet',
               metadata: [
                 {
                   fieldName: 'userId',
@@ -148,7 +164,7 @@ export class PaymentService {
                 },
                 {
                   fieldName: 'email',
-                  fieldValue: user.email,
+                  fieldValue: email,
                   isPII: true,
                 },
               ],
@@ -160,12 +176,16 @@ export class PaymentService {
 
           if (!res.success) return res as any;
 
-          link = res.data;
+          console.log('PAYMENT::', res.data.status);
+
+          link = res.data.status;
 
           break;
 
         case 'flutterwave':
           transactionNo = generateTrxNo();
+          const userEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const result = await this.flutterwaveService.createPayment(
             {
               amount: param.amount,
@@ -174,7 +194,7 @@ export class PaymentService {
               redirect_url:
                 user.callbackUrl + '/payment-verification/flutterwave',
               customer: {
-                email: user.email,
+                email: userEmail,
                 phone_number: '+234' + user.username,
               },
             },
@@ -182,9 +202,81 @@ export class PaymentService {
           );
           description = 'Online Deposit (Flutterwave)';
           if (!result.success) return result as any;
-          console.log(result);
 
           link = result.data.link;
+
+          break;
+
+        case 'fidelity':
+          transactionNo = generateTrxNo();
+          const fidelityEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
+          const fRes = await this.fidelityService.initiatePay(
+            {
+              connection_mode: 'Test',
+              first_name: user.username,
+              last_name: user.username,
+              email_address: fidelityEmail,
+              phone_number: 0+user.username,
+              transaction_reference: transactionNo,
+              checkout_amount: param.amount,
+              currency_code: 'NGN',
+              description: 'Online Deposit (Fidelity)',
+              callback_url: user.callbackUrl + '/payment-verification/fidelity',
+            },
+
+            param.clientId,
+          );
+          description = 'Online Deposit (Fidelity)';
+
+          link = JSON.stringify(fRes.data);
+
+          break;
+
+        case 'coralpay':
+          function generateTrxNumber(): string {
+            const timestamp = Date.now().toString(36);
+            const randomPart = Math.random()
+              .toString(36)
+              .substr(2, 10)
+              .toUpperCase();
+            return `TRX${timestamp}${randomPart}`;
+          }
+
+          const traceId = generateTrxNumber();
+          transactionNo = traceId;
+          const formattedAmount = param.amount.toFixed(2);
+          const customEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
+
+          const coralRes = await this.coralPayService.initiatePayment(
+            {
+              customer: {
+                email: customEmail,
+                name: user.username,
+                phone: user.username,
+                tokenUserId: user.username,
+              },
+              customization: {
+                title: 'Coralpay Payment',
+                description: 'Payment via Virtual Account',
+              },
+              traceId: traceId,
+              productId: uuidv4(),
+              amount: formattedAmount,
+              currency: 'NGN',
+              feeBearer: 'M',
+              returnUrl: user.callbackUrl + '/payment-verification/coralpay',
+            },
+            param.clientId,
+          );
+
+          description = 'Online Deposit (Coralpay)';
+
+          if (!coralRes.success) return coralRes as any;
+
+          link = coralRes.data;
+          console.log('THE-LINK:::', link);
 
           break;
 
@@ -203,7 +295,7 @@ export class PaymentService {
               returnUrl: user.callbackUrl + '/payment-verification/opay',
               callbackUrl:
                 'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
-              cancelUrl: 'https://m.staging.sportsbookengine.com',
+              cancelUrl: user.callbackUrl + '/payment-verification/opay',
               evokeOpay: true,
               expireAt: 300,
               product: {
@@ -218,13 +310,15 @@ export class PaymentService {
           if (!opayRes.success) return opayRes as any;
 
           link = opayRes.data;
-          console.log(opayRes);
+          console.log('OPAY RESPONSE::', opayRes);
 
           break;
 
         case 'korapay':
           console.log('KORAPAY');
           transactionNo = generateTrxNo();
+          const korapayEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const koraRes = await this.korapayService.createPayment(
             {
               amount: param.amount,
@@ -239,7 +333,7 @@ export class PaymentService {
               },
               narration: 'Online Deposit (Korapay)',
               customer: {
-                email: user.email,
+                email: korapayEmail,
               },
               merchant_bears_cost: false,
             },
@@ -259,9 +353,16 @@ export class PaymentService {
           console.log('TIGO_PAYMENT');
           description = 'Online Deposit (Tigo )';
           transactionNo = generateTrxNo();
+          console.log(user.username);
+
+          let userName = user.username;
+          if (!userName.startsWith('255')) {
+            userName = '255' + userName.replace(/^0+/, '');
+          }
+
           const tigoRes = await this.tigoService.initiatePayment(
             {
-              CustomerMSISDN: user.username, // '255713123892',
+              CustomerMSISDN: userName, // '255713123892',
               Amount: param.amount,
               Remarks: description,
               ReferenceID: `${'KML'}${transactionNo}`,
@@ -276,7 +377,7 @@ export class PaymentService {
             };
           }
 
-          link = tigoRes;
+          link = tigoRes.ResponseDescription;
           console.log(tigoRes.ReferenceID);
           console.log('THE_LINK', JSON.stringify(link, null, 2));
           console.log('THE_RES', JSON.stringify(tigoRes, null, 2));
@@ -318,25 +419,26 @@ export class PaymentService {
           transactionNo = generateTrxNo();
           const providusRes = await this.providusService.initiatePayment(
             {
-              initiationTranRef: transactionNo,
-              amount: param.amount,
+              account_name: 'CustomerWize',
+              // amount: param.amount,
+              // initiationTranRef: transactionNo,
             },
             param.clientId,
           );
 
-          link = providusRes;
-          console.log(providusRes.initiationTranRef);
-          console.log('THE_LINK', JSON.stringify(link, null, 2));
-          console.log('THE_RES', JSON.stringify(providusRes, null, 2));
+          link = providusRes.data;
+
           break;
 
         case 'monnify':
           transactionNo = generateTrxNo();
+          const monifyEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
           const mRes: any = await this.monnifyService.generatePaymentLink(
             {
               amount: param.amount,
               name: user.username,
-              email: user.email || `${user.username}@${user.siteUrl}`,
+              email: monifyEmail,
               reference: transactionNo,
               callback_url: user.callbackUrl + '/payment-verification/monnify',
             },
@@ -726,6 +828,7 @@ export class PaymentService {
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
             return this.pawapayService.verifyTransaction(param);
+
             break;
           default:
             break;
