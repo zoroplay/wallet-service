@@ -249,14 +249,21 @@ export class WithdrawalService {
 
     const skip = (page - 1) * limit;
 
+    const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      
     const queryBuilder = this.withdrawalRepository
       .createQueryBuilder('withdrawal')
       .andWhere('withdrawal.client_id = :clientId', { clientId });
 
     if (from && to) {
-      queryBuilder.andWhere('withdrawal.created_at BETWEEN :from AND :to', {
-        from,
-        to,
+      queryBuilder.andWhere('withdrawal.created_at BETWEEN :start AND :end', {
+        start,
+        end,
       });
     }
 
@@ -292,10 +299,10 @@ export class WithdrawalService {
       .select('SUM(withdrawal.amount)', 'total')
       .andWhere('withdrawal.client_id = :clientId', { clientId });
 
-    if (from && to) {
-      totalAmountResult.andWhere('withdrawal.created_at BETWEEN :from AND :to', {
-        from,
-        to,
+    if (start && end) {
+      totalAmountResult.andWhere('withdrawal.created_at BETWEEN :start AND :end', {
+        start,
+        end,
       });
     }
 
