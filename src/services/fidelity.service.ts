@@ -36,26 +36,19 @@ export class FidelityService {
 
   async initiatePay(data, client_id) {
     try {
+      const setting = await this.fidelitySettings(client_id);
+
+      if (!setting) {
+        return {
+          success: false,
+          message: 'Fidelity has not been configured for client',
+        };
+      }
       console.log('DATA:::', data);
-
-      const rawKey = process.env.PAYGATE_PUB_KEY;
-      const encodedKey = Buffer.from(rawKey).toString('base64');
-
-      const url = 'https://api-paygate.fidelitybank.ng/live/card/card_charge';
-      const response = await axios.post(url, data, {
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${encodedKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('✅ Success:', response.data);
-      console.log('✅✅ COMPLETE:', response);
-
+      console.log(client_id);
       return {
         success: true,
-        data: response.data,
+        data,
       };
     } catch (error) {
       console.error(
@@ -67,6 +60,75 @@ export class FidelityService {
         success: false,
         message: 'Payment request failed',
         error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  async handleWebhook(data) {
+    console.log('REAL_DATA::::', data);
+    try {
+      console.log('RAW_BODY:::', data.rawBody.payload);
+
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: data.clientId,
+          transaction_no: data.reference,
+          tranasaction_type: 'credit',
+        },
+      });
+
+      if (!transaction) {
+        return {
+          success: false,
+          message: 'Transaction not found',
+          statusCode: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      if (transaction.status === 1) {
+        console.log('ℹ️ Transaction already marked successful.');
+        return {
+          success: true,
+          message: 'Transaction already successful',
+          statusCode: HttpStatus.OK,
+        };
+      }
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          success: false,
+          message: 'Wallet not found for this user',
+          statusCode: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+      console.log('FINALLY');
+      return {
+        statusCode: HttpStatus.OK,
+        success: true,
+        message: 'Transaction successfully verified and processed',
+      };
+    } catch (error) {
+      console.error('❌ OPay webhook processing error:', error.message);
+      return {
+        success: false,
+        message: 'Error occurred during processing',
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
   }

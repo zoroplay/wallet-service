@@ -213,30 +213,23 @@ export class PaymentService {
             user.email || `noemail+${user.username}@${user.siteUrl}`;
           const fRes = await this.fidelityService.initiatePay(
             {
-              service_payload: {
-                first_name: user.username,
-                last_name: user.username,
-                email_address: fidelityEmail,
-                phone_number: user.username,
-                transaction_reference: transactionNo,
-                amount: param.amount,
-                currency: 'NGN',
-                description: 'Online Deposit (Fidelity)',
-                callback_url:
-                  user.callbackUrl + '/payment-verification/fidelity',
-                card: {
-                  cardNumber: '4508750015741019',
-                  expiryMonth: '01',
-                  expiryYear: '39',
-                  securityCode: '100',
-                },
-              },
+              connection_mode: 'Test',
+              first_name: user.username,
+              last_name: user.username,
+              email_address: fidelityEmail,
+              phone_number: 0+user.username,
+              transaction_reference: transactionNo,
+              checkout_amount: param.amount,
+              currency_code: 'NGN',
+              description: 'Online Deposit (Fidelity)',
+              callback_url: user.callbackUrl + '/payment-verification/fidelity',
             },
+
             param.clientId,
           );
           description = 'Online Deposit (Fidelity)';
-          if (!fRes.success) return fRes as any;
-          link = fRes.data.link;
+
+          link = JSON.stringify(fRes.data);
 
           break;
 
