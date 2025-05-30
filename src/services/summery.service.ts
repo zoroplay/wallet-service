@@ -281,6 +281,8 @@ export class SummeryService {
         clientId,
       });
 
+      console.log('DATA:::', identityResponse);
+
       const users: CommonResponseObj = {
         success: identityResponse.success || false,
         status: identityResponse.status,
@@ -344,6 +346,7 @@ export class SummeryService {
 
         summary.push({
           userId,
+          username: shopUser.username,
           numberOfDeposits: parseInt(deposit?.count || '0', 10),
           totalDeposits: parseFloat(deposit?.total || '0'),
           numberOfWithdrawals: parseInt(withdrawal?.count || '0', 10),

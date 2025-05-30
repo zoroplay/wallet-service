@@ -100,7 +100,7 @@ export class WithdrawalService {
 
       // console.log('adding to withdrawal queue', jobData)
       await this.withdrawalQueue.add('withdrawal-request', jobData, {
-        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}:${jobData.withdrawalCode}`,
+        jobId: `${data.userId}:${data.clientId}:${data.accountNumber || data.type}:${data.amount}`,
         delay: 5000,
       });
 
@@ -114,8 +114,8 @@ export class WithdrawalService {
         },
       };
     } catch (e) {
-      console.log(e.message);
-
+      // console.log(e.message);
+      
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -249,14 +249,21 @@ export class WithdrawalService {
 
     const skip = (page - 1) * limit;
 
+    const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      
     const queryBuilder = this.withdrawalRepository
       .createQueryBuilder('withdrawal')
       .andWhere('withdrawal.client_id = :clientId', { clientId });
 
     if (from && to) {
-      queryBuilder.andWhere('withdrawal.created_at BETWEEN :from AND :to', {
-        from,
-        to,
+      queryBuilder.andWhere('withdrawal.created_at BETWEEN :start AND :end', {
+        start,
+        end,
       });
     }
 
@@ -292,10 +299,10 @@ export class WithdrawalService {
       .select('SUM(withdrawal.amount)', 'total')
       .andWhere('withdrawal.client_id = :clientId', { clientId });
 
-    if (from && to) {
-      totalAmountResult.andWhere('withdrawal.created_at BETWEEN :from AND :to', {
-        from,
-        to,
+    if (start && end) {
+      totalAmountResult.andWhere('withdrawal.created_at BETWEEN :start AND :end', {
+        start,
+        end,
       });
     }
 
