@@ -7,6 +7,7 @@ import {
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
+  DeletePaymentMethodRequest,
   GetBalanceRequest,
   GetNetworkBalanceRequest,
   GetNetworkBalanceResponse,
@@ -33,11 +34,9 @@ import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
-
 import { Bank } from './entity/bank.entity';
 import { IdentityService } from './identity/identity.service';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+
 var customParseFormat = require('dayjs/plugin/customParseFormat');
 
 dayjs.extend(customParseFormat);
@@ -147,25 +146,143 @@ export class AppService {
   async getPaymentMethods(data: GetPaymentMethodRequest) {
     try {
       const { clientId, status } = data;
-      console.log(status);
-      const where: any = { client_id: clientId };
-      if (status) where.status = status;
 
-      let results = [];
-      console.log(where);
+      const where: any = { client_id: clientId };
+      if (status !== undefined) where.status = status;
+
       const pMethods = await this.pMethodRepository.find({ where });
 
-      if (status) {
-        results = pMethods.map((p) => ({
-          provider: p.provider,
-          title: p.display_name,
-        }));
-      } else {
-        results = pMethods;
+      // Always map to consistent shape
+      let results = pMethods.map((p) => ({
+        id: p.id,
+        clientId: p.client_id,
+        title: p.display_name,
+        provider: p.provider,
+        baseUrl: p.base_url?.trim() || null,
+        secretKey: p.secret_key || null,
+        publicKey: p.public_key || null,
+        merchantId: p.merchant_id || null,
+        logoPath: p.logo_path || null,
+        status: p.status,
+        forDisbursement: p.for_disbursement,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }));
+
+      console.log(results);
+      // Optional: Filter by status after mapping, if needed
+      if (status !== undefined) {
+        results = results.filter((r) => r.status === status);
       }
+
       return handleResponse(results, 'Payment methods retrieved successfully');
     } catch (e) {
       return handleError(e.message, {}, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async updatePaymentMethod(updateData: PaymentMethodRequest) {
+    try {
+      const {
+        id,
+        clientId,
+        title,
+        provider,
+        secretKey,
+        publicKey,
+        merchantId,
+        baseUrl,
+        status,
+        forDisbursement,
+      } = updateData;
+
+      const paymentMethod = await this.pMethodRepository.findOne({
+        where: { id, client_id: clientId },
+      });
+
+      if (!paymentMethod) {
+        return {
+          success: false,
+          status: HttpStatus.NOT_FOUND,
+          message: 'Payment method not found',
+        };
+      }
+
+      if (title !== undefined) paymentMethod.display_name = title;
+      if (provider !== undefined) paymentMethod.provider = provider;
+      if (secretKey !== undefined) paymentMethod.secret_key = secretKey;
+      if (publicKey !== undefined) paymentMethod.public_key = publicKey;
+      if (merchantId !== undefined) paymentMethod.merchant_id = merchantId;
+      if (baseUrl !== undefined) paymentMethod.base_url = baseUrl;
+      if (status !== undefined) paymentMethod.status = status;
+      if (forDisbursement !== undefined)
+        paymentMethod.for_disbursement = forDisbursement;
+
+      const updated = await this.pMethodRepository.save(paymentMethod);
+
+      const result = await this.pMethodRepository.findOne({
+        where: { id: updated.id, client_id: updated.client_id },
+
+        select: [
+          'id',
+          'client_id',
+          'display_name',
+          'provider',
+          'secret_key',
+          'public_key',
+          'merchant_id',
+          'base_url',
+          'status',
+          'for_disbursement',
+        ],
+      });
+
+      return {
+        success: true,
+        status: 200,
+        message: 'Payment method updated successfully',
+        data: [result],
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'An error occurred while updating the payment method',
+        error: e.message,
+        data: [],
+      };
+    }
+  }
+
+  async deletePaymentMethod(payload: DeletePaymentMethodRequest) {
+    try {
+      const { id, clientId } = payload;
+      const paymentMethod = await this.pMethodRepository.findOne({
+        where: { id: id, client_id: clientId },
+      });
+
+      if (!paymentMethod) {
+        return {
+          success: false,
+          status: HttpStatus.NOT_FOUND,
+          message: 'Payment method not found',
+        };
+      }
+
+      await this.pMethodRepository.remove(paymentMethod);
+
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        message: 'Payment method deleted successfully',
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error deleting payment method',
+        error: e.message,
+      };
     }
   }
 
