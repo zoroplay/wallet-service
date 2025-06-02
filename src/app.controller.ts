@@ -62,6 +62,7 @@ import {
   ShopUsersSummaryRequest,
   OpayRequest,
   CorapayWebhookRequest,
+  DeletePaymentMethodRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -224,6 +225,16 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreateWallet')
   CreateWallet(param: CreateWalletRequest) {
     return this.appService.createWallet(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'UpdatePaymentMethod')
+  UpdatePaymentMethod(param: PaymentMethodRequest) {
+    return this.appService.updatePaymentMethod(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'DeletePaymentMethod')
+  DeletePaymentMethod(param: DeletePaymentMethodRequest) {
+    return this.appService.deletePaymentMethod(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetBalance')

@@ -117,6 +117,8 @@ export class PawapayService {
         };
       console.log('FINAL_PHONE NUMBER::', data.msisdn);
 
+      
+
       const response = await fetch(`${settings.base_url}/deposits`, {
         method: 'POST',
         headers: {
