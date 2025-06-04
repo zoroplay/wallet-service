@@ -63,6 +63,7 @@ import {
   OpayRequest,
   CorapayWebhookRequest,
   DeletePaymentMethodRequest,
+  FidelityWebhookRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -191,6 +192,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CorapayWebhook')
   corapayWebhook(param: CorapayWebhookRequest) {
     return this.coralPayService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FidelityWebhook')
+  fidelityWebhook(param: FidelityWebhookRequest) {
+    return this.flutterwaveService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')

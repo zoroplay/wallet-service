@@ -117,12 +117,14 @@ export class PawapayService {
         };
       console.log('FINAL_PHONE NUMBER::', data.msisdn);
 
-      
+      const key = process.env.PAWAPAY_PROD
 
-      const response = await fetch(`${settings.base_url}/deposits`, {
+      const url = 'https://api.pawapay.io'
+
+      const response = await fetch(`${url}/deposits`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${settings.secret_key}`,
+          Authorization: `Bearer ${key}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
