@@ -217,7 +217,7 @@ export class PaymentService {
               first_name: user.username,
               last_name: user.username,
               email_address: fidelityEmail,
-              phone_number: 0+user.username,
+              phone_number: 0 + user.username,
               transaction_reference: transactionNo,
               checkout_amount: param.amount,
               currency_code: 'NGN',
@@ -828,6 +828,9 @@ export class PaymentService {
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
             return this.pawapayService.verifyTransaction(param);
+
+          case 'fidelity':
+            return this.fidelityService.handleCallback(param);
 
             break;
           default:
