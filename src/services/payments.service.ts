@@ -42,6 +42,7 @@ import { MomoService } from './momo.service';
 import { OPayService } from './opay.service';
 import { CoralPayService } from './coralpay.service';
 import { FidelityService } from './fidelity.service';
+import { GlobusService } from './globus.service';
 
 @Injectable()
 export class PaymentService {
@@ -70,6 +71,7 @@ export class PaymentService {
     private oPayService: OPayService,
     private coralPayService: CoralPayService,
     private fidelityService: FidelityService,
+    private globusService: GlobusService,
   ) {}
 
   async inititateDeposit(
@@ -388,12 +390,14 @@ export class PaymentService {
           description = 'Online Deposit (MTMMOMO )';
 
           transactionNo = uuidv4();
+          console.log(user.username);
           const mtnmomoRes = await this.momoService.initiatePayment(
             {
               amount: param.amount,
               externalId: transactionNo,
               currency: 'EUR',
               payer: {
+                partyIdType: 'MSISDN',
                 partyId: user.username,
               },
             },
@@ -416,17 +420,38 @@ export class PaymentService {
         case 'providus':
           console.log('Providus_PAYMENT');
           description = 'Online Deposit (Providus )';
-          transactionNo = generateTrxNo();
+          // transactionNo = generateTrxNo();
           const providusRes = await this.providusService.initiatePayment(
             {
-              account_name: 'CustomerWize',
-              // amount: param.amount,
-              // initiationTranRef: transactionNo,
+              account_name: user.username,
             },
             param.clientId,
           );
+          transactionNo = providusRes.account_number;
 
-          link = providusRes.data;
+          link = JSON.stringify(providusRes.data);
+
+          console.log(link)
+
+          break;
+
+        case 'globus':
+          console.log('Globus_PAYMENT');
+          description = 'Online Deposit (Globus )';
+          // transactionNo = generateTrxNo();
+          const globusRes = await this.globusService.initiatePayment(
+            {
+              AccountName: user.username,
+              CanExpire: 'true',
+              ExpiredTime: 30,
+              hasTransactionAmount: true,
+              TransactionAmount: param.amount,
+            },
+            param.clientId,
+          );
+          transactionNo = globusRes.result.virtualAccount;
+
+          link = globusRes.result.msg;
 
           break;
 

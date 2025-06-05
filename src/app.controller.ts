@@ -64,6 +64,7 @@ import {
   CorapayWebhookRequest,
   DeletePaymentMethodRequest,
   FidelityWebhookRequest,
+  ProvidusRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -82,6 +83,8 @@ import { PawapayService } from './services/pawapay.service';
 import { MomoService } from './services/momo.service';
 import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
+import { FidelityService } from './services/fidelity.service';
+import { ProvidusService } from './services/providus.service';
 
 type RangeType = 'day' | 'week' | 'month' | 'year';
 const allowedRanges: RangeType[] = ['day', 'week', 'month', 'year'];
@@ -107,6 +110,8 @@ export class AppController {
     private summeryService: SummeryService,
     private oPayService: OPayService,
     private coralPayService: CoralPayService,
+    private fidelityService: FidelityService,
+    private providusService: ProvidusService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
@@ -196,7 +201,12 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FidelityWebhook')
   fidelityWebhook(param: FidelityWebhookRequest) {
-    return this.flutterwaveService.handleWebhook(param);
+    return this.fidelityService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'ProvidusWebhook')
+  providusWebhook(param: ProvidusRequest) {
+    return this.providusService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')

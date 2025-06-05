@@ -82,7 +82,7 @@ export class MomoService {
       const tokenResponse = await axios.post(
         `${paymentSettings.base_url}/collection/token/`,
         {
-          providerCallbackHost: 'http://api.staging.sportsbookengine.com',
+          providerCallbackHost: 'https://api.staging.sportsbookengine.com',
         },
         {
           auth: {
@@ -126,7 +126,7 @@ export class MomoService {
             'Content-Type': 'application/json',
             'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
             'X-Callback-Url':
-              'http://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback',
+              'https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback',
           },
         },
       );
