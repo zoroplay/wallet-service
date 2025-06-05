@@ -70,10 +70,14 @@ export class ProvidusService {
 
     try {
       const response = await axios.post(url, data, { headers });
+      console.log('RESPONSE', response);
       console.log('RESPONSE', response.data);
       console.log('SESSIONID:::', response.data.sessionId);
 
-      return response.data;
+      return {
+        success: true,
+        data: response.data,
+      };
     } catch (error) {
       console.error(
         '❌ Error during Providus payment initiation:',

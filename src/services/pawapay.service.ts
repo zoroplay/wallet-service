@@ -115,7 +115,7 @@ export class PawapayService {
           success: false,
           message: 'PawaPay has not been configured for client',
         };
-      console.log('FINAL_PHONE NUMBER::', data.msisdn);
+      console.log('PAYLOAD:::', data);
 
       const response = await fetch(`${settings.base_url}/deposits`, {
         method: 'POST',
