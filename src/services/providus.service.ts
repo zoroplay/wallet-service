@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
+import { ProvidusResponse } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class ProvidusService {
@@ -67,12 +68,10 @@ export class ProvidusService {
       'X-Auth-Signature': xAuthSignature,
     };
 
-    console.log('HEADERS:', headers);
-    //console.log('DATA:', data);
-
     try {
       const response = await axios.post(url, data, { headers });
       console.log('RESPONSE', response.data);
+      console.log('SESSIONID:::', response.data.sessionId);
 
       return response.data;
     } catch (error) {
@@ -84,6 +83,80 @@ export class ProvidusService {
         success: false,
         message: 'Payment request failed',
         error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  async handleWebhook(data): Promise<ProvidusResponse> {
+    console.log('REAL_DATA::::', data);
+    try {
+      console.log('RAW_BODY:::', data);
+
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: data.clientId,
+          transaction_no: data.accountNumber,
+          tranasaction_type: 'credit',
+        },
+      });
+
+      if (!transaction) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
+        };
+      }
+
+      if (transaction.status === 1) {
+        console.log('ℹ️ Transaction already marked successful.');
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'duplicate transaction',
+          responseCode: '01',
+        };
+      }
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
+        };
+      }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+      console.log('FINALLY');
+      return {
+        requestSuccessful: true,
+        sessionId: data.sessionId,
+        responseMessage: 'success',
+        responseCode: '00',
+      };
+    } catch (error) {
+      console.error('❌ OPay webhook processing error:', error.message);
+      return {
+        requestSuccessful: true,
+        sessionId: data.sessionId,
+        responseMessage: 'rejected transaction',
+        responseCode: '02',
       };
     }
   }
