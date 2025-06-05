@@ -337,7 +337,7 @@ export class PaymentService {
               customer: {
                 email: korapayEmail,
               },
-              merchant_bears_cost: false,
+              merchant_bears_cost: true,
             },
             param.clientId,
           );
@@ -427,7 +427,7 @@ export class PaymentService {
             },
             param.clientId,
           );
-          transactionNo = providusRes.account_number;
+          transactionNo = providusRes.data.account_number;
 
           link = JSON.stringify(providusRes.data);
 
