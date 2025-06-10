@@ -85,15 +85,12 @@ export class GlobusService {
 
       const url = `${settings.base_url}/api/account/virtual-account-max`;
       console.log('CHECK 1');
-      console.log('URL', url);
 
       const response = await axios.post(url, payload, {
         headers: {
           'Content-Type': 'application/json',
           ClientID: clientId,
           Authorization: `Bearer ${accessToken}`,
-          'User-Agent': 'SBE/1.0',
-          Accept: 'application/json',
         },
       });
 
