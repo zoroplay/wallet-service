@@ -91,12 +91,34 @@ export class ProvidusService {
   }
 
   async handleWebhook(data): Promise<ProvidusResponse> {
-    console.log('REAL_DATA::::', data);
     try {
-      console.log('RAW_BODY:::', data);
-      console.log('SESSION ID', data.sessionId);
+      const settings = await this.providusSettings(data.client_id);
+      if (!settings) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'Payment method not found',
+          responseCode: '03',
+        };
+      }
 
-      //TODO: check xAuthSignature
+      const clientId = settings.merchant_id;
+      const clientSecret = settings.secret_key;
+
+      const signatureInput = `${clientId}:${clientSecret}`;
+      const xAuthSignature = crypto
+        .createHash('sha512')
+        .update(signatureInput)
+        .digest('hex');
+
+      if (xAuthSignature !== data.headers) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'Invalid x-auth-signature',
+          responseCode: '03',
+        };
+      }
 
       const transaction = await this.transactionRepository.findOne({
         where: {
@@ -161,8 +183,8 @@ export class ProvidusService {
       return {
         requestSuccessful: true,
         sessionId: data.sessionId,
-        responseMessage: 'rejected transaction',
-        responseCode: '02',
+        responseMessage: 'system failure, retry',
+        responseCode: '03',
       };
     }
   }

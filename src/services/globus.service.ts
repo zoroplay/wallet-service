@@ -94,8 +94,13 @@ export class GlobusService {
         },
       });
 
+      console.log('FULL_RESPONSE::::: ', response);
+
       console.log(response.data);
-      return response.data;
+      return {
+        status: true,
+        data: response.data.result,
+      };
     } catch (error) {
       console.log('THE_ERROR', error);
       console.error(

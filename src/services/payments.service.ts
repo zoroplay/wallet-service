@@ -453,7 +453,7 @@ export class PaymentService {
             param.clientId,
           );
 
-          link = globusRes.result;
+          link = JSON.stringify(globusRes.data);
 
           break;
 
