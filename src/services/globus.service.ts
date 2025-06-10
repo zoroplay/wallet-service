@@ -82,7 +82,7 @@ export class GlobusService {
 
       console.log(payload);
 
-      const url = `${settings.base_url}api/v2/virtual-account-max`;
+      const url = `${settings.base_url}/api/v2/virtual-account-max`;
       console.log('CHECK 1');
       console.log('URL::::', url);
 
