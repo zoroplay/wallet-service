@@ -74,7 +74,6 @@ export class GlobusService {
       );
 
       const accessToken = auth.data.access_token;
-      console.log(accessToken);
 
       const payload = {
         ...data,
@@ -94,8 +93,6 @@ export class GlobusService {
           ClientID: clientId,
         },
       });
-
-      console.log('THE_FULL RESPONSE', response.data);
 
       console.log(response.data);
       return response.data;
