@@ -64,7 +64,7 @@ export class GlobusService {
           password: password,
           client_id: settings.public_key,
           client_secret: settings.secret_key,
-          scope: settings.merchant_id,
+          scope: 'KORET',
         },
         {
           headers: {
@@ -73,21 +73,31 @@ export class GlobusService {
         },
       );
 
-      console.log(auth.data);
+      const accessToken = auth.data.access_token;
+      console.log(accessToken);
 
       const payload = {
         ...data,
-        LinkedPartnerAccountNumber: 8765433232,
+        linkedPartnerAccountNumber: settings.merchant_id,
       };
 
+      console.log(payload);
+
       const url = `${settings.base_url}/api/account/virtual-account-max`;
+      console.log('CHECK 1');
+      console.log('URL', url);
 
       const response = await axios.post(url, payload, {
         headers: {
           'Content-Type': 'application/json',
           ClientID: clientId,
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': 'SBE/1.0',
+          Accept: 'application/json',
         },
       });
+
+      console.log('THE_FULL RESPONSE', response);
 
       console.log(response.data);
       return response.data;
