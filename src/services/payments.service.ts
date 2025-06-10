@@ -444,7 +444,7 @@ export class PaymentService {
           const globusRes = await this.globusService.initiatePayment(
             {
               accountName: user.username,
-              canExpire: 'true',
+              canExpire: true,
               expiredTime: 30,
               hasTransactionAmount: true,
               transactionAmount: param.amount,

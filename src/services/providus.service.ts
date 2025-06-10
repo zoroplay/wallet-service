@@ -96,6 +96,8 @@ export class ProvidusService {
       console.log('RAW_BODY:::', data);
       console.log('SESSION ID', data.sessionId);
 
+      //TODO: check xAuthSignature
+
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: data.clientId,
