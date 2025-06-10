@@ -88,9 +88,9 @@ export class GlobusService {
 
       const response = await axios.post(url, payload, {
         headers: {
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           ClientID: clientId,
-          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -99,6 +99,7 @@ export class GlobusService {
       console.log(response.data);
       return response.data;
     } catch (error) {
+      console.log('THE_ERROR', error);
       console.error(
         'Globus Error:',
         error.response ? error.response.data : error.message,
