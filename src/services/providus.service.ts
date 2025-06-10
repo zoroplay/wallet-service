@@ -70,9 +70,8 @@ export class ProvidusService {
 
     try {
       const response = await axios.post(url, data, { headers });
-      console.log('RESPONSE', response);
+
       console.log('RESPONSE', response.data);
-      console.log('SESSIONID:::', response.data.sessionId);
 
       return {
         success: true,
@@ -95,6 +94,7 @@ export class ProvidusService {
     console.log('REAL_DATA::::', data);
     try {
       console.log('RAW_BODY:::', data);
+      console.log('SESSION ID', data.sessionId);
 
       const transaction = await this.transactionRepository.findOne({
         where: {
