@@ -117,6 +117,9 @@ export class PawapayService {
         };
       console.log('PAYLOAD:::', data);
 
+      // const url = 'https://api.pawapay.io';
+      // const key = process.env.PAWAPAY_PROD;
+
       const response = await fetch(`${settings.base_url}/deposits`, {
         method: 'POST',
         headers: {

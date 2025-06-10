@@ -51,6 +51,8 @@ export class CoralPayService {
       }
       console.log('Initiating CoralPay payment...');
 
+      console.log(settings.public_key, settings.secret_key);
+
       const authResponse = await axios.post(
         `${settings.base_url}/Authentication`,
         {
@@ -93,6 +95,8 @@ export class CoralPayService {
           },
         },
       );
+
+      console.log('PaymentRESPONSE:', res.data);
       console.log('Payment Link DATA:', res.data.payPageLink);
 
       return { success: true, data: res.data.payPageLink };

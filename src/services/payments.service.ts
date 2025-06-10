@@ -427,31 +427,35 @@ export class PaymentService {
             },
             param.clientId,
           );
-          transactionNo = providusRes.data.account_number;
+          console.log('RESPONSE', providusRes);
 
           link = JSON.stringify(providusRes.data);
 
-          console.log(link)
+          transactionNo = providusRes.data.account_number;
+
+          console.log(link);
 
           break;
 
         case 'globus':
           console.log('Globus_PAYMENT');
           description = 'Online Deposit (Globus )';
-          // transactionNo = generateTrxNo();
+          transactionNo = generateTrxNo();
           const globusRes = await this.globusService.initiatePayment(
             {
-              AccountName: user.username,
-              CanExpire: 'true',
-              ExpiredTime: 30,
+              accountName: user.username,
+              canExpire: 'true',
+              expiredTime: 30,
               hasTransactionAmount: true,
-              TransactionAmount: param.amount,
+              transactionAmount: param.amount,
+              partnerReference: transactionNo,
             },
             param.clientId,
           );
-          transactionNo = globusRes.result.virtualAccount;
 
-          link = globusRes.result.msg;
+          console.log('FROM PAYMENT', globusRes);
+
+          link = globusRes.result;
 
           break;
 
