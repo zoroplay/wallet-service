@@ -453,8 +453,6 @@ export class PaymentService {
             param.clientId,
           );
 
-          console.log('FROM PAYMENT', globusRes.result);
-
           link = globusRes.result;
 
           break;

@@ -85,6 +85,7 @@ export class GlobusService {
 
       const url = `${settings.base_url}/api/account/virtual-account-max`;
       console.log('CHECK 1');
+      console.log('URL::::', url);
 
       const response = await axios.post(url, payload, {
         headers: {
@@ -94,7 +95,7 @@ export class GlobusService {
         },
       });
 
-      console.log('THE_FULL RESPONSE', response);
+      console.log('THE_FULL RESPONSE', response.data);
 
       console.log(response.data);
       return response.data;
