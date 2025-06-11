@@ -105,21 +105,21 @@ export class ProvidusService {
       const clientId = settings.merchant_id;
       const clientSecret = settings.secret_key;
 
-      const signatureInput = `${clientId}:${clientSecret}`;
-      const xAuthSignature = crypto
+      const expectedSignature = crypto
         .createHash('sha512')
-        .update(signatureInput)
+        .update(`${clientId}:${clientSecret}`)
         .digest('hex');
 
-      if (xAuthSignature !== data.headers) {
+      const receivedSignature = (data.headers || '').trim();
+
+      if (expectedSignature.toLowerCase() !== receivedSignature.toLowerCase()) {
         return {
-          requestSuccessful: true,
+          requestSuccessful: false,
           sessionId: data.sessionId,
           responseMessage: 'Invalid x-auth-signature',
           responseCode: '03',
         };
       }
-
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: data.clientId,
