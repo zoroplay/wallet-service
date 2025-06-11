@@ -115,6 +115,7 @@ export class GlobusService {
   }
 
   async handleWebhook(param): Promise<GlobusResponse> {
+    console.log('PARAM:::::::', param);
     try {
       const settings = await this.globusSettings(param.clientId);
 
@@ -125,14 +126,14 @@ export class GlobusService {
           message: 'Globus has not been configured for client',
         };
       }
-      console.log(param);
+      console.log('HEADERS:::', param.headers);
 
       console.log('I GOT BEFORE TRX ');
 
       if (settings.public_key !== param.headers) {
         return {
           success: false,
-          message: 'Transaction already successful',
+          message: 'Invalid ClientID from headers',
           statusCode: HttpStatus.BAD_REQUEST,
         };
       }
