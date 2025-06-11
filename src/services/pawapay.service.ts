@@ -174,7 +174,7 @@ export class PawapayService {
           },
         });
         console.log('TRX', transaction.transaction_no);
-        console.log('TRX', transaction);
+        
 
         if (!transaction)
           return {
