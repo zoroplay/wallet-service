@@ -219,7 +219,7 @@ export class CoralPayService {
       };
       // 4. Verify signature
     } catch (error) {
-      console.error('❌ OPay webhook processing error:', error.message);
+      console.error('❌ CoralPay webhook processing error:', error.message);
       return {
         success: false,
         message: 'Error occurred during processing',

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
@@ -9,6 +9,7 @@ import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { HelperService } from './helper.service';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
+import { GlobusResponse } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class GlobusService {
@@ -110,6 +111,91 @@ export class GlobusService {
       return {
         success: false,
         message: error.response ? error.response.data : error.message,
+      };
+    }
+  }
+
+  async handleWebhook(param): Promise<GlobusResponse> {
+    try {
+      const settings = await this.globusSettings(param.clientId);
+
+      if (!settings) {
+        return {
+          statusCode: HttpStatus.BAD_REQUEST,
+          success: false,
+          message: 'Globus has not been configured for client',
+        };
+      }
+      console.log(param);
+
+      console.log('I GOT BEFORE TRX ');
+
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: param.clientId,
+          transaction_no: param.callbackData.partnerReference,
+          tranasaction_type: 'credit',
+        },
+      });
+
+      if (!transaction) {
+        return {
+          success: false,
+          message: 'Transaction not found',
+          statusCode: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      if (transaction.status === 1) {
+        console.log('ℹ️ Transaction already marked successful.');
+        return {
+          success: true,
+          message: 'Transaction already successful',
+          statusCode: HttpStatus.OK,
+        };
+      }
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          success: false,
+          message: 'Wallet not found for this user',
+          statusCode: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+      console.log('FINALLY');
+      return {
+        statusCode: HttpStatus.OK,
+        success: true,
+        message: 'Transaction successfully verified and processed',
+      };
+
+      // return {
+      //   success: false,
+      //   message: 'Transaction not successful',
+      //   statusCode: HttpStatus.BAD_REQUEST,
+      // };
+    } catch (error) {
+      console.error('❌ OPay webhook processing error:', error.message);
+      return {
+        success: false,
+        message: 'Error occurred during processing',
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
   }
