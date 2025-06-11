@@ -95,9 +95,8 @@ export class GlobusService {
         },
       });
 
-      console.log('FULL_RESPONSE::::: ', response);
-
-      console.log(response.data);
+      console.log('DATA::::', response.data);
+      console.log('RESULT:::', response.data.result);
       return {
         status: true,
         data: response.data.result,
@@ -130,66 +129,76 @@ export class GlobusService {
 
       console.log('I GOT BEFORE TRX ');
 
-      const transaction = await this.transactionRepository.findOne({
-        where: {
-          client_id: param.clientId,
-          transaction_no: param.callbackData.partnerReference,
-          tranasaction_type: 'credit',
-        },
-      });
-
-      if (!transaction) {
+      if (settings.public_key !== param.headers) {
         return {
           success: false,
-          message: 'Transaction not found',
-          statusCode: HttpStatus.NOT_FOUND,
-        };
-      }
-
-      if (transaction.status === 1) {
-        console.log('ℹ️ Transaction already marked successful.');
-        return {
-          success: true,
           message: 'Transaction already successful',
-          statusCode: HttpStatus.OK,
+          statusCode: HttpStatus.BAD_REQUEST,
         };
       }
 
-      const wallet = await this.walletRepository.findOne({
-        where: { user_id: transaction.user_id },
-      });
+      if (
+        param.callbackData.transactionStatus === 'Successful' &&
+        param.callbackData.paymentStatus === 'Complete'
+      ) {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: param.clientId,
+            transaction_no: param.callbackData.partnerReference,
+            tranasaction_type: 'credit',
+          },
+        });
 
-      if (!wallet) {
-        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        if (!transaction) {
+          return {
+            success: false,
+            message: 'Transaction not found',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        if (transaction.status === 1) {
+          console.log('ℹ️ Transaction already marked successful.');
+          return {
+            success: true,
+            message: 'Transaction already successful',
+            statusCode: HttpStatus.OK,
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+        console.log('FINALLY');
         return {
-          success: false,
-          message: 'Wallet not found for this user',
-          statusCode: HttpStatus.NOT_FOUND,
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
         };
       }
-
-      const balance =
-        parseFloat(wallet.available_balance.toString()) +
-        parseFloat(transaction.amount.toString());
-
-      await this.helperService.updateWallet(balance, transaction.user_id);
-
-      await this.transactionRepository.update(
-        { transaction_no: transaction.transaction_no },
-        { status: 1, balance },
-      );
-      console.log('FINALLY');
-      return {
-        statusCode: HttpStatus.OK,
-        success: true,
-        message: 'Transaction successfully verified and processed',
-      };
-
-      // return {
-      //   success: false,
-      //   message: 'Transaction not successful',
-      //   statusCode: HttpStatus.BAD_REQUEST,
-      // };
     } catch (error) {
       console.error('❌ OPay webhook processing error:', error.message);
       return {

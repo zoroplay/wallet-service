@@ -120,6 +120,8 @@ export class ProvidusService {
           responseCode: '03',
         };
       }
+
+      // 🔎 Find the transaction first
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: data.clientId,
@@ -133,8 +135,36 @@ export class ProvidusService {
           requestSuccessful: true,
           sessionId: data.sessionId,
           responseMessage: 'rejected transaction',
-          responseCode: '02',
+          responseCode: '03',
         };
+      }
+
+      // 🔍 Check if the settlementId has already been processed (globally)
+      if (data.settlementId) {
+        const existingSettlement = await this.transactionRepository.findOne({
+          where: { settlementId: data.settlementId },
+        });
+
+        if (existingSettlement) {
+          return {
+            requestSuccessful: true,
+            sessionId: data.sessionId,
+            responseMessage: 'duplicate transaction',
+            responseCode: '01',
+          };
+        }
+
+        // ✅ Update current transaction with settlementId if missing
+        if (!transaction.settlementId) {
+          await this.transactionRepository.update(
+            { id: transaction.id },
+            { settlementId: data.settlementId },
+          );
+          console.log(
+            '✅ Updated settlementId for transaction:',
+            transaction.transaction_no,
+          );
+        }
       }
 
       if (transaction.status === 1) {
@@ -171,7 +201,8 @@ export class ProvidusService {
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
-      console.log('FINALLY');
+
+      console.log('✅ Transaction successfully processed');
       return {
         requestSuccessful: true,
         sessionId: data.sessionId,
@@ -179,7 +210,7 @@ export class ProvidusService {
         responseCode: '00',
       };
     } catch (error) {
-      console.error('❌ OPay webhook processing error:', error.message);
+      console.error('❌ Providus webhook processing error:', error.message);
       return {
         requestSuccessful: true,
         sessionId: data.sessionId,
