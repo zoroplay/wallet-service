@@ -43,6 +43,7 @@ import { OPayService } from './opay.service';
 import { CoralPayService } from './coralpay.service';
 import { FidelityService } from './fidelity.service';
 import { GlobusService } from './globus.service';
+import { SmileAndPayService } from './smlieandpay.service';
 
 @Injectable()
 export class PaymentService {
@@ -72,6 +73,7 @@ export class PaymentService {
     private coralPayService: CoralPayService,
     private fidelityService: FidelityService,
     private globusService: GlobusService,
+    private smileAndPayService: SmileAndPayService,
   ) {}
 
   async inititateDeposit(
@@ -285,7 +287,7 @@ export class PaymentService {
         case 'opay':
           console.log('Opay');
           transactionNo = generateTrxNo();
-
+          const clientId = param.clientId;
           const opayRes = await this.oPayService.initiatePayment(
             {
               country: 'NG',
@@ -295,8 +297,7 @@ export class PaymentService {
                 currency: 'NGN',
               },
               returnUrl: user.callbackUrl + '/payment-verification/opay',
-              callbackUrl:
-                'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
+              callbackUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/${clientId}/opay/callback`,
               cancelUrl: user.callbackUrl + '/payment-verification/opay',
               evokeOpay: true,
               expireAt: 300,
@@ -454,6 +455,27 @@ export class PaymentService {
           );
 
           link = JSON.stringify(globusRes.data);
+
+          break;
+
+        case 'smileandpay':
+          console.log('SmileAndPay');
+
+          description = 'Online Deposit (SmileAndPay )';
+          const smileRes = await this.smileAndPayService.initiatePayment(
+            {
+              orderReference: generateTrxNo(),
+              amount: param.amount,
+              returnUrl: user.callbackUrl + '/payment-verification/smileandpay',
+              resultUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/${param.clientId}/smileandpay/callback`,
+              itemName: 'Deposit via Bwinners',
+              itemDescription: 'Online Deposit (SmileAndPay )',
+              currencyCode: '924',
+            },
+            param.clientId,
+          );
+          transactionNo = smileRes.data.transactionReference;
+          link = smileRes.data.paymentUrl;
 
           break;
 
