@@ -67,6 +67,7 @@ import {
   ProvidusRequest,
   GlobusRequest,
   SmileAndPayRequest,
+  VerifySmile,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -193,6 +194,12 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'SmileAndPayWebhook')
   smileAndPayWebhook(param: SmileAndPayRequest) {
     return this.smileAndPayService.handleWebhook(param);
+  }
+
+
+   @GrpcMethod(WALLET_SERVICE_NAME, 'VerifySmileAndPay')
+  smileAndPayVerify(param: VerifySmile) {
+    return this.smileAndPayService.verifyTransaction(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')
