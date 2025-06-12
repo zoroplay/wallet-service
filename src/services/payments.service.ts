@@ -466,7 +466,9 @@ export class PaymentService {
             {
               orderReference: transactionNo,
               amount: param.amount,
-              returnUrl: user.callbackUrl + `/payment-verification/smileandpay`,
+              returnUrl:
+                user.callbackUrl +
+                `/payment-verification/smileandpay?clientId=${param.clientId}&orderReference=${transactionNo}`,
               resultUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/${param.clientId}/smileandpay/callback`,
               itemName: 'Deposit via Bwinners',
               itemDescription: 'Online Deposit (SmileAndPay )',
@@ -890,8 +892,7 @@ export class PaymentService {
           return this.pawapayService.verifyTransaction(param);
         case 'fidelity':
           return this.fidelityService.handleCallback(param);
-        case 'smileandpay':
-          return this.smileAndPayService.verifyTransaction(param);
+
         default:
           return {
             success: false,
