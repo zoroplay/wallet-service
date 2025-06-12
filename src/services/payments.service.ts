@@ -863,7 +863,11 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      if (param.transactionRef !== 'undefined' || param.orderReference) {
+      const isValidTransactionRef =
+        param.transactionRef && param.transactionRef !== 'undefined';
+      const isValidOrderRef = !!param.orderReference;
+
+      if (isValidTransactionRef || isValidOrderRef) {
         switch (param.paymentChannel) {
           case 'paystack':
             return this.paystackService.verifyTransaction(param);
@@ -877,16 +881,15 @@ export class PaymentService {
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
             return this.pawapayService.verifyTransaction(param);
-
           case 'fidelity':
             return this.fidelityService.handleCallback(param);
-
           case 'smileandpay':
             return this.smileAndPayService.verifyTransaction(param);
-
-            break;
           default:
-            break;
+            return {
+              success: false,
+              message: 'Invalid payment channel',
+            };
         }
       }
     } catch (e) {
