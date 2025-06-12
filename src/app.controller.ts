@@ -66,6 +66,7 @@ import {
   FidelityWebhookRequest,
   ProvidusRequest,
   GlobusRequest,
+  SmileAndPayRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -87,6 +88,7 @@ import { CoralPayService } from './services/coralpay.service';
 import { FidelityService } from './services/fidelity.service';
 import { ProvidusService } from './services/providus.service';
 import { GlobusService } from './services/globus.service';
+import { SmileAndPayService } from './services/smlieandpay.service';
 
 type RangeType = 'day' | 'week' | 'month' | 'year';
 const allowedRanges: RangeType[] = ['day', 'week', 'month', 'year'];
@@ -115,6 +117,7 @@ export class AppController {
     private fidelityService: FidelityService,
     private providusService: ProvidusService,
     private globusService: GlobusService,
+    private smileAndPayService: SmileAndPayService,
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
@@ -185,6 +188,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayWebhook')
   korapayWebhook(param: KoraPayWebhookRequest) {
     return this.korapayService.processWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'SmileAndPayWebhook')
+  smileAndPayWebhook(param: SmileAndPayRequest) {
+    return this.smileAndPayService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')

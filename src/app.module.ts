@@ -51,6 +51,7 @@ import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
 import { FidelityService } from './services/fidelity.service';
 import { GlobusService } from './services/globus.service';
+import { SmileAndPayService } from './services/smlieandpay.service';
 
 @Module({
   imports: [
@@ -140,6 +141,7 @@ import { GlobusService } from './services/globus.service';
     CoralPayService,
     FidelityService,
     GlobusService,
+    SmileAndPayService,
   ],
 })
 export class AppModule {}
