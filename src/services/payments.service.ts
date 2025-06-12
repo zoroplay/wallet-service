@@ -864,40 +864,47 @@ export class PaymentService {
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
       const isValidTransactionRef =
-        param.transactionRef && param.transactionRef !== 'undefined';
+        !!param.transactionRef && param.transactionRef !== 'undefined';
       const isValidOrderRef = !!param.orderReference;
 
-      if (isValidTransactionRef || isValidOrderRef) {
-        switch (param.paymentChannel) {
-          case 'paystack':
-            return this.paystackService.verifyTransaction(param);
-          case 'monnify':
-            return this.monnifyService.verifyTransaction(param);
-          case 'wayaquick':
-            return this.wayaquickService.verifyTransaction(param);
-          case 'flutterwave':
-            return this.flutterwaveService.verifyTransaction(param);
-          case 'korapay':
-            return this.korapayService.verifyTransaction(param);
-          case 'pawapay':
-            return this.pawapayService.verifyTransaction(param);
-          case 'fidelity':
-            return this.fidelityService.handleCallback(param);
-          case 'smileandpay':
-            return this.smileAndPayService.verifyTransaction(param);
-          default:
-            return {
-              success: false,
-              message: 'Invalid payment channel',
-            };
-        }
+      if (!isValidTransactionRef && !isValidOrderRef) {
+        return {
+          success: false,
+          message: 'transactionRef or orderReference is required',
+          status: HttpStatus.BAD_REQUEST,
+        };
+      }
+
+      switch (param.paymentChannel) {
+        case 'paystack':
+          return this.paystackService.verifyTransaction(param);
+        case 'monnify':
+          return this.monnifyService.verifyTransaction(param);
+        case 'wayaquick':
+          return this.wayaquickService.verifyTransaction(param);
+        case 'flutterwave':
+          return this.flutterwaveService.verifyTransaction(param);
+        case 'korapay':
+          return this.korapayService.verifyTransaction(param);
+        case 'pawapay':
+          return this.pawapayService.verifyTransaction(param);
+        case 'fidelity':
+          return this.fidelityService.handleCallback(param);
+        case 'smileandpay':
+          return this.smileAndPayService.verifyTransaction(param);
+        default:
+          return {
+            success: false,
+            message: 'Invalid payment channel',
+            status: HttpStatus.BAD_REQUEST,
+          };
       }
     } catch (e) {
-      console.log('Error', e.message);
+      console.error('verifyDeposit error:', e.message);
       return {
         success: false,
-        message: 'Internal Server error',
-        status: HttpStatus.BAD_REQUEST,
+        message: 'Internal Server Error',
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
   }
