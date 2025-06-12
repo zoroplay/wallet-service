@@ -174,6 +174,7 @@ export class SmileAndPayService {
           },
         },
       );
+      console.log(response.data.status);
 
       if (response.data.status === 'PAID') {
         const transaction = await this.transactionRepository.findOne({
