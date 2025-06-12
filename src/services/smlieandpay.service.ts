@@ -155,17 +155,17 @@ export class SmileAndPayService {
   async verifyTransaction(param) {
     try {
       const settings = await this.smileAndPaySettings(param.client_id);
-
+      console.log('LOG::::', param);
       if (!settings)
         return {
           success: false,
           message: 'SmileAndPay has not been configured for client',
         };
-      const url = `${settings.base_url}/payments/transaction-status`;
+      const url = `${settings.base_url}/payments/transaction/${param.orderReference}/status/check`;
 
-      const response = await axios.post(
+      const response = await axios.get(
         url,
-        { transactionReference: param.transactionRef },
+
         {
           headers: {
             'Content-Type': 'application/json',
@@ -175,10 +175,65 @@ export class SmileAndPayService {
         },
       );
 
-      return {
-        success: true,
-        data: response.data,
-      };
+      if (response.data.status === 'PAID') {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: param.clientId,
+            transaction_no: param.orderReference,
+            tranasaction_type: 'credit',
+          },
+        });
+
+        if (!transaction) {
+          return {
+            success: false,
+            message: 'Transaction not found',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        if (transaction.status === 1) {
+          console.log('ℹ️ Transaction already marked successful.');
+          return {
+            success: true,
+            message: 'Transaction already successful',
+            statusCode: HttpStatus.OK,
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+        console.log('FINALLY');
+        return {
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
     } catch (error) {
       console.error(
         'SmileAndPay Verify Error:',

@@ -474,20 +474,7 @@ export class PaymentService {
             },
             param.clientId,
           );
-          // const smileRes = await this.smileAndPayService.initiatePayment(
-          //   {
-          //     orderReference: transactionNo, // const smileRes = await this.smileAndPayService.initiatePayment(
-          //     amount: param.amount,
-          //     returnUrl:
-          //       user.callbackUrl +
-          //       `/payment-verification/smileandpay?orderReference=${transactionNo}`,
-          //     resultUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/${param.clientId}/smileandpay/callback`,
-          //     itemName: 'Deposit via Bwinners',
-          //     itemDescription: 'Online Deposit (SmileAndPay )',
-          //     currencyCode: '924',
-          //   },
-          //   param.clientId,
-          // );
+
           link = smileRes.data.paymentUrl;
 
           break;
@@ -876,7 +863,7 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      if (param.transactionRef !== 'undefined') {
+      if (param.transactionRef !== 'undefined' || param.orderReference) {
         switch (param.paymentChannel) {
           case 'paystack':
             return this.paystackService.verifyTransaction(param);
