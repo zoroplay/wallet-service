@@ -297,7 +297,7 @@ export class PaymentService {
                 currency: 'NGN',
               },
               returnUrl: user.callbackUrl + '/payment-verification/opay',
-              callbackUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/${clientId}/opay/callback`,
+              callbackUrl: `https://api.prod.sportsbookengine.com/api/v2/webhook/checkout/${clientId}/opay/callback`,
               cancelUrl: user.callbackUrl + '/payment-verification/opay',
               evokeOpay: true,
               expireAt: 300,
@@ -460,13 +460,13 @@ export class PaymentService {
 
         case 'smileandpay':
           console.log('SmileAndPay');
-
-          description = 'Online Deposit (SmileAndPay )';
+          (transactionNo = generateTrxNo()),
+            (description = 'Online Deposit (SmileAndPay )');
           const smileRes = await this.smileAndPayService.initiatePayment(
             {
-              orderReference: generateTrxNo(),
+              orderReference: transactionNo,
               amount: param.amount,
-              returnUrl: user.callbackUrl + '/payment-verification/smileandpay',
+              returnUrl: user.callbackUrl + `/payment-verification/smileandpay`,
               resultUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/${param.clientId}/smileandpay/callback`,
               itemName: 'Deposit via Bwinners',
               itemDescription: 'Online Deposit (SmileAndPay )',
@@ -474,7 +474,7 @@ export class PaymentService {
             },
             param.clientId,
           );
-          transactionNo = smileRes.data.transactionReference;
+
           link = smileRes.data.paymentUrl;
 
           break;
@@ -863,7 +863,7 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      if (param.transactionRef !== 'undefined') {
+      if (param.transactionRef !== 'undefined' || param.orderReference) {
         switch (param.paymentChannel) {
           case 'paystack':
             return this.paystackService.verifyTransaction(param);
@@ -880,6 +880,9 @@ export class PaymentService {
 
           case 'fidelity':
             return this.fidelityService.handleCallback(param);
+
+          case 'smileandpay':
+            return this.smileAndPayService.verifyTransaction(param);
 
             break;
           default:
