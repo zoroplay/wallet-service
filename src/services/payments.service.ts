@@ -876,6 +876,8 @@ export class PaymentService {
         };
       }
 
+      console.log(param);
+
       switch (param.paymentChannel) {
         case 'paystack':
           return this.paystackService.verifyTransaction(param);
