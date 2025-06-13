@@ -161,7 +161,7 @@ export class SmileAndPayService {
           success: false,
           message: 'SmileAndPay has not been configured for client',
         };
-      const url = `${settings.base_url}/payments/transaction/${param.transactionRef}/status/check`;
+      const url = `${settings.base_url}/payments/transaction/${param.orderReference}/status/check`;
 
       const response = await axios.get(
         url,
