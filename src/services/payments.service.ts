@@ -863,14 +863,15 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      const isValidTransactionRef =
+      const hasTransactionRef =
         !!param.transactionRef && param.transactionRef !== 'undefined';
-      const isValidOrderRef = !!param.orderReference;
+      const hasOrderRef = !!param.orderReference;
 
-      if (!isValidTransactionRef && !isValidOrderRef) {
+      // At least one reference must be provided
+      if (!hasTransactionRef && !hasOrderRef) {
         return {
           success: false,
-          message: 'transactionRef or orderReference is required',
+          message: 'Either transactionRef or orderReference is required',
           status: HttpStatus.BAD_REQUEST,
         };
       }
@@ -890,22 +891,20 @@ export class PaymentService {
           return this.pawapayService.verifyTransaction(param);
         case 'fidelity':
           return this.fidelityService.handleCallback(param);
-
         case 'smileandpay':
           return this.smileAndPayService.verifyTransaction(param);
-
         default:
           return {
             success: false,
-            message: 'Invalid payment channel',
+            message: 'Unsupported payment channel',
             status: HttpStatus.BAD_REQUEST,
           };
       }
-    } catch (e) {
-      console.error('verifyDeposit error:', e.message);
+    } catch (error) {
+      console.error('Error verifying deposit:', error);
       return {
         success: false,
-        message: 'Internal Server Error',
+        message: 'Failed to verify deposit',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
