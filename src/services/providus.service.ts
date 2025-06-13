@@ -114,10 +114,10 @@ export class ProvidusService {
 
       if (expectedSignature.toLowerCase() !== receivedSignature.toLowerCase()) {
         return {
-          requestSuccessful: false,
+          requestSuccessful: true,
           sessionId: data.sessionId,
-          responseMessage: 'Invalid x-auth-signature',
-          responseCode: '03',
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
         };
       }
 
@@ -135,7 +135,7 @@ export class ProvidusService {
           requestSuccessful: true,
           sessionId: data.sessionId,
           responseMessage: 'rejected transaction',
-          responseCode: '03',
+          responseCode: '02',
         };
       }
 

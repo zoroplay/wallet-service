@@ -263,7 +263,7 @@ export class PaymentService {
               },
               customization: {
                 title: 'Coralpay Payment',
-                description: 'Payment via Virtual Account',
+                description: 'Payment via Online Deposit',
               },
               traceId: traceId,
               productId: uuidv4(),
@@ -466,9 +466,7 @@ export class PaymentService {
             {
               orderReference: transactionNo,
               amount: param.amount,
-              returnUrl:
-                user.callbackUrl +
-                `/payment-verification/smileandpay?clientId=${param.clientId}&orderReference=${transactionNo}`,
+              returnUrl: user.callbackUrl + '/payment-verification/smileandpay',
               resultUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/${param.clientId}/smileandpay/callback`,
               itemName: 'Deposit via Bwinners',
               itemDescription: 'Online Deposit (SmileAndPay )',
@@ -892,6 +890,9 @@ export class PaymentService {
           return this.pawapayService.verifyTransaction(param);
         case 'fidelity':
           return this.fidelityService.handleCallback(param);
+
+        case 'smileandpay':
+          return this.smileAndPayService.verifyTransaction(param);
 
         default:
           return {
