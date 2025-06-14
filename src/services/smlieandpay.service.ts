@@ -180,7 +180,7 @@ export class SmileAndPayService {
         const transaction = await this.transactionRepository.findOne({
           where: {
             client_id: param.clientId,
-            transaction_no: param.orderReference,
+            transaction_no: param.transactionRef,
             tranasaction_type: 'credit',
           },
         });
