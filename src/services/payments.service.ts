@@ -84,7 +84,7 @@ export class PaymentService {
     let link = '',
       description,
       status = 0;
-    // console.log(param);
+
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
@@ -104,7 +104,7 @@ export class PaymentService {
       })
       .toPromise();
 
-    // console.log(user);
+    console.log(user);
 
     if (user.username === '')
       return { success: false, message: 'User does not exist' };
@@ -863,44 +863,31 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      const hasTransactionRef =
-        !!param.transactionRef && param.transactionRef !== 'undefined';
-      const hasOrderRef = !!param.orderReference;
-
-      // At least one reference must be provided
-      if (!hasTransactionRef && !hasOrderRef) {
-        return {
-          success: false,
-          message: 'Either transactionRef or orderReference is required',
-          status: HttpStatus.BAD_REQUEST,
-        };
-      }
-
-      console.log(param);
-
-      switch (param.paymentChannel) {
-        case 'paystack':
-          return this.paystackService.verifyTransaction(param);
-        case 'monnify':
-          return this.monnifyService.verifyTransaction(param);
-        case 'wayaquick':
-          return this.wayaquickService.verifyTransaction(param);
-        case 'flutterwave':
-          return this.flutterwaveService.verifyTransaction(param);
-        case 'korapay':
-          return this.korapayService.verifyTransaction(param);
-        case 'pawapay':
-          return this.pawapayService.verifyTransaction(param);
-        case 'fidelity':
-          return this.fidelityService.handleCallback(param);
-        case 'smileandpay':
-          return this.smileAndPayService.verifyTransaction(param);
-        default:
-          return {
-            success: false,
-            message: 'Unsupported payment channel',
-            status: HttpStatus.BAD_REQUEST,
-          };
+      if (param.transactionRef !== 'undefined') {
+        switch (param.paymentChannel) {
+          case 'paystack':
+            return this.paystackService.verifyTransaction(param);
+          case 'monnify':
+            return this.monnifyService.verifyTransaction(param);
+          case 'wayaquick':
+            return this.wayaquickService.verifyTransaction(param);
+          case 'flutterwave':
+            return this.flutterwaveService.verifyTransaction(param);
+          case 'korapay':
+            return this.korapayService.verifyTransaction(param);
+          case 'pawapay':
+            return this.pawapayService.verifyTransaction(param);
+          case 'fidelity':
+            return this.fidelityService.handleCallback(param);
+          case 'smileandpay':
+            return this.smileAndPayService.verifyTransaction(param);
+          default:
+            return {
+              success: false,
+              message: 'Unsupported payment channel',
+              status: HttpStatus.BAD_REQUEST,
+            };
+        }
       }
     } catch (error) {
       console.error('Error verifying deposit:', error);
@@ -1265,24 +1252,46 @@ export class PaymentService {
   }
 
   async createRequest(param) {
+    console.log('PARAM:::::::', param);
     try {
-      const wallet = await this.walletRepository
-        .createQueryBuilder()
-        .where('client_id = :clientId', { clientId: param.clientId })
-        .andWhere('user_id = :user_id', { user_id: param.userId })
-        .getOne();
+      const wallet = await this.walletRepository.findOne({
+        where: {
+          user_id: param.userId,
+          client_id: param.clientId,
+        },
+      });
 
       if (!wallet) return { success: false, message: 'Wallet not found' };
 
-      const user = await this.identityService
-        .getPaymentData({
-          clientId: param.clientId,
-          userId: param.userId,
-          source: param.source,
-        })
-        .toPromise();
+      if (param.action === 'payouts') {
+        if (wallet.available_balance < param.amount) {
+          return {
+            success: false,
+            message: 'Insufficient wallet balance for payout',
+          };
+        }
+      }
+      console.log(param.clientId, param.userId, param.source);
+
+      let user;
+      try {
+        const userRes = await this.identityService
+          .getPaymentData({
+            clientId: param.clientId,
+            userId: param.userId,
+            source: param.source,
+          })
+          .toPromise();
+
+        user = userRes;
+      } catch (err) {
+        console.error('Error getting user payment data:', err);
+        return { success: false, message: 'Failed to fetch user payment data' };
+      }
 
       let subject, transactionNo, res;
+
+      console.log('USER', user);
 
       const actionId = uuidv4();
       switch (param.action) {
@@ -1300,12 +1309,31 @@ export class PaymentService {
 
           break;
         case 'payouts':
+          let username = user.username;
+          if (!username.startsWith('255')) {
+            username = '255' + username.replace(/^0+/, '');
+          }
           res = await this.pawapayService.createPayout({
-            user,
-            amount: param.amount,
-            operator: param.operator,
             payoutId: actionId,
-            clientId: param.clientId,
+            amount: param.amount.toString(),
+            currency: 'TZS',
+            country: 'TZA',
+            correspondent: param.operator,
+            recipient: {
+              address: {
+                value: username,
+              },
+              type: 'MSISDN',
+            },
+            statementDescription: 'Online Payouts',
+            customerTimestamp: new Date(),
+            metadata: [
+              {
+                fieldName: 'customerId',
+                fieldValue: username,
+                isPII: true,
+              },
+            ],
           });
 
           if (!res.success) return res;
@@ -1331,7 +1359,7 @@ export class PaymentService {
           return {
             success: true,
             message: 'Payout cancelled successfully',
-            data: { transactionRef: transactionNo },
+            data: res.data,
           };
           break;
         case 'refunds':
