@@ -53,6 +53,7 @@ import { FidelityService } from './services/fidelity.service';
 import { GlobusService } from './services/globus.service';
 import { SmileAndPayService } from './services/smlieandpay.service';
 import { DashboardService } from './services/dashboard.service';
+import { TransactionArchiveService } from './services/transaction-archive.service';
 
 @Module({
   imports: [
@@ -144,6 +145,7 @@ import { DashboardService } from './services/dashboard.service';
     GlobusService,
     SmileAndPayService,
     DashboardService,
+    TransactionArchiveService,
   ],
 })
 export class AppModule {}

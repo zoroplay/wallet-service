@@ -16,12 +16,12 @@ export class TransactionArchiveService {
     private readonly archivedRepo: Repository<ArchivedTransaction>,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async archiveTransactions() {
     console.log('Starting transaction archive process...');
 
     const threeMonthsAgo = dayjs()
-      .subtract(3, 'month')
+      .subtract(5, 'month')
       .format('YYYY-MM-DD HH:mm:ss');
 
     const oldTransactions = await this.transactionRepo.find({
