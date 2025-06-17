@@ -12,6 +12,113 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
+export interface ClientRequest {
+  clientId: number;
+}
+
+export interface FinancialPerformanceResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  totalDeposit: number;
+  totalWithdrawal: number;
+}
+
+export interface PlayerBalanceResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  totalOnlinePlayerBalance: number;
+  totalOnlinePlayerBonus: number;
+  totalRetailBalance: number;
+  totalRetailTrustBalance: number;
+}
+
+export interface Balances {
+}
+
+export interface VerifySmile {
+  clientId: number;
+  orderReference: string;
+}
+
+export interface VerifySmileRes {
+  statusCode: number;
+  message: string;
+}
+
+export interface SmileAndPayRequest {
+  clientId: number;
+  callbackData: { [key: string]: any } | undefined;
+}
+
+export interface SmileAndPayResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+}
+
+export interface GlobusRequest {
+  clientId: number;
+  callbackData: { [key: string]: any } | undefined;
+  headers: string;
+}
+
+export interface GlobusResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+}
+
+export interface ProvidusRequest {
+  accountNumber: string;
+  clientId: number;
+  sessionId: string;
+  headers: string;
+  settlementId: string;
+}
+
+export interface ProvidusResponse {
+  requestSuccessful: boolean;
+  sessionId: string;
+  responseMessage: string;
+  responseCode: string;
+}
+
+export interface FidelityWebhookRequest {
+  transactionReference: string;
+  clientId: number;
+}
+
+export interface FidelityResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+}
+
+export interface DeletePaymentMethodRequest {
+  id: number;
+  clientId: number;
+}
+
+export interface DeletePaymentMethodResponse {
+  success: boolean;
+  status: number;
+  message: string;
+}
+
+export interface UpdatePaymentMethodRes {
+  title: string;
+  provider: string;
+  secretKey: string;
+  publicKey: string;
+  merchantId: string;
+  baseUrl: string;
+  status: number;
+  forDisbursement: number;
+  id: number;
+}
+
 export interface CorapayWebhookRequest {
   clientId: number;
   authHeader: string;
@@ -45,6 +152,7 @@ export interface ShopUsersSummaryRequest {
 
 export interface ShopUserSummary {
   userId: number;
+  username: string;
   numberOfDeposits: number;
   totalDeposits: number;
   numberOfWithdrawals: number;
@@ -636,8 +744,9 @@ export interface PaymentMethodRequest {
 
 export interface VerifyDepositRequest {
   clientId: number;
-  transactionRef: string;
   paymentChannel: string;
+  transactionRef?: string | undefined;
+  orderReference?: string | undefined;
 }
 
 export interface VerifyDepositResponse {
@@ -1181,6 +1290,10 @@ export interface WalletServiceClient {
 
   getSystemTransaction(request: GetTransactionsRequest): Observable<CommonResponseObj>;
 
+  updatePaymentMethod(request: PaymentMethodRequest): Observable<GetPaymentMethodResponse>;
+
+  deletePaymentMethod(request: DeletePaymentMethodRequest): Observable<DeletePaymentMethodResponse>;
+
   /** RETAIL SERVICES */
 
   walletTransfer(request: WalletTransferRequest): Observable<CommonResponseObj>;
@@ -1216,6 +1329,20 @@ export interface WalletServiceClient {
   opayCallback(request: OpayRequest): Observable<OpayResponse>;
 
   corapayWebhook(request: CorapayWebhookRequest): Observable<CorapayResponse>;
+
+  fidelityWebhook(request: FidelityWebhookRequest): Observable<FidelityResponse>;
+
+  providusWebhook(request: ProvidusRequest): Observable<ProvidusResponse>;
+
+  globusWebhook(request: GlobusRequest): Observable<GlobusResponse>;
+
+  smileAndPayWebhook(request: SmileAndPayRequest): Observable<SmileAndPayResponse>;
+
+  verifySmileAndPay(request: VerifySmile): Observable<VerifySmileRes>;
+
+  financialPerformance(request: ClientRequest): Observable<FinancialPerformanceResponse>;
+
+  playerBalances(request: ClientRequest): Observable<PlayerBalanceResponse>;
 }
 
 export interface WalletServiceController {
@@ -1531,6 +1658,14 @@ export interface WalletServiceController {
     request: GetTransactionsRequest,
   ): Promise<CommonResponseObj> | Observable<CommonResponseObj> | CommonResponseObj;
 
+  updatePaymentMethod(
+    request: PaymentMethodRequest,
+  ): Promise<GetPaymentMethodResponse> | Observable<GetPaymentMethodResponse> | GetPaymentMethodResponse;
+
+  deletePaymentMethod(
+    request: DeletePaymentMethodRequest,
+  ): Promise<DeletePaymentMethodResponse> | Observable<DeletePaymentMethodResponse> | DeletePaymentMethodResponse;
+
   /** RETAIL SERVICES */
 
   walletTransfer(
@@ -1593,6 +1728,30 @@ export interface WalletServiceController {
   corapayWebhook(
     request: CorapayWebhookRequest,
   ): Promise<CorapayResponse> | Observable<CorapayResponse> | CorapayResponse;
+
+  fidelityWebhook(
+    request: FidelityWebhookRequest,
+  ): Promise<FidelityResponse> | Observable<FidelityResponse> | FidelityResponse;
+
+  providusWebhook(
+    request: ProvidusRequest,
+  ): Promise<ProvidusResponse> | Observable<ProvidusResponse> | ProvidusResponse;
+
+  globusWebhook(request: GlobusRequest): Promise<GlobusResponse> | Observable<GlobusResponse> | GlobusResponse;
+
+  smileAndPayWebhook(
+    request: SmileAndPayRequest,
+  ): Promise<SmileAndPayResponse> | Observable<SmileAndPayResponse> | SmileAndPayResponse;
+
+  verifySmileAndPay(request: VerifySmile): Promise<VerifySmileRes> | Observable<VerifySmileRes> | VerifySmileRes;
+
+  financialPerformance(
+    request: ClientRequest,
+  ): Promise<FinancialPerformanceResponse> | Observable<FinancialPerformanceResponse> | FinancialPerformanceResponse;
+
+  playerBalances(
+    request: ClientRequest,
+  ): Promise<PlayerBalanceResponse> | Observable<PlayerBalanceResponse> | PlayerBalanceResponse;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1679,6 +1838,8 @@ export function WalletServiceControllerMethods() {
       "getNetworkBalance",
       "getMoneyTransaction",
       "getSystemTransaction",
+      "updatePaymentMethod",
+      "deletePaymentMethod",
       "walletTransfer",
       "validateDepositCode",
       "processShopDeposit",
@@ -1696,6 +1857,13 @@ export function WalletServiceControllerMethods() {
       "mtnmomoCallback",
       "opayCallback",
       "corapayWebhook",
+      "fidelityWebhook",
+      "providusWebhook",
+      "globusWebhook",
+      "smileAndPayWebhook",
+      "verifySmileAndPay",
+      "financialPerformance",
+      "playerBalances",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
