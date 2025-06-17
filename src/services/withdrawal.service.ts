@@ -115,7 +115,7 @@ export class WithdrawalService {
       };
     } catch (e) {
       // console.log(e.message);
-
+      
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -250,10 +250,12 @@ export class WithdrawalService {
     const skip = (page - 1) * limit;
 
     const start = dayjs(from, 'DD-MM-YYYY HH:mm:ss').format(
-      'YYYY-MM-DD HH:mm:ss',
-    );
-    const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
-
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      const end = dayjs(to, 'DD-MM-YYYY HH:mm:ss').format(
+        'YYYY-MM-DD HH:mm:ss',
+      );
+      
     const queryBuilder = this.withdrawalRepository
       .createQueryBuilder('withdrawal')
       .andWhere('withdrawal.client_id = :clientId', { clientId });
@@ -298,13 +300,10 @@ export class WithdrawalService {
       .andWhere('withdrawal.client_id = :clientId', { clientId });
 
     if (start && end) {
-      totalAmountResult.andWhere(
-        'withdrawal.created_at BETWEEN :start AND :end',
-        {
-          start,
-          end,
-        },
-      );
+      totalAmountResult.andWhere('withdrawal.created_at BETWEEN :start AND :end', {
+        start,
+        end,
+      });
     }
 
     const totalAmountRow = await totalAmountResult.getRawOne();

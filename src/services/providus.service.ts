@@ -10,7 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
-import { ProvidusResponse } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class ProvidusService {
@@ -68,15 +67,14 @@ export class ProvidusService {
       'X-Auth-Signature': xAuthSignature,
     };
 
+    console.log('HEADERS:', headers);
+    //console.log('DATA:', data);
+
     try {
       const response = await axios.post(url, data, { headers });
-
       console.log('RESPONSE', response.data);
 
-      return {
-        success: true,
-        data: response.data,
-      };
+      return response.data;
     } catch (error) {
       console.error(
         '❌ Error during Providus payment initiation:',

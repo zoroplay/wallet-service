@@ -115,10 +115,7 @@ export class PawapayService {
           success: false,
           message: 'PawaPay has not been configured for client',
         };
-      console.log('PAYLOAD:::', data);
-
-      // const url = 'https://api.pawapay.io';
-      // const key = process.env.PAWAPAY_PROD;
+      console.log('FINAL_PHONE NUMBER::', data.msisdn);
 
       const response = await fetch(`${settings.base_url}/deposits`, {
         method: 'POST',
@@ -174,6 +171,7 @@ export class PawapayService {
           },
         });
         console.log('TRX', transaction.transaction_no);
+        console.log('TRX', transaction);
 
         if (!transaction)
           return {
@@ -345,6 +343,50 @@ export class PawapayService {
     }
   }
 
+  // async generatePaymentLink(data, client_id) {
+  //   try {
+  //     console.log('CHECK-1');
+  //     const settings = await this.pawapaySettings(client_id);
+
+  //     if (!settings)
+  //       return {
+  //         success: false,
+  //         message: 'PawaPay has not been configured for client',
+  //       };
+  //     console.log('CHECK-2');
+
+  //     console.log('DATA:::', data);
+  //     console.log(data.depositId);
+
+  //     const res = await axios.post(
+  //       `	https://api.sandbox.pawapay.cloud/deposits`,
+  //       data,
+  //       {
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           Authorization: `Bearer ${process.env.PAWAPAY}`,
+  //         },
+  //       },
+  //     );
+  //    console.log(res)
+  //     console.log('CHECK-3');
+  //     if (res.status === 200) {
+  //       console.log("DONE", res.data)
+  //       return { success: true, data: res.data };
+
+  //     }
+  //   } catch (error) {
+  //     console.error(
+  //       'PawaPay Error:',
+  //       error.response ? error.response.data : error.message,
+  //     );
+  //     return {
+  //       success: false,
+  //       message: error.response ? error.response.data : error.message,
+  //     };
+  //   }
+  // }
+
   signRequest(
     contentDigest: string,
     url: string,
@@ -509,19 +551,62 @@ export class PawapayService {
     }
   }
 
-  async createPayout(data) {
+  async createPayout({
+    user,
+    amount,
+    payoutId,
+    operator,
+    clientId,
+  }: {
+    user: any;
+    amount: number;
+    payoutId: string;
+    operator: string;
+    clientId: number;
+  }): Promise<{
+    success: boolean;
+    data?: any;
+    transactionNo?: string;
+    message?: string;
+  }> {
     try {
-      const settings = await this.pawapaySettings(data.clientId);
+      const settings = await this.pawapaySettings(clientId);
 
-      console.log('BODY:::', data);
-
-      const res = await axios.post(`${settings.base_url}/payouts`, data, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.secret_key}`,
+      const requestBody = {
+        payoutId,
+        amount: amount,
+        currency: 'TZS',
+        // country: _corr.data.country,
+        // correspondent: _corr.data.correspondent,
+        country: 'TZA',
+        correspondent: operator,
+        recipient: {
+          type: 'MSISDN',
+          address: { value: `255${user.username}` },
         },
-      });
-      console.log('ACT::', res.data);
+        statementDescription: 'Online Payouts',
+        customerTimestamp: new Date(),
+        metadata: [
+          {
+            fieldName: 'customerId',
+            fieldValue: user.email,
+            isPII: true,
+          },
+        ],
+      };
+
+      const contentDigest = this.generateContentDigest(requestBody);
+      const res = await axios.post(
+        `${settings.base_url}/payouts`,
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${settings.secret_key}`,
+            'Content-Digest': contentDigest,
+          },
+        },
+      );
       if (res.data.status === 'REJECTED')
         return {
           success: false,
@@ -533,7 +618,6 @@ export class PawapayService {
           success: false,
           message: res.data.rejectionReason.rejectionMessage,
         };
-      console.log('PAYOUT RESPONSE::::', res.data);
 
       return {
         success: true,
