@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
+import { ProvidusResponse } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class ProvidusService {
