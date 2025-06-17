@@ -92,6 +92,7 @@ export class ProvidusService {
 
   async handleWebhook(data): Promise<ProvidusResponse> {
     try {
+      console.log(data);
       const settings = await this.providusSettings(data.client_id);
       if (!settings) {
         return {
