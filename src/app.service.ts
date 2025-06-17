@@ -7,6 +7,7 @@ import {
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
+  DeletePaymentMethodRequest,
   GetBalanceRequest,
   GetNetworkBalanceRequest,
   GetNetworkBalanceResponse,
@@ -33,11 +34,9 @@ import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
-
 import { Bank } from './entity/bank.entity';
 import { IdentityService } from './identity/identity.service';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+
 var customParseFormat = require('dayjs/plugin/customParseFormat');
 
 dayjs.extend(customParseFormat);
@@ -147,25 +146,143 @@ export class AppService {
   async getPaymentMethods(data: GetPaymentMethodRequest) {
     try {
       const { clientId, status } = data;
-      console.log(status);
-      const where: any = { client_id: clientId };
-      if (status) where.status = status;
 
-      let results = [];
-      console.log(where);
+      const where: any = { client_id: clientId };
+      if (status !== undefined) where.status = status;
+
       const pMethods = await this.pMethodRepository.find({ where });
 
-      if (status) {
-        results = pMethods.map((p) => ({
-          provider: p.provider,
-          title: p.display_name,
-        }));
-      } else {
-        results = pMethods;
+      // Always map to consistent shape
+      let results = pMethods.map((p) => ({
+        id: p.id,
+        clientId: p.client_id,
+        title: p.display_name,
+        provider: p.provider,
+        baseUrl: p.base_url?.trim() || null,
+        secretKey: p.secret_key || null,
+        publicKey: p.public_key || null,
+        merchantId: p.merchant_id || null,
+        logoPath: p.logo_path || null,
+        status: p.status,
+        forDisbursement: p.for_disbursement,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }));
+
+      console.log(results);
+      // Optional: Filter by status after mapping, if needed
+      if (status !== undefined) {
+        results = results.filter((r) => r.status === status);
       }
+
       return handleResponse(results, 'Payment methods retrieved successfully');
     } catch (e) {
       return handleError(e.message, {}, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async updatePaymentMethod(updateData: PaymentMethodRequest) {
+    try {
+      const {
+        id,
+        clientId,
+        title,
+        provider,
+        secretKey,
+        publicKey,
+        merchantId,
+        baseUrl,
+        status,
+        forDisbursement,
+      } = updateData;
+
+      const paymentMethod = await this.pMethodRepository.findOne({
+        where: { id, client_id: clientId },
+      });
+
+      if (!paymentMethod) {
+        return {
+          success: false,
+          status: HttpStatus.NOT_FOUND,
+          message: 'Payment method not found',
+        };
+      }
+
+      if (title !== undefined) paymentMethod.display_name = title;
+      if (provider !== undefined) paymentMethod.provider = provider;
+      if (secretKey !== undefined) paymentMethod.secret_key = secretKey;
+      if (publicKey !== undefined) paymentMethod.public_key = publicKey;
+      if (merchantId !== undefined) paymentMethod.merchant_id = merchantId;
+      if (baseUrl !== undefined) paymentMethod.base_url = baseUrl;
+      if (status !== undefined) paymentMethod.status = status;
+      if (forDisbursement !== undefined)
+        paymentMethod.for_disbursement = forDisbursement;
+
+      const updated = await this.pMethodRepository.save(paymentMethod);
+
+      const result = await this.pMethodRepository.findOne({
+        where: { id: updated.id, client_id: updated.client_id },
+
+        select: [
+          'id',
+          'client_id',
+          'display_name',
+          'provider',
+          'secret_key',
+          'public_key',
+          'merchant_id',
+          'base_url',
+          'status',
+          'for_disbursement',
+        ],
+      });
+
+      return {
+        success: true,
+        status: 200,
+        message: 'Payment method updated successfully',
+        data: [result],
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'An error occurred while updating the payment method',
+        error: e.message,
+        data: [],
+      };
+    }
+  }
+
+  async deletePaymentMethod(payload: DeletePaymentMethodRequest) {
+    try {
+      const { id, clientId } = payload;
+      const paymentMethod = await this.pMethodRepository.findOne({
+        where: { id: id, client_id: clientId },
+      });
+
+      if (!paymentMethod) {
+        return {
+          success: false,
+          status: HttpStatus.NOT_FOUND,
+          message: 'Payment method not found',
+        };
+      }
+
+      await this.pMethodRepository.remove(paymentMethod);
+
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        message: 'Payment method deleted successfully',
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error deleting payment method',
+        error: e.message,
+      };
     }
   }
 
@@ -284,7 +401,7 @@ export class AppService {
         channel: data.channel,
         source: data.source,
         fromUserId: 0,
-        fromUsername: "System",
+        fromUsername: 'System',
         fromUserBalance: 0,
         toUserId: data.userId,
         toUsername: data.username,
@@ -295,20 +412,24 @@ export class AppService {
 
       // send deposit to trackier
       try {
-        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+        const keys = await this.identityService.getTrackierKeys({
+          itemId: data.clientId,
+        });
 
-        if (keys.success){
-          await this.helperService.sendActivity({
-            subject: data.subject,
-            username: data.username,
-            amount: data.amount,
-            transactionId: transactionNo,
-            clientId: data.clientId,
-          },  keys.data);
+        if (keys.success) {
+          await this.helperService.sendActivity(
+            {
+              subject: data.subject,
+              username: data.username,
+              amount: data.amount,
+              transactionId: transactionNo,
+              clientId: data.clientId,
+            },
+            keys.data,
+          );
         }
-
       } catch (e) {
-        console.log('Trackier error: Credit User', e.message)
+        console.log('Trackier error: Credit User', e.message);
       }
 
       wallet.balance = balance;
@@ -327,41 +448,56 @@ export class AppService {
       });
 
       const amount = parseFloat(data.amount);
-      
 
       let balance = 0;
       let walletBalance = 'available_balance';
       let walletType = 'Main';
       switch (data.wallet) {
-        case "sport-bonus":
+        case 'sport-bonus':
           if (wallet.sport_bonus_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
-          walletBalance = "sport_bonus_balance";
-          walletType = "Sport Bonus";
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
+          walletBalance = 'sport_bonus_balance';
+          walletType = 'Sport Bonus';
           balance = wallet.sport_bonus_balance - amount;
           break;
-        case "virtual":
+        case 'virtual':
           if (wallet.virtual_bonus_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
 
-          walletBalance = "virtual_bonus_balance";
-          walletType = "Virtual Bonus";
+          walletBalance = 'virtual_bonus_balance';
+          walletType = 'Virtual Bonus';
           balance = wallet.virtual_bonus_balance - amount;
           break;
-        case "casino":
+        case 'casino':
           if (wallet.casino_bonus_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
 
-          walletBalance = "casino_bonus_balance";
-          walletType = "Casino Bonus";
+          walletBalance = 'casino_bonus_balance';
+          walletType = 'Casino Bonus';
           balance = wallet.casino_bonus_balance - amount;
           break;
-        case "trust":
+        case 'trust':
           if (wallet.trust_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
-          
-          walletBalance = "trust_balance";
-          walletType = "Trust";
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
+
+          walletBalance = 'trust_balance';
+          walletType = 'Trust';
           balance = wallet.trust_balance - amount;
           break;
         default:
@@ -522,10 +658,8 @@ export class AppService {
     }
   }
 
-  async listDeposits(data): Promise<any> {
-    // console.log('fetch deposits', data)
+   async listDeposits(data): Promise<PaginationResponse> {
     try {
-      // console.log(data);
       const {
         clientId,
         startDate,
@@ -534,55 +668,89 @@ export class AppService {
         status,
         username,
         transactionId,
-        page,
+        bank,
+        page = 1,
       } = data;
+  
       const limit = 100;
       const skip = (page - 1) * limit;
-
+  
+      // Convert to proper Date objects
+      const start = new Date(startDate);
+      start.setUTCHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setUTCHours(23, 59, 59, 999);
+  
       let query = this.transactionRepository
-        .createQueryBuilder("transaction")
-        .where("client_id = :clientId", { clientId })
-        .andWhere("user_id != 0")
-        .andWhere("subject = :type", { type: "Deposit" })
-        .andWhere("created_at >= :startDate", { startDate })
-        .andWhere("created_at <= :endDate", { endDate });
-
-      if (paymentMethod !== "")
-        query = query.andWhere("channel = :paymentMethod", { paymentMethod });
-
-      if (username !== "")
-        query = query.andWhere("username = :username", { username });
-
-      // if (status !== '')
-      //   query = query.andWhere("status = :status", {status});
-
-      if (transactionId !== "")
-        query = query.andWhere("transaction_no = :transactionId", {
-          transactionId,
-        });
-
-      // console.log(skip, limit)
-
-      const result = await query
-        .orderBy("created_at", "DESC")
+        .createQueryBuilder('transaction')
+        .where('transaction.client_id = :clientId', { clientId })
+        .andWhere('transaction.user_id != 0')
+        .andWhere('transaction.subject = :type', { type: 'Deposit' })
+        .andWhere('transaction.created_at BETWEEN :start AND :end', { start, end });
+  
+      // Optional filters
+      if (paymentMethod)
+        query = query.andWhere('transaction.channel = :paymentMethod', { paymentMethod });
+  
+      if (username)
+        query = query.andWhere('transaction.username = :username', { username });
+  
+      if (transactionId)
+        query = query.andWhere('transaction.transaction_no = :transactionId', { transactionId });
+  
+      if (typeof status === 'number')
+        query = query.andWhere('transaction.status = :status', { status });
+  
+      if (bank)
+        query = query.andWhere('transaction.channel = :bank', { bank });
+  
+      // Total amount
+      const totalAmountResult = await query
+        .clone()
+        .select('SUM(transaction.amount)', 'total')
+        .getRawOne();
+      const totalAmount = Number(totalAmountResult?.total || 0);
+  
+      // Paginated result
+      const [results, count] = await query
+        .orderBy('transaction.created_at', 'DESC')
         .take(limit)
         .skip(skip)
-        .getMany();
-
-      const total = await query.getCount();
-
-      const results = result.map((item) => ({
+        .getManyAndCount();
+  
+      // Format data
+      const formattedData = results.map((item) => ({
         ...item,
-        created_at: dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss"),
+        created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss'),
       }));
-
-      return paginateResponse([results, total], page, limit);
+  
+      const lastPage = Math.ceil(count / limit);
+      const response: PaginationResponse = {
+        message: 'Deposits fetched successfully',
+        count,
+        currentPage: page,
+        nextPage: page < lastPage ? page + 1 : null,
+        prevPage: page > 1 ? page - 1 : null,
+        lastPage,
+        totalAmount,
+        data: formattedData,
+      };
+  
+      return response;
     } catch (e) {
-      console.log(e.message);
-      return paginateResponse([[], 0], 1, 100, "failed");
+      console.error('Error in listDeposits:', e.message);
+      return {
+        message: e.message || 'Something went wrong',
+        count: 0,
+        currentPage: 1,
+        nextPage: null,
+        prevPage: null,
+        lastPage: 1,
+        totalAmount: 0,
+        data: [],
+      };
     }
   }
-  
 
   async listBanks(): Promise<CommonResponseArray> {
     const banks = await this.bankRepository.find();

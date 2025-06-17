@@ -2,17 +2,16 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import { Transaction } from 'src/entity/transaction.entity';
+import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { Repository } from 'typeorm';
-import * as crypto from 'crypto';
-import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { HelperService } from './helper.service';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
-import { GlobusResponse } from 'src/proto/wallet.pb';
+import { SmileAndPayResponse } from 'src/proto/wallet.pb';
 
 @Injectable()
-export class GlobusService {
+export class SmileAndPayService {
   constructor(
     @InjectRepository(PaymentMethod)
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
@@ -27,84 +26,45 @@ export class GlobusService {
     private helperService: HelperService,
   ) {}
 
-  private async globusSettings(client_id: number) {
+  private async smileAndPaySettings(client_id: number) {
     return await this.paymentMethodRepository.findOne({
       where: {
-        provider: 'globus',
+        provider: 'smileandpay',
         client_id,
       },
     });
   }
 
-  private sha256(data) {
-    return crypto.createHash('sha256').update(data).digest('hex');
-  }
-
   async initiatePayment(data, client_id) {
     try {
-      const settings = await this.globusSettings(client_id);
+      const settings = await this.smileAndPaySettings(client_id);
 
       if (!settings)
         return {
           success: false,
-          message: 'Globus has not been configured for client',
+          message: 'SmileAndPay has not been configured for client',
         };
 
-      const clientId = settings.public_key;
+      console.log('PAYLOAD::::', data);
 
-      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const url = `${settings.base_url}/payments/initiate-transaction`;
 
-      const username = this.sha256(`${date}${clientId}`);
-      const password = this.sha256(clientId);
-
-      const auth = await axios.post(
-        'https://omniauth.globusbank.com/AuthService/connect/token',
-        {
-          grant_type: 'password',
-          username: username,
-          password: password,
-          client_id: settings.public_key,
-          client_secret: settings.secret_key,
-          scope: 'KORET',
-        },
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        },
-      );
-
-      const accessToken = auth.data.access_token;
-
-      const payload = {
-        ...data,
-        linkedPartnerAccountNumber: settings.merchant_id,
-      };
-
-      console.log(payload);
-
-      const url = `${settings.base_url}/api/v2/virtual-account-max`;
-      console.log('CHECK 1');
-      console.log('URL::::', url);
-
-      const response = await axios.post(url, payload, {
+      const response = await axios.post(url, data, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          ClientID: clientId,
+          'x-api-key': settings.public_key,
+          'x-api-secret': settings.secret_key,
         },
       });
 
-      console.log('DATA::::', response.data);
-      console.log('RESULT:::', response.data.result);
       return {
-        status: true,
-        data: response.data.result,
+        success: true,
+        data: response.data,
       };
     } catch (error) {
       console.log('THE_ERROR', error);
       console.error(
-        'Globus Error:',
+        'SmlieAndPay Error:',
         error.response ? error.response.data : error.message,
       );
       return {
@@ -114,38 +74,113 @@ export class GlobusService {
     }
   }
 
-  async handleWebhook(param): Promise<GlobusResponse> {
+  async handleWebhook(param): Promise<SmileAndPayResponse> {
     console.log('PARAM:::::::', param);
     try {
-      const settings = await this.globusSettings(param.clientId);
+      const settings = await this.smileAndPaySettings(param.clientId);
 
       if (!settings) {
         return {
           statusCode: HttpStatus.BAD_REQUEST,
           success: false,
-          message: 'Globus has not been configured for client',
+          message: 'SmileAndPay has not been configured for client',
         };
       }
       console.log('HEADERS:::', param.headers);
 
-      console.log('I GOT BEFORE TRX ');
+      const transaction = await this.transactionRepository.findOne({
+        where: {
+          client_id: param.clientId,
+          transaction_no: param.transactionReference,
+          tranasaction_type: 'credit',
+        },
+      });
 
-      if (settings.public_key !== param.headers) {
+      if (!transaction) {
         return {
           success: false,
-          message: 'Invalid ClientID from headers',
-          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Transaction not found',
+          statusCode: HttpStatus.NOT_FOUND,
         };
       }
 
-      if (
-        param.callbackData.transactionStatus === 'Successful' &&
-        param.callbackData.paymentStatus === 'Complete'
-      ) {
+      if (transaction.status === 1) {
+        console.log('ℹ️ Transaction already marked successful.');
+        return {
+          success: true,
+          message: 'Transaction already successful',
+          statusCode: HttpStatus.OK,
+        };
+      }
+
+      const wallet = await this.walletRepository.findOne({
+        where: { user_id: transaction.user_id },
+      });
+
+      if (!wallet) {
+        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        return {
+          success: false,
+          message: 'Wallet not found for this user',
+          statusCode: HttpStatus.NOT_FOUND,
+        };
+      }
+
+      const balance =
+        parseFloat(wallet.available_balance.toString()) +
+        parseFloat(transaction.amount.toString());
+
+      await this.helperService.updateWallet(balance, transaction.user_id);
+
+      await this.transactionRepository.update(
+        { transaction_no: transaction.transaction_no },
+        { status: 1, balance },
+      );
+      console.log('FINALLY');
+      return {
+        statusCode: HttpStatus.OK,
+        success: true,
+        message: 'Transaction successfully verified and processed',
+      };
+    } catch (error) {
+      console.error('❌ SmileAndPay webhook processing error:', error.message);
+      return {
+        success: false,
+        message: 'Error occurred during processing',
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+
+  async verifyTransaction(param) {
+    try {
+      const settings = await this.smileAndPaySettings(param.client_id);
+      console.log('LOG::::', param);
+      if (!settings)
+        return {
+          success: false,
+          message: 'SmileAndPay has not been configured for client',
+        };
+      const url = `${settings.base_url}/payments/transaction/${param.transactionRef}/status/check`;
+
+      const response = await axios.get(
+        url,
+
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': settings.public_key,
+            'x-api-secret': settings.secret_key,
+          },
+        },
+      );
+      console.log(response.data.status);
+
+      if (response.data.status === 'PAID') {
         const transaction = await this.transactionRepository.findOne({
           where: {
             client_id: param.clientId,
-            transaction_no: param.callbackData.partnerReference,
+            transaction_no: param.transactionRef,
             tranasaction_type: 'credit',
           },
         });
@@ -201,11 +236,13 @@ export class GlobusService {
         };
       }
     } catch (error) {
-      console.error('❌ Globus webhook processing error:', error.message);
+      console.error(
+        'SmileAndPay Verify Error:',
+        error.response?.data || error.message,
+      );
       return {
         success: false,
-        message: 'Error occurred during processing',
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.response?.data || error.message,
       };
     }
   }

@@ -42,6 +42,8 @@ import { MomoService } from './momo.service';
 import { OPayService } from './opay.service';
 import { CoralPayService } from './coralpay.service';
 import { FidelityService } from './fidelity.service';
+import { GlobusService } from './globus.service';
+import { SmileAndPayService } from './smlieandpay.service';
 
 @Injectable()
 export class PaymentService {
@@ -70,6 +72,8 @@ export class PaymentService {
     private oPayService: OPayService,
     private coralPayService: CoralPayService,
     private fidelityService: FidelityService,
+    private globusService: GlobusService,
+    private smileAndPayService: SmileAndPayService,
   ) {}
 
   async inititateDeposit(
@@ -80,7 +84,7 @@ export class PaymentService {
     let link = '',
       description,
       status = 0;
-    // console.log(param);
+
     // find user wallet
     // find wallet
     const wallet = await this.walletRepository
@@ -100,7 +104,7 @@ export class PaymentService {
       })
       .toPromise();
 
-    // console.log(user);
+    console.log(user);
 
     if (user.username === '')
       return { success: false, message: 'User does not exist' };
@@ -217,7 +221,7 @@ export class PaymentService {
               first_name: user.username,
               last_name: user.username,
               email_address: fidelityEmail,
-              phone_number: 0+user.username,
+              phone_number: 0 + user.username,
               transaction_reference: transactionNo,
               checkout_amount: param.amount,
               currency_code: 'NGN',
@@ -259,7 +263,7 @@ export class PaymentService {
               },
               customization: {
                 title: 'Coralpay Payment',
-                description: 'Payment via Virtual Account',
+                description: 'Payment via Online Deposit',
               },
               traceId: traceId,
               productId: uuidv4(),
@@ -283,7 +287,7 @@ export class PaymentService {
         case 'opay':
           console.log('Opay');
           transactionNo = generateTrxNo();
-
+          const clientId = param.clientId;
           const opayRes = await this.oPayService.initiatePayment(
             {
               country: 'NG',
@@ -293,8 +297,7 @@ export class PaymentService {
                 currency: 'NGN',
               },
               returnUrl: user.callbackUrl + '/payment-verification/opay',
-              callbackUrl:
-                'https://api.staging.sportsbookengine.com/api/v2/webhook/checkout/4/opay/callback',
+              callbackUrl: `https://api.prod.sportsbookengine.com/api/v2/webhook/checkout/${clientId}/opay/callback`,
               cancelUrl: user.callbackUrl + '/payment-verification/opay',
               evokeOpay: true,
               expireAt: 300,
@@ -335,7 +338,7 @@ export class PaymentService {
               customer: {
                 email: korapayEmail,
               },
-              merchant_bears_cost: false,
+              merchant_bears_cost: true,
             },
             param.clientId,
           );
@@ -388,12 +391,14 @@ export class PaymentService {
           description = 'Online Deposit (MTMMOMO )';
 
           transactionNo = uuidv4();
+          console.log(user.username);
           const mtnmomoRes = await this.momoService.initiatePayment(
             {
               amount: param.amount,
               externalId: transactionNo,
               currency: 'EUR',
               payer: {
+                partyIdType: 'MSISDN',
                 partyId: user.username,
               },
             },
@@ -416,17 +421,61 @@ export class PaymentService {
         case 'providus':
           console.log('Providus_PAYMENT');
           description = 'Online Deposit (Providus )';
-          transactionNo = generateTrxNo();
+          // transactionNo = generateTrxNo();
           const providusRes = await this.providusService.initiatePayment(
             {
-              account_name: 'CustomerWize',
-              // amount: param.amount,
-              // initiationTranRef: transactionNo,
+              account_name: user.username,
+            },
+            param.clientId,
+          );
+          console.log('RESPONSE', providusRes);
+
+          link = JSON.stringify(providusRes.data);
+
+          transactionNo = providusRes.data.account_number;
+
+          console.log(link);
+
+          break;
+
+        case 'globus':
+          console.log('Globus_PAYMENT');
+          description = 'Online Deposit (Globus )';
+          transactionNo = generateTrxNo();
+          const globusRes = await this.globusService.initiatePayment(
+            {
+              accountName: user.username,
+              canExpire: true,
+              expiredTime: 30,
+              hasTransactionAmount: true,
+              transactionAmount: param.amount,
+              partnerReference: transactionNo,
             },
             param.clientId,
           );
 
-          link = providusRes.data;
+          link = JSON.stringify(globusRes.data);
+
+          break;
+
+        case 'smileandpay':
+          console.log('SmileAndPay');
+          (transactionNo = generateTrxNo()),
+            (description = 'Online Deposit (SmileAndPay )');
+          const smileRes = await this.smileAndPayService.initiatePayment(
+            {
+              orderReference: transactionNo,
+              amount: param.amount,
+              returnUrl: user.callbackUrl + '/payment-verification/smileandpay',
+              resultUrl: `https://api.staging.sportsbookengine.com/api/v2/webhook/${param.clientId}/smileandpay/callback`,
+              itemName: 'Deposit via Bwinners',
+              itemDescription: 'Online Deposit (SmileAndPay )',
+              currencyCode: '924',
+            },
+            param.clientId,
+          );
+
+          link = smileRes.data.paymentUrl;
 
           break;
 
@@ -828,18 +877,24 @@ export class PaymentService {
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
             return this.pawapayService.verifyTransaction(param);
-
-            break;
+          case 'fidelity':
+            return this.fidelityService.handleCallback(param);
+          case 'smileandpay':
+            return this.smileAndPayService.verifyTransaction(param);
           default:
-            break;
+            return {
+              success: false,
+              message: 'Unsupported payment channel',
+              status: HttpStatus.BAD_REQUEST,
+            };
         }
       }
-    } catch (e) {
-      console.log('Error', e.message);
+    } catch (error) {
+      console.error('Error verifying deposit:', error);
       return {
         success: false,
-        message: 'Internal Server error',
-        status: HttpStatus.BAD_REQUEST,
+        message: 'Failed to verify deposit',
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
       };
     }
   }
@@ -1197,24 +1252,46 @@ export class PaymentService {
   }
 
   async createRequest(param) {
+    console.log('PARAM:::::::', param);
     try {
-      const wallet = await this.walletRepository
-        .createQueryBuilder()
-        .where('client_id = :clientId', { clientId: param.clientId })
-        .andWhere('user_id = :user_id', { user_id: param.userId })
-        .getOne();
+      const wallet = await this.walletRepository.findOne({
+        where: {
+          user_id: param.userId,
+          client_id: param.clientId,
+        },
+      });
 
       if (!wallet) return { success: false, message: 'Wallet not found' };
 
-      const user = await this.identityService
-        .getPaymentData({
-          clientId: param.clientId,
-          userId: param.userId,
-          source: param.source,
-        })
-        .toPromise();
+      if (param.action === 'payouts') {
+        if (wallet.available_balance < param.amount) {
+          return {
+            success: false,
+            message: 'Insufficient wallet balance for payout',
+          };
+        }
+      }
+      console.log(param.clientId, param.userId, param.source);
+
+      let user;
+      try {
+        const userRes = await this.identityService
+          .getPaymentData({
+            clientId: param.clientId,
+            userId: param.userId,
+            source: param.source,
+          })
+          .toPromise();
+
+        user = userRes;
+      } catch (err) {
+        console.error('Error getting user payment data:', err);
+        return { success: false, message: 'Failed to fetch user payment data' };
+      }
 
       let subject, transactionNo, res;
+
+      console.log('USER', user);
 
       const actionId = uuidv4();
       switch (param.action) {
@@ -1232,12 +1309,31 @@ export class PaymentService {
 
           break;
         case 'payouts':
+          let username = user.username;
+          if (!username.startsWith('255')) {
+            username = '255' + username.replace(/^0+/, '');
+          }
           res = await this.pawapayService.createPayout({
-            user,
-            amount: param.amount,
-            operator: param.operator,
             payoutId: actionId,
-            clientId: param.clientId,
+            amount: param.amount.toString(),
+            currency: 'TZS',
+            country: 'TZA',
+            correspondent: param.operator,
+            recipient: {
+              address: {
+                value: username,
+              },
+              type: 'MSISDN',
+            },
+            statementDescription: 'Online Payouts',
+            customerTimestamp: new Date(),
+            metadata: [
+              {
+                fieldName: 'customerId',
+                fieldValue: username,
+                isPII: true,
+              },
+            ],
           });
 
           if (!res.success) return res;
@@ -1263,7 +1359,7 @@ export class PaymentService {
           return {
             success: true,
             message: 'Payout cancelled successfully',
-            data: { transactionRef: transactionNo },
+            data: res.data,
           };
           break;
         case 'refunds':
