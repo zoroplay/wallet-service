@@ -54,6 +54,8 @@ import { GlobusService } from './services/globus.service';
 import { SmileAndPayService } from './services/smlieandpay.service';
 import { DashboardService } from './services/dashboard.service';
 import { TransactionArchiveService } from './services/transaction-archive.service';
+import { ArchivedTransaction } from './entity/archivetransaction.entity';
+
 
 @Module({
   imports: [
@@ -95,6 +97,7 @@ import { TransactionArchiveService } from './services/transaction-archive.servic
     }),
     TypeOrmModule.forFeature([
       Bank,
+      ArchivedTransaction,
       PaymentMethod,
       Transaction,
       Wallet,
