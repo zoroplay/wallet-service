@@ -73,6 +73,8 @@ export class ProvidusService {
 
       console.log('RESPONSE', response.data);
 
+      console.log('RESPONSE', response);
+
       return {
         success: true,
         data: response.data,
