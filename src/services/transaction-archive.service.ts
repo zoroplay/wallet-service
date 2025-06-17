@@ -16,7 +16,7 @@ export class TransactionArchiveService {
     private readonly archivedRepo: Repository<ArchivedTransaction>,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async archiveTransactions() {
     console.log('Starting transaction archive process...');
 
