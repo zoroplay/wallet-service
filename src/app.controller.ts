@@ -68,6 +68,7 @@ import {
   GlobusRequest,
   SmileAndPayRequest,
   VerifySmile,
+  ClientRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -90,6 +91,7 @@ import { FidelityService } from './services/fidelity.service';
 import { ProvidusService } from './services/providus.service';
 import { GlobusService } from './services/globus.service';
 import { SmileAndPayService } from './services/smlieandpay.service';
+import { DashboardService } from './services/dashboard.service';
 
 type RangeType = 'day' | 'week' | 'month' | 'year';
 const allowedRanges: RangeType[] = ['day', 'week', 'month', 'year'];
@@ -119,7 +121,18 @@ export class AppController {
     private providusService: ProvidusService,
     private globusService: GlobusService,
     private smileAndPayService: SmileAndPayService,
+    private dashboardService: DashboardService,
   ) {}
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FinancialPerformance')
+  FinancialPerformance(payload: ClientRequest) {
+    return this.dashboardService.financialPerformance(payload.clientId);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'PlayerBalances')
+  PlayerBalances(payload: ClientRequest) {
+    return this.dashboardService.balances(payload.clientId);
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
   GetSummary(payload: SummaryRequest) {
@@ -196,8 +209,7 @@ export class AppController {
     return this.smileAndPayService.handleWebhook(param);
   }
 
-
-   @GrpcMethod(WALLET_SERVICE_NAME, 'VerifySmileAndPay')
+  @GrpcMethod(WALLET_SERVICE_NAME, 'VerifySmileAndPay')
   smileAndPayVerify(param: VerifySmile) {
     return this.smileAndPayService.verifyTransaction(param);
   }
