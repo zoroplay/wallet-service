@@ -826,7 +826,7 @@ export class PaymentService {
             return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
             const res = await this.flutterwaveService.verifyTransaction(param);
-            console.log(`🚀 ~ file: payments.services.ts:829 VERIFY RESPONSE`, param);
+            console.log(`🚀 ~ file: payments.services.ts:829 VERIFY RESPONSE`, res);
             return res;
           case 'korapay':
             return this.korapayService.verifyTransaction(param);
