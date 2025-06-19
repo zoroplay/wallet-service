@@ -104,7 +104,7 @@ export class FlutterwaveService {
   async verifyTransaction(param) {
     try {
       const paymentSettings = await this.flutterwaveSettings(param.clientId);
-      console.log(`🚀 ~ file: flutterwave.services.ts:107 SETTINGS`, paymentSettings);
+      // console.log(`🚀 ~ file: flutterwave.services.ts:107 SETTINGS`, paymentSettings);
       if (!paymentSettings)
         return {
           success: false,
@@ -143,7 +143,7 @@ export class FlutterwaveService {
             message: 'Transaction was successful',
             status: HttpStatus.OK,
           };
-        console.log(transaction);
+        
         if (transaction.status === 2)
           return {
             success: false,

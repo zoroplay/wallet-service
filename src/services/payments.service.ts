@@ -814,8 +814,6 @@ export class PaymentService {
    */
   async verifyDeposit(param: VerifyDepositRequest) {
     try {
-      console.log(`🚀 ~ file: payments.services.ts:817 VERIFY PARAM`, param);
-
       if (param.transactionRef !== 'undefined') {
         switch (param.paymentChannel) {
           case 'paystack':
@@ -825,9 +823,7 @@ export class PaymentService {
           case 'wayaquick':
             return this.wayaquickService.verifyTransaction(param);
           case 'flutterwave':
-            const res = await this.flutterwaveService.verifyTransaction(param);
-            console.log(`🚀 ~ file: payments.services.ts:829 VERIFY RESPONSE`, res);
-            return res;
+            return this.flutterwaveService.verifyTransaction(param);
           case 'korapay':
             return this.korapayService.verifyTransaction(param);
           case 'pawapay':
