@@ -103,7 +103,7 @@ export class FlutterwaveService {
 
   async verifyTransaction(param) {
     try {
-      const paymentSettings = await this.flutterwaveSettings(param.client_id);
+      const paymentSettings = await this.flutterwaveSettings(param.clientId);
       console.log(`🚀 ~ file: flutterwave.services.ts:107 SETTINGS`, paymentSettings);
       if (!paymentSettings)
         return {
