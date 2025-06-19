@@ -69,6 +69,7 @@ import {
   SmileAndPayRequest,
   VerifySmile,
   ClientRequest,
+  OverallGamesRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -132,6 +133,75 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'PlayerBalances')
   PlayerBalances(payload: ClientRequest) {
     return this.dashboardService.balances(payload.clientId);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGames')
+  OverallGames(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.getGamingSummary(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGamesOnline')
+  OverallGamesOnline(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.GamingSummaryForOnline(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGamesRetail')
+  OverallGamesRetail(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.GamingSummaryForRetail(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
