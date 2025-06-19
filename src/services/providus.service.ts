@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
+import { ProvidusResponse } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class ProvidusService {
@@ -139,32 +140,32 @@ export class ProvidusService {
       }
 
       // 🔍 Check if the settlementId has already been processed (globally)
-      if (data.settlementId) {
-        const existingSettlement = await this.transactionRepository.findOne({
-          where: { settlementId: data.settlementId },
-        });
+      // if (data.settlementId) {
+      //   const existingSettlement = await this.transactionRepository.findOne({
+      //     where: { settlementId: data.settlementId },
+      //   });
 
-        if (existingSettlement) {
-          return {
-            requestSuccessful: true,
-            sessionId: data.sessionId,
-            responseMessage: 'duplicate transaction',
-            responseCode: '01',
-          };
-        }
+      //   if (existingSettlement) {
+      //     return {
+      //       requestSuccessful: true,
+      //       sessionId: data.sessionId,
+      //       responseMessage: 'duplicate transaction',
+      //       responseCode: '01',
+      //     };
+      //   }
 
-        // ✅ Update current transaction with settlementId if missing
-        if (!transaction.settlementId) {
-          await this.transactionRepository.update(
-            { id: transaction.id },
-            { settlementId: data.settlementId },
-          );
-          console.log(
-            '✅ Updated settlementId for transaction:',
-            transaction.transaction_no,
-          );
-        }
-      }
+      //   // ✅ Update current transaction with settlementId if missing
+      //   if (!transaction.settlementId) {
+      //     await this.transactionRepository.update(
+      //       { id: transaction.id },
+      //       { settlementId: data.settlementId },
+      //     );
+      //     console.log(
+      //       '✅ Updated settlementId for transaction:',
+      //       transaction.transaction_no,
+      //     );
+      //   }
+      // }
 
       if (transaction.status === 1) {
         console.log('ℹ️ Transaction already marked successful.');
