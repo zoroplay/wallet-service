@@ -4931,7 +4931,7 @@ safe-json-stringify@~1:
 
 "sbe-service-proto@github:zoroplay/sbe-service-proto":
   version "1.0.0"
-  resolved "git+ssh://git@github.com/zoroplay/sbe-service-proto.git#8b3e627b074d1e0e016ebba52a8bfb5f5a81e1a3"
+  resolved "git+ssh://git@github.com/zoroplay/sbe-service-proto.git#bd9009ae5b4213d2dc9c4cb8dde821aa7f14fcab"
 
 schema-utils@^3.1.1, schema-utils@^3.2.0:
   version "3.3.0"
