@@ -125,18 +125,6 @@ export class CoralPayService {
       }
       console.log(param);
 
-      const authValid = this.verifyBasicAuth(
-        param.authHeader,
-        settings.public_key,
-        settings.secret_key,
-      );
-      if (!authValid) {
-        return {
-          success: false,
-          message: 'Invalid credentials',
-        };
-      }
-
       // 3. Validate payload structure
       const validationError = this.validateCallbackPayload(param.callbackData);
       if (validationError) {
