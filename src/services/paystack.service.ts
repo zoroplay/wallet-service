@@ -12,6 +12,7 @@ import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
 import * as https from 'https';
 import { IdentityService } from 'src/identity/identity.service';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class PaystackService {
@@ -24,6 +25,8 @@ export class PaystackService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
     private identityService: IdentityService,
@@ -79,27 +82,60 @@ export class PaystackService {
         },
       });
 
-      if (!transaction)
+      if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(param),
+          status: 0,
+          type: 'Callback',
+          transaction_id: param.transactionRef,
+          paymentMethod: 'Paystack',
+        });
+
         return {
           success: false,
           message: 'Transaction not found',
           status: HttpStatus.NOT_FOUND,
         };
+      }
 
       if (data.status === 'success') {
-        if (transaction.status === 1)
-          // if transaction is already successful, return success message
+        if (transaction.status === 1) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(param),
+            status: 1,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Paystack',
+          });
+
           return {
             success: true,
-            message: 'Transaction was successful',
+            message: 'Transaction already processed',
             status: HttpStatus.OK,
           };
-        if (transaction.status === 2)
+        }
+
+        if (transaction.status === 2) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param),
+            status: 0,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Paystack',
+          });
+
           return {
             success: false,
             message: 'Transaction failed. Try again',
             status: HttpStatus.NOT_ACCEPTABLE,
           };
+        }
 
         if (transaction.status === 0) {
           // find user wallet
@@ -144,6 +180,16 @@ export class PaystackService {
           } catch (e) {
             console.log('Trackier error: Paystack Line 98', e.message);
           }
+
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Completed',
+            response: JSON.stringify(param),
+            status: 1,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Paystack',
+          });
 
           return {
             success: true,
@@ -346,198 +392,243 @@ export class PaystackService {
   async handleWebhook(data) {
     try {
       const paymentSettings = await this.paystackSettings(data.clientId);
-      // validate request with paystack key
+
+      // Validate request with paystack key
       const hash = crypto
         .createHmac('sha512', paymentSettings.secret_key)
         .update(data.body)
         .digest('hex');
 
-      if (hash == data.paystackKey) {
-        const ref = data.reference.split('_');
-
-        switch (data.event) {
-          case 'charge.success':
-            const transaction = await this.transactionRepository.findOne({
-              where: {
-                client_id: data.clientId,
-                transaction_no: ref[0],
-                tranasaction_type: 'credit',
-              },
-            });
-            if (transaction && transaction.status === 0) {
-              // find user wallet
-              const wallet = await this.walletRepository.findOne({
-                where: { user_id: transaction.user_id },
-              });
-              const balance =
-                parseFloat(wallet.available_balance.toString()) +
-                parseFloat(transaction.amount.toString());
-              // update user wallet
-              await this.helperService.updateWallet(
-                balance,
-                transaction.user_id,
-              );
-
-              // update transaction status
-              await this.transactionRepository.update(
-                {
-                  transaction_no: transaction.transaction_no,
-                },
-                {
-                  status: 1,
-                },
-              );
-            }
-
-            try {
-              const keys = await this.identityService.getTrackierKeys({
-                itemId: data.clientId,
-              });
-
-              if (keys.success) {
-                // send deposit to trackier
-                await this.helperService.sendActivity(
-                  {
-                    subject: 'Deposit',
-                    username: transaction.username,
-                    amount: transaction.amount,
-                    transactionId: transaction.transaction_no,
-                    clientId: data.clientId,
-                  },
-                  keys.data,
-                );
-              }
-            } catch (e) {
-              console.log('Trackier error: Paystack Line 303', e.message);
-            }
-
-            break;
-          case 'transfer.success':
-            const withdrawalSuccess = await this.withdrawalRepository.findOne({
-              where: { client_id: data.clientId, withdrawal_code: ref[0] },
-            });
-            if (withdrawalSuccess && withdrawalSuccess.status === 0) {
-              // update withdrawal status
-              await this.withdrawalRepository.update(
-                {
-                  id: withdrawalSuccess.id,
-                },
-                {
-                  status: 1,
-                },
-              );
-            } else {
-              console.log('transfer.success: withdrawal not found', ref[0]);
-            }
-            break;
-          case 'transfer.failed':
-            const withdrawalFailed = await this.withdrawalRepository.findOne({
-              where: { client_id: data.clientId, withdrawal_code: ref[0] },
-            });
-            if (withdrawalFailed) {
-              // update withdrawal status
-              await this.withdrawalRepository.update(
-                {
-                  id: withdrawalSuccess.id,
-                },
-                {
-                  status: 2,
-                  comment: 'Transfer failed',
-                },
-              );
-              // find user wallet
-              const wallet = await this.walletRepository.findOne({
-                where: { user_id: withdrawalFailed.user_id },
-              });
-
-              const balance =
-                parseFloat(wallet.available_balance.toString()) +
-                parseFloat(withdrawalFailed.amount.toString());
-              // update user wallet
-              await this.helperService.updateWallet(
-                balance,
-                withdrawalFailed.user_id,
-              );
-
-              // save transaction
-              await this.helperService.saveTransaction({
-                amount: withdrawalFailed.amount,
-                channel: 'internal',
-                clientId: data.clientId,
-                toUserId: withdrawalFailed.user_id,
-                toUsername: wallet.username,
-                toUserBalance: balance,
-                fromUserId: 0,
-                fromUsername: 'System',
-                fromUserbalance: 0,
-                source: 'system',
-                subject: 'Failed Withdrawal Request',
-                description: 'Transfer failed',
-                transactionNo: generateTrxNo(),
-                status: 1,
-              });
-            } else {
-              console.log('transfer.failed: withdrawal not found', ref[0]);
-            }
-            break;
-          case 'transfer.reversed':
-            const reversed = await this.withdrawalRepository.findOne({
-              where: { client_id: data.clientId, withdrawal_code: ref[0] },
-            });
-            if (reversed) {
-              // update withdrawal status
-              await this.withdrawalRepository.update(
-                {
-                  id: withdrawalSuccess.id,
-                },
-                {
-                  status: 2,
-                  comment: 'Transfer failed',
-                },
-              );
-              // find user wallet
-              const wallet = await this.walletRepository.findOne({
-                where: { user_id: reversed.user_id },
-              });
-
-              const balance =
-                parseFloat(wallet.available_balance.toString()) +
-                parseFloat(reversed.amount.toString());
-              // update user wallet
-              await this.helperService.updateWallet(balance, reversed.user_id);
-
-              // save transaction
-              await this.helperService.saveTransaction({
-                amount: reversed.amount,
-                channel: 'internal',
-                clientId: data.clientId,
-                toUserId: reversed.user_id,
-                toUsername: wallet.username,
-                toUserBalance: balance,
-                fromUserId: 0,
-                fromUsername: 'System',
-                fromUserbalance: 0,
-                source: 'system',
-                subject: 'Reversed Withdrawal Request',
-                description: 'Transfer was reversed',
-                transactionNo: generateTrxNo(),
-                status: 1,
-              });
-            } else {
-              console.log(
-                'transfer.reversed: withdrawal not found',
-                data.reference,
-              );
-            }
-            break;
-        }
-        return { success: true };
-      } else {
+      if (hash !== data.paystackKey) {
+        await this.logWebhook(data, 'Invalid signature', 0);
         return { success: false, message: 'Invalid signature' };
       }
+
+      const ref = data.reference.split('_');
+      const baseLogData = {
+        client_id: data.clientId,
+        request: JSON.stringify(data.rawBody),
+        type: 'Webhook',
+        transaction_id: data.rawBody?.payload?.reference || ref[0],
+        paymentMethod: 'Paystack',
+      };
+
+      switch (data.event) {
+        case 'charge.success':
+          return await this.handleChargeSuccess(data, ref[0]);
+        case 'transfer.success':
+          return await this.handleTransferSuccess(data, ref[0]);
+        case 'transfer.failed':
+          return await this.handleTransferFailed(data, ref[0]);
+        case 'transfer.reversed':
+          return await this.handleTransferReversed(data, ref[0]);
+        default:
+          await this.callbacklogRepository.save({
+            ...baseLogData,
+            response: `Unhandled event: ${data.event}`,
+            status: 0,
+          });
+          return { success: false, message: 'Unhandled event type' };
+      }
     } catch (e) {
-      console.log('Paystack error', e.message);
-      return { success: false, message: 'error occured' };
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: JSON.stringify(data.rawBody),
+        response: `Error: ${e.message}`,
+        status: 0,
+        type: 'Webhook',
+        transaction_id:
+          data.rawBody?.payload?.reference || data.reference?.split('_')[0],
+        paymentMethod: 'Paystack',
+      });
+      console.error('Paystack webhook error:', e.message);
+      return { success: false, message: 'Error occurred' };
     }
+  }
+
+  private async logWebhook(baseLogData, response, status) {
+    await this.callbacklogRepository.save({
+      ...baseLogData,
+      response,
+      status,
+    });
+  }
+
+  private async handleChargeSuccess(data, transactionRef) {
+    const transaction = await this.transactionRepository.findOne({
+      where: {
+        client_id: data.clientId,
+        transaction_no: transactionRef,
+        tranasaction_type: 'credit',
+      },
+    });
+
+    if (!transaction) {
+      await this.logWebhook(data, 'Transaction not found', 0);
+      return { success: false, message: 'Transaction not found' };
+    }
+
+    if (transaction.status === 1) {
+      await this.logWebhook(data, 'Transaction already processed', 1);
+      return {
+        success: true,
+        message: 'Transaction already processed',
+        status: HttpStatus.OK,
+      };
+    }
+
+    const wallet = await this.walletRepository.findOne({
+      where: { user_id: transaction.user_id },
+    });
+
+    if (!wallet) {
+      await this.logWebhook(
+        data,
+        `Wallet not found for user ${transaction.user_id}`,
+        0,
+      );
+      return {
+        success: false,
+        message: 'Wallet not found for this user',
+        status: HttpStatus.NOT_FOUND,
+      };
+    }
+
+    const balance =
+      parseFloat(wallet.available_balance.toString()) +
+      parseFloat(transaction.amount.toString());
+
+    // Update user wallet
+    await this.helperService.updateWallet(balance, transaction.user_id);
+
+    // Update transaction status
+    await this.transactionRepository.update(
+      { transaction_no: transaction.transaction_no },
+      { status: 1, balance },
+    );
+
+    try {
+      const keys = await this.identityService.getTrackierKeys({
+        itemId: data.clientId,
+      });
+
+      if (keys.success) {
+        await this.helperService.sendActivity(
+          {
+            subject: 'Deposit',
+            username: transaction.username,
+            amount: transaction.amount,
+            transactionId: transaction.transaction_no,
+            clientId: data.clientId,
+          },
+          keys.data,
+        );
+      }
+    } catch (e) {
+      console.error('Trackier error:', e.message);
+      // Don't fail the whole process for Trackier errors
+    }
+
+    await this.logWebhook(data, 'Transaction processed successfully', 1);
+    return {
+      success: true,
+      message: 'Transaction processed successfully',
+      status: HttpStatus.OK,
+    };
+  }
+
+  private async handleTransferSuccess(data, withdrawalRef) {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: { client_id: data.clientId, withdrawal_code: withdrawalRef },
+    });
+
+    if (!withdrawal) {
+      await this.logWebhook(data, `Withdrawal not found: ${withdrawalRef}`, 0);
+      console.log('transfer.success: withdrawal not found', withdrawalRef);
+      return { success: false, message: 'Withdrawal not found' };
+    }
+
+    if (withdrawal.status === 0) {
+      await this.withdrawalRepository.update(
+        { id: withdrawal.id },
+        { status: 1 },
+      );
+      await this.logWebhook(data, 'Withdrawal processed successfully', 1);
+    }
+
+    return { success: true };
+  }
+
+  private async handleTransferFailed(data, withdrawalRef) {
+    return this.handleFailedOrReversedTransfer(
+      data,
+      withdrawalRef,
+      'failed',
+      'Transfer failed',
+    );
+  }
+
+  private async handleTransferReversed(data, withdrawalRef,) {
+    return this.handleFailedOrReversedTransfer(
+      data,
+      withdrawalRef,
+      'reversed',
+      'Transfer was reversed',
+    );
+  }
+
+  private async handleFailedOrReversedTransfer(
+    data,
+    withdrawalRef,
+    type,
+    description,
+  ) {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: { client_id: data.clientId, withdrawal_code: withdrawalRef },
+    });
+
+    if (!withdrawal) {
+      await this.logWebhook(data, `Withdrawal not found: ${withdrawalRef}`, 0);
+      console.log(`transfer.${type}: withdrawal not found`, withdrawalRef);
+      return { success: false, message: 'Withdrawal not found' };
+    }
+
+    // Update withdrawal status
+    await this.withdrawalRepository.update(
+      { id: withdrawal.id },
+      { status: 2, comment: description },
+    );
+
+    // Refund to user wallet
+    const wallet = await this.walletRepository.findOne({
+      where: { user_id: withdrawal.user_id },
+    });
+
+    const balance =
+      parseFloat(wallet.available_balance.toString()) +
+      parseFloat(withdrawal.amount.toString());
+
+    await this.helperService.updateWallet(balance, withdrawal.user_id);
+
+    // Save transaction record
+    await this.helperService.saveTransaction({
+      amount: withdrawal.amount,
+      channel: 'internal',
+      clientId: data.clientId,
+      toUserId: withdrawal.user_id,
+      toUsername: wallet.username,
+      toUserBalance: balance,
+      fromUserId: 0,
+      fromUsername: 'System',
+      fromUserbalance: 0,
+      source: 'system',
+      subject: `${type === 'failed' ? 'Failed' : 'Reversed'} Withdrawal Request`,
+      description,
+      transactionNo: generateTrxNo(),
+      status: 1,
+    });
+
+    await this.logWebhook(data, `Withdrawal ${type} processed`, 1);
+    return { success: true };
   }
 }

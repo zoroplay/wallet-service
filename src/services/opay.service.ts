@@ -14,6 +14,7 @@ import {
 import { PaymentMethod } from 'src/entity/payment.method.entity';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class OPayService {
@@ -24,6 +25,8 @@ export class OPayService {
     private walletRepository: Repository<Wallet>,
     @InjectRepository(PaymentMethod)
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -201,6 +204,15 @@ export class OPayService {
         });
 
         if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Opay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
@@ -210,6 +222,15 @@ export class OPayService {
 
         if (transaction.status === 1) {
           console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(data.rawBody),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Opay',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
@@ -244,6 +265,15 @@ export class OPayService {
           { status: 1, balance },
         );
         console.log('FINALLY');
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Completed',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.rawBody.payload.reference,
+          paymentMethod: 'Opay',
+        });
         return {
           statusCode: HttpStatus.OK,
           success: true,
@@ -251,6 +281,15 @@ export class OPayService {
         };
       }
     } catch (error) {
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Failed',
+        response: JSON.stringify(data.rawBody),
+        status: 0,
+        type: 'Webhook',
+        transaction_id: data.rawBody.payload.reference,
+        paymentMethod: 'Opay',
+      });
       console.error('❌ OPay webhook processing error:', error.message);
       return {
         success: false,

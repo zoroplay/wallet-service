@@ -10,11 +10,10 @@ import { HelperService } from './helper.service';
 import { generateTrxNo } from 'src/common/helpers';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class FlutterwaveService {
-  private readonly apiKey: string;
-  private readonly apiUrl: string;
   constructor(
     @InjectRepository(PaymentMethod)
     private readonly paymentMethodRepository: Repository<PaymentMethod>,
@@ -25,6 +24,9 @@ export class FlutterwaveService {
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -55,10 +57,6 @@ export class FlutterwaveService {
             },
           },
         );
-
-        console.log(response);
-
-        console.log(response.data);
 
         if (!response.data) {
           return {
@@ -127,28 +125,59 @@ export class FlutterwaveService {
         },
       });
 
-      if (!transaction)
+      if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(param),
+          status: 0,
+          type: 'Callback',
+          transaction_id: param.transactionRef,
+          paymentMethod: 'Flutterwave',
+        });
         return {
           success: false,
           message: 'Transaction not found',
           status: HttpStatus.NOT_FOUND,
         };
+      }
 
       if (data.status === 'success') {
-        if (transaction.status === 1)
-          // if transaction is already successful, return success message
+        console.log('I CATCH YOU');
+        if (transaction.status === 1) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(param),
+            status: 1,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Flutterwave',
+          });
           return {
             success: true,
-            message: 'Transaction was successful',
+            message: 'Transaction already processed',
             status: HttpStatus.OK,
           };
+        }
+
         console.log(transaction);
-        if (transaction.status === 2)
+        if (transaction.status === 2) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not Accepted',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Callback',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Flutterwave',
+          });
           return {
             success: false,
             message: 'Transaction failed. Try again',
             status: HttpStatus.NOT_ACCEPTABLE,
           };
+        }
 
         if (transaction.status === 0) {
           // find user wallet
@@ -194,6 +223,16 @@ export class FlutterwaveService {
           } catch (e) {
             console.log(e.message);
           }
+
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Completed',
+            response: JSON.stringify(data.rawBody),
+            status: 1,
+            type: 'Callback',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Flutterwave',
+          });
 
           return {
             success: true,
@@ -328,15 +367,6 @@ export class FlutterwaveService {
 
       console.log('Computed Hash:', hash);
       console.log('Received Signature:', data.flutterwaveKey);
-      // const isValid = hash === data.flutterwaveKey;
-
-      // if (!isValid) {
-      //   return {
-      //     success: false,
-      //     message: 'Invalid webhook signature',
-      //     statusCode: HttpStatus.UNAUTHORIZED,
-      //   };
-      // }
 
       console.log('EVENT:::', data.event);
 
@@ -353,6 +383,15 @@ export class FlutterwaveService {
         });
 
         if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Flutterwave',
+          });
           return {
             success: false,
             message: 'Transaction not found',
@@ -362,6 +401,15 @@ export class FlutterwaveService {
 
         if (transaction.status === 1) {
           console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Flutterwave',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
@@ -397,6 +445,15 @@ export class FlutterwaveService {
         );
 
         console.log('FINALLY');
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Completed',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.rawBody.payload.reference,
+          paymentMethod: 'Flutterwave',
+        });
         return {
           statusCode: HttpStatus.OK,
           success: true,

@@ -10,6 +10,7 @@ import { generateTrxNo } from 'src/common/helpers';
 import { HelperService } from './helper.service';
 import crypto from 'crypto';
 import { IdentityService } from 'src/identity/identity.service';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class KorapayService {
@@ -22,6 +23,9 @@ export class KorapayService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
     private helperService: HelperService,
     private identityService: IdentityService,
   ) {}
@@ -116,18 +120,38 @@ export class KorapayService {
           },
         });
 
-        if (!transaction)
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param),
+            status: 0,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Korapay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
             status: HttpStatus.NOT_FOUND,
           };
+        }
 
-        if (transaction.status === 1)
+        if (transaction.status === 1) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(param),
+            status: 1,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Korapay',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
           };
+        }
 
         const wallet = await this.walletRepository.findOne({
           where: { user_id: transaction.user_id },
@@ -142,6 +166,16 @@ export class KorapayService {
           { transaction_no: transaction.transaction_no },
           { status: 1, balance },
         );
+
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Completed',
+          response: JSON.stringify(param),
+          status: 1,
+          type: 'Callback',
+          transaction_id: param.transactionRef,
+          paymentMethod: 'Korapay',
+        });
 
         return {
           success: true,
@@ -257,18 +291,24 @@ export class KorapayService {
 
   async processWebhook(data) {
     try {
-      console.log('FLUTRWAVE BODY', data.body);
+      console.log('korapay BODY', data.body);
 
-      console.log('FLUTRWAVE BODY', data.body.reference);
+      console.log('korapay BODY', data.body.reference);
 
-      // const paymentSettings = await this.korapaySettings(data.clientId);
+      const paymentSettings = await this.korapaySettings(data.clientId);
 
-      // const hash = crypto
-      //   .createHmac('sha256', paymentSettings.secret_key)
-      //   .update(data.body) // make sure data.body is a raw JSON string
-      //   .digest('hex');
+      if (!paymentSettings)
+        return {
+          success: false,
+          message: 'Flutterwave has not been configured for client',
+        };
 
-      // const isValid = hash === data.flutterwaveKey;
+      const hash = crypto
+        .createHmac('sha256', paymentSettings.secret_key)
+        .update(data.body) // make sure data.body is a raw JSON string
+        .digest('hex');
+
+      const isValid = hash === data.flutterwaveKey;
 
       // if (!isValid) {
       //   return {
@@ -291,6 +331,15 @@ export class KorapayService {
         });
 
         if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Korapay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
@@ -300,6 +349,15 @@ export class KorapayService {
 
         if (transaction.status === 1) {
           console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(data.rawBody),
+            status: 1,
+            type: 'Callback',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Korapay',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
@@ -335,6 +393,16 @@ export class KorapayService {
         );
 
         console.log('FINALLY');
+
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Completed',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.rawBody.payload.reference,
+          paymentMethod: 'Korapay',
+        });
         return {
           statusCode: HttpStatus.OK,
           success: true,
