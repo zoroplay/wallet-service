@@ -164,12 +164,12 @@ export class FlutterwaveService {
         console.log(transaction);
         if (transaction.status === 2) {
           await this.callbacklogRepository.save({
-            client_id: data.clientId,
+            client_id: param.clientId,
             request: 'Transaction not Accepted',
-            response: JSON.stringify(data.rawBody),
+            response: JSON.stringify(param),
             status: 0,
             type: 'Callback',
-            transaction_id: data.rawBody.payload.reference,
+            transaction_id: param.transactionRef,
             paymentMethod: 'Flutterwave',
           });
           return {
@@ -225,12 +225,12 @@ export class FlutterwaveService {
           }
 
           await this.callbacklogRepository.save({
-            client_id: data.clientId,
+            client_id: param.clientId,
             request: 'Completed',
-            response: JSON.stringify(data.rawBody),
+            response: JSON.stringify(param),
             status: 1,
             type: 'Callback',
-            transaction_id: data.rawBody.payload.reference,
+            transaction_id: param.transactionRef,
             paymentMethod: 'Flutterwave',
           });
 
