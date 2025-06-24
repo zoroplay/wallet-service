@@ -154,6 +154,7 @@ export class FlutterwaveService {
             transaction_id: param.transactionRef,
             paymentMethod: 'Flutterwave',
           });
+          console.log('DATA::');
           return {
             success: true,
             message: 'Transaction already processed',

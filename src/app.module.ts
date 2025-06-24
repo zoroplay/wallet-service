@@ -56,6 +56,7 @@ import { DashboardService } from './services/dashboard.service';
 import { TransactionArchiveService } from './services/transaction-archive.service';
 import { ArchivedTransaction } from './entity/archivetransaction.entity';
 
+console.log('ENTITY CHECK', CallbackLog);
 
 @Module({
   imports: [
@@ -113,6 +114,7 @@ import { ArchivedTransaction } from './entity/archivetransaction.entity';
     IdentityModule,
     RetailModule,
   ],
+  
   controllers: [AppController],
   providers: [
     AppService,
