@@ -25,13 +25,18 @@ export class CallbackLog {
   @Column({ type: 'tinyint', default: 0 })
   status: number;
 
-  @Column()
+  @Column({
+    name: 'request_type',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   type: string;
 
-  @Column()
+  @Column({ name: 'transactionId', type: 'varchar', length: 255 })
   transaction_id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   paymentMethod: string;
 
   @Index()
