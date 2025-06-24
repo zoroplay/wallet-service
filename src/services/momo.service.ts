@@ -37,7 +37,10 @@ export class MomoService {
     try {
       const referenceId = uuidv4();
       const callbackUrl =
-        'https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback';
+        client_id === 4
+          ? 'https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback'
+          : `https://api.prod.sportsbookengine.com/api/v2/webhook/${client_id}/mtnmomo/callback`;
+
       const paymentSettings = await this.mtnmomoSettings(client_id);
       if (!paymentSettings)
         return {

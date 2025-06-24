@@ -296,9 +296,10 @@ export class PaymentService {
           transactionNo = generateTrxNo();
           const clientId = param.clientId;
 
-           baseUrl = this.getApiBaseUrl(param.clientId);
+          baseUrl = this.getApiBaseUrl(param.clientId);
+          console.log('BASE_URL::', baseUrl);
           const callbackUrl = `${baseUrl}/api/v2/webhook/checkout/${clientId}/opay/callback`;
-          console.log(callbackUrl);
+          console.log('CALL_BACK::', callbackUrl);
           const opayRes = await this.oPayService.initiatePayment(
             {
               country: 'NG',
@@ -474,7 +475,7 @@ export class PaymentService {
           (transactionNo = generateTrxNo()),
             (description = 'Online Deposit (SmileAndPay )');
 
-           baseUrl = this.getApiBaseUrl(param.clientId);
+          baseUrl = this.getApiBaseUrl(param.clientId);
 
           const resultUrl = `${baseUrl}/api/v2/webhook/${param.clientId}/smileandpay/callback`;
           console.log(resultUrl);

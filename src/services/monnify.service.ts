@@ -9,6 +9,7 @@ import { HelperService } from './helper.service';
 import { post, get } from 'src/common/axios';
 import { generateTrxNo } from 'src/common/helpers';
 import { IdentityService } from 'src/identity/identity.service';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class MonnifyService {
@@ -21,12 +22,12 @@ export class MonnifyService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
     private identityService: IdentityService,
-  ) {
-    // const paymentMethod = await this
-  }
+  ) {}
 
   async verifyTransaction(param) {
     try {
@@ -51,12 +52,22 @@ export class MonnifyService {
           },
         });
         // if tranaction not found.
-        if (!transaction)
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param),
+            status: 0,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'Monnify',
+          });
           return {
             success: false,
             message: 'Transaction not found',
             status: HttpStatus.NOT_FOUND,
           };
+        }
 
         if (
           data.requestSuccessful === true &&
@@ -103,19 +114,40 @@ export class MonnifyService {
             },
           );
 
-          if (status === 1 && transaction.status === 1)
-            // if transaction is already successful, return success message
+          if (status === 1 && transaction.status === 1) {
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Transaction already processed',
+              response: JSON.stringify(param),
+              status: 1,
+              type: 'Callback',
+              transaction_id: param.transactionRef,
+              paymentMethod: 'Monnify',
+            });
             return {
               success: true,
-              message: 'Transaction was successful',
+              message: 'Transaction already processed',
               status: HttpStatus.OK,
             };
-          if (status === 2)
+          }
+          // if transaction is already successful, return success message
+
+          if (status === 2) {
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Transaction Not Accepted',
+              response: JSON.stringify(param),
+              status: 0,
+              type: 'Callback',
+              transaction_id: param.transactionRef,
+              paymentMethod: 'Monnify',
+            });
             return {
               success: false,
               message: 'Transaction ' + paymentStatus,
               status: HttpStatus.NOT_ACCEPTABLE,
             };
+          }
 
           if (transaction.status === 0 && status === 1) {
             // find user wallet
@@ -158,6 +190,15 @@ export class MonnifyService {
             } catch (e) {
               console.log('trackier error: Monnify', e.message);
             }
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Completed',
+              response: JSON.stringify(param),
+              status: 1,
+              type: 'Callback',
+              transaction_id: param.transactionRef,
+              paymentMethod: 'Paystack',
+            });
 
             return {
               success: true,

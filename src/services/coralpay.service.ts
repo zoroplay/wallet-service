@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class CoralPayService {
@@ -24,6 +25,9 @@ export class CoralPayService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private readonly configService: ConfigService,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -150,6 +154,15 @@ export class CoralPayService {
         });
 
         if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param.callbackData),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.callbackData.TraceId,
+            paymentMethod: 'Coralpay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
@@ -159,6 +172,15 @@ export class CoralPayService {
 
         if (transaction.status === 1) {
           console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(param.callbackData),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: param.callbackData.TraceId,
+            paymentMethod: 'Coralpay',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
@@ -175,6 +197,15 @@ export class CoralPayService {
             '❌ Wallet not found for user_id:',
             transaction.user_id,
           );
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Wallet not found ',
+            response: JSON.stringify(param.callbackData),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.callbackData.TraceId,
+            paymentMethod: 'Coralpay',
+          });
           return {
             success: false,
             message: 'Wallet not found for this user',
@@ -192,6 +223,16 @@ export class CoralPayService {
           { transaction_no: transaction.transaction_no },
           { status: 1, balance },
         );
+
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Transaction successfully verified and processed',
+          response: JSON.stringify(param.callbackData),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: param.callbackData.TraceId,
+          paymentMethod: 'Coralpay',
+        });
         console.log('FINALLY');
         return {
           statusCode: HttpStatus.OK,

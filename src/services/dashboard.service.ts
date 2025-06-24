@@ -161,24 +161,6 @@ export class DashboardService {
     }
   }
 
-  // Helper
-  private getMonthName(index: number): string {
-    return [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ][index - 1];
-  }
-
   private getDateRange(
     range: 'day' | 'week' | 'month' | 'year' | 'yesterday',
     date = new Date(),
@@ -806,54 +788,6 @@ export class DashboardService {
     };
   }
 
-  // async getMonthlyGamingTurnover(
-  //   clientId: number,
-  //   year: string,
-  // ): Promise<StatisticsResponse> {
-  //   const products = [
-  //     { key: 'Games', subject: 'Bet Deposit (Games)' },
-  //     { key: 'Casino', subject: 'Bet Deposit (Casino)' },
-  //     { key: 'Sport', subject: 'Bet Deposit (Sport)' },
-  //     { key: 'Virtual', subject: 'Bet Deposit (Virtual)' },
-  //   ];
-
-  //   const monthlyMap = new Map<string, number[]>();
-
-  //   for (const product of products) {
-  //     const result = await this.transactionRepository
-  //       .createQueryBuilder('tx')
-  //       .select(['MONTH(tx.created_at) as month', 'SUM(tx.amount) as total'])
-  //       .where('tx.client_id = :clientId', { clientId })
-  //       .andWhere('tx.subject = :subject', { subject: product.subject })
-  //       .andWhere('YEAR(tx.created_at) = :year', { year })
-  //       .groupBy('MONTH(tx.created_at)')
-  //       .getRawMany();
-
-  //     result.forEach((row) => {
-  //       const monthIndex = parseInt(row.month, 10) - 1; // 0-based index (Jan = 0)
-  //       if (!monthlyMap.has(product.key)) {
-  //         monthlyMap.set(product.key, Array(12).fill(0));
-  //       }
-  //       const existingArray = monthlyMap.get(product.key)!;
-  //       existingArray[monthIndex] = parseFloat(row.total);
-  //     });
-  //   }
-
-  //   const data: ProductStatistics[] = [];
-
-  //   for (const product of products) {
-  //     data.push({
-  //       product: product.key,
-  //       monthlyTurnover: monthlyMap.get(product.key) || Array(12).fill(0),
-  //     });
-  //   }
-
-  //   return {
-  //     year,
-  //     data,
-  //   };
-  // }
-
   async getMonthlyGamingTurnover(
     clientId: number,
     year: string,
@@ -922,7 +856,7 @@ export class DashboardService {
     return {
       year,
       data,
-     // months: monthNames,
+      // months: monthNames,
     };
   }
 }
