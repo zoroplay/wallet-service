@@ -11,6 +11,7 @@ import { HelperService } from './helper.service';
 import { v4 as uuidv4 } from 'uuid';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class PawapayService {
@@ -25,6 +26,9 @@ export class PawapayService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private identityService: IdentityService,
 
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
+
     private helperService: HelperService,
   ) {}
 
@@ -36,74 +40,6 @@ export class PawapayService {
       },
     });
   }
-
-  // async generatePaymentLink(data, client_id) {
-  //   try {
-  //     console.log('CHECK-1');
-  //     const settings = await this.pawapaySettings(client_id);
-
-  //     if (!settings)
-  //       return {
-  //         success: false,
-  //         message: 'PawaPay has not been configured for client',
-  //       };
-
-  //     const contentDigest = this.generateContentDigest(data);
-  //     const contentType = 'application/json; charset=UTF-8';
-  //     const signatureDate = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-  //     const signatureBase =
-  //       `"content-digest": ${contentDigest}\n` +
-  //       `"content-type": ${contentType}\n` +
-  //       `"signature-date": ${signatureDate}`;
-
-  //     //const privateKey = settings.public_key;
-  //     const privateKey = settings.public_key.replace(/\\n/g, '\n');
-
-  //     const signer = crypto.createSign('RSA-SHA512');
-  //     signer.update(signatureBase);
-  //     signer.end();
-  //     const signature = signer.sign(privateKey, 'base64');
-
-  //     const created = Math.floor(Date.now() / 1000);
-  //     const expires = created + 300;
-  //     const signatureInput = `sig-pp=("content-digest" "content-type" "signature-date");keyid="${settings.merchant_id}";alg="rsa-v1_5-sha512";created=${created};expires=${expires}`;
-  //     const signatureHeader = `sig-pp=:${signature}:`;
-
-  //     console.log('Signature Base:', signatureBase);
-  //     console.log('Signature:', signature);
-  //     console.log('Signature Input:', signatureInput);
-  //     console.log('Signature Header:', signatureHeader);
-
-  //     const response = await fetch(`${settings.base_url}/deposits`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Digest': contentDigest,
-  //         'Content-Type': contentType,
-  //         'Signature-Date': signatureDate,
-  //         'Signature-Input': signatureInput,
-  //         Signature: signatureHeader,
-  //         Authorization: `Bearer ${settings.secret_key}`,
-  //       },
-  //       body: JSON.stringify(data),
-  //     });
-
-  //     const responseData = await response.json();
-  //     console.log('FULL RESPONSE:::::::', responseData);
-
-  //     console.log('CHECK-3');
-
-  //     return { success: true, data: responseData };
-  //   } catch (error) {
-  //     console.error(
-  //       'PawaPay Error:',
-  //       error.response ? error.responseData.data : error.message,
-  //     );
-  //     return {
-  //       success: false,
-  //       message: error.responseData?.data.errorMessage || error.message,
-  //     };
-  //   }
-  // }
 
   async generatePaymentLink(data, client_id) {
     try {
@@ -175,18 +111,39 @@ export class PawapayService {
         });
         console.log('TRX', transaction.transaction_no);
 
-        if (!transaction)
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.depositId,
+            paymentMethod: 'PawaPay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
             status: HttpStatus.NOT_FOUND,
           };
+        }
 
-        if (transaction.status === 1)
+        if (transaction.status === 1) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already successful',
+            response: JSON.stringify(param.rawBody),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: param.depositId,
+            paymentMethod: 'PawaPay',
+          });
+
           return {
             success: true,
             message: 'Transaction already successful',
           };
+        }
 
         const wallet = await this.walletRepository.findOne({
           where: { user_id: transaction.user_id },
@@ -199,6 +156,15 @@ export class PawapayService {
             '❌ Wallet not found for user_id:',
             transaction.user_id,
           );
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Wallet not found ',
+            response: JSON.stringify(param.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.depositId,
+            paymentMethod: 'PawaPay',
+          });
           return {
             success: false,
             message: 'Wallet not found for this user',
@@ -215,6 +181,16 @@ export class PawapayService {
           { transaction_no: transaction.transaction_no },
           { status: 1, balance },
         );
+
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Completed',
+          response: JSON.stringify(param.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: param.depositId,
+          paymentMethod: 'PawaPay',
+        });
 
         return {
           success: true,

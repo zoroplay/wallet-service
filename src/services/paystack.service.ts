@@ -143,6 +143,24 @@ export class PaystackService {
             where: { user_id: transaction.user_id },
           });
 
+          if (!wallet) {
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Wallet not found',
+              response: JSON.stringify(param),
+              status: 0,
+              type: 'Callback',
+              transaction_id: param.transactionRef,
+              paymentMethod: 'Paystack',
+            });
+
+            return {
+              success: false,
+              message: 'Wallet not found',
+              status: HttpStatus.NOT_FOUND,
+            };
+          }
+
           const balance =
             parseFloat(wallet.available_balance.toString()) +
             parseFloat(transaction.amount.toString());
@@ -568,7 +586,7 @@ export class PaystackService {
     );
   }
 
-  private async handleTransferReversed(data, withdrawalRef,) {
+  private async handleTransferReversed(data, withdrawalRef) {
     return this.handleFailedOrReversedTransfer(
       data,
       withdrawalRef,

@@ -10,6 +10,7 @@ import { HelperService } from './helper.service';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
 import { GlobusResponse } from 'src/proto/wallet.pb';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class GlobusService {
@@ -23,6 +24,9 @@ export class GlobusService {
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -151,6 +155,15 @@ export class GlobusService {
         });
 
         if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param.callbackData),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.callbackData.partnerReference,
+            paymentMethod: 'Globus',
+          });
           return {
             success: false,
             message: 'Transaction not found',
@@ -160,6 +173,15 @@ export class GlobusService {
 
         if (transaction.status === 1) {
           console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already successful',
+            response: JSON.stringify(param.callbackData),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: param.callbackData.partnerReference,
+            paymentMethod: 'Globus',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
@@ -176,6 +198,15 @@ export class GlobusService {
             '❌ Wallet not found for user_id:',
             transaction.user_id,
           );
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(param.callbackData),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.callbackData.partnerReference,
+            paymentMethod: 'Globus',
+          });
           return {
             success: false,
             message: 'Wallet not found for this user',
@@ -194,6 +225,15 @@ export class GlobusService {
           { status: 1, balance },
         );
         console.log('FINALLY');
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'WCompleted',
+          response: JSON.stringify(param.callbackData),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: param.callbackData.partnerReference,
+          paymentMethod: 'Globus',
+        });
         return {
           statusCode: HttpStatus.OK,
           success: true,

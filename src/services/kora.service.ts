@@ -374,6 +374,15 @@ export class KorapayService {
             '❌ Wallet not found for user_id:',
             transaction.user_id,
           );
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Wallet not found ',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Korapay',
+          });
           return {
             success: false,
             message: 'Wallet not found for this user',
