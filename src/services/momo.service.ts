@@ -9,6 +9,7 @@ import { HelperService } from './helper.service';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class MomoService {
@@ -24,6 +25,9 @@ export class MomoService {
     private readonly configService: ConfigService,
     //private identityService: IdentityService,
 
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
+
     private helperService: HelperService,
   ) {}
 
@@ -38,7 +42,7 @@ export class MomoService {
       const referenceId = uuidv4();
       const callbackUrl =
         client_id === 4
-          ? 'https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback'
+          ? `https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback`
           : `https://api.prod.sportsbookengine.com/api/v2/webhook/${client_id}/mtnmomo/callback`;
 
       const paymentSettings = await this.mtnmomoSettings(client_id);
@@ -178,18 +182,39 @@ export class MomoService {
 
       console.log('TRX', transaction);
 
-      if (!transaction)
+      if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.externalId,
+          paymentMethod: 'Mtnmomo',
+        });
+
         return {
           success: false,
           message: 'Transaction not found',
           status: HttpStatus.NOT_FOUND,
         };
+      }
 
-      if (transaction.status === 1)
+      if (transaction.status === 1) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already successful',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.externalId,
+          paymentMethod: 'Mtnmomo',
+        });
         return {
           success: true,
           message: 'Transaction already successful',
         };
+      }
 
       const wallet = await this.walletRepository.findOne({
         where: { user_id: transaction.user_id },
@@ -199,6 +224,15 @@ export class MomoService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.externalId,
+          paymentMethod: 'Mtnmomo',
+        });
         return {
           success: false,
           message: 'Wallet not found for this user',
@@ -215,6 +249,16 @@ export class MomoService {
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
+
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data.rawBody),
+        status: 1,
+        type: 'Webhook',
+        transaction_id: data.externalId,
+        paymentMethod: 'Mtnmomo',
+      });
 
       return {
         success: true,

@@ -8,6 +8,7 @@ import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { HelperService } from './helper.service';
 import { ConfigService } from '@nestjs/config';
 import { IdentityService } from 'src/identity/identity.service';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class FidelityService {
@@ -22,6 +23,9 @@ export class FidelityService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private readonly configService: ConfigService,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -76,6 +80,15 @@ export class FidelityService {
       });
 
       if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.transactionReference,
+          paymentMethod: 'Fidelity',
+        });
         return {
           success: false,
           message: 'Transaction not found',
@@ -84,6 +97,15 @@ export class FidelityService {
       }
 
       if (transaction.status === 1) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already successful',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.transactionReference,
+          paymentMethod: 'Fidelity',
+        });
         console.log('ℹ️ Transaction already marked successful.');
         return {
           success: true,
@@ -98,6 +120,15 @@ export class FidelityService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.transactionReference,
+          paymentMethod: 'Fidelity',
+        });
         return {
           success: false,
           message: 'Wallet not found for this user',
@@ -116,6 +147,15 @@ export class FidelityService {
         { status: 1, balance },
       );
       console.log('FINALLY');
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data.rawBody),
+        status: 0,
+        type: 'Webhook',
+        transaction_id: data.transactionReference,
+        paymentMethod: 'Fidelity',
+      });
       return {
         statusCode: HttpStatus.OK,
         success: true,
@@ -146,6 +186,15 @@ export class FidelityService {
       console.log('TRX', transaction);
 
       if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data),
+          status: 0,
+          type: 'Callback',
+          transaction_id: data.transactionRef,
+          paymentMethod: 'Fidelity',
+        });
         return {
           success: false,
           message: 'Transaction not found',
@@ -155,6 +204,15 @@ export class FidelityService {
 
       if (transaction.status === 1) {
         console.log('ℹ️ Transaction already marked successful.');
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already processed',
+          response: JSON.stringify(data),
+          status: 1,
+          type: 'Callback',
+          transaction_id: data.transactionRef,
+          paymentMethod: 'Fidelity',
+        });
         return {
           success: true,
           message: 'Transaction already successful',
@@ -168,6 +226,15 @@ export class FidelityService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data),
+          status: 0,
+          type: 'Callback',
+          transaction_id: data.transactionRef,
+          paymentMethod: 'Fidelity',
+        });
         return {
           success: false,
           message: 'Wallet not found for this user',
@@ -188,6 +255,16 @@ export class FidelityService {
         { status: 1, balance },
       );
       console.log('FINALLY');
+
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data),
+        status: 1,
+        type: 'Callback',
+        transaction_id: data.transactionRef,
+        paymentMethod: 'Fidelity',
+      });
       return {
         statusCode: HttpStatus.OK,
         success: true,

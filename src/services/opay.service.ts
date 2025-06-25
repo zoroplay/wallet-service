@@ -84,6 +84,16 @@ export class OPayService {
             status: 1,
           });
 
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: ref,
+            paymentMethod: 'Opay',
+          });
+
           return {
             responseCode: '00000',
             responseMessage: 'SUCCESSFULL',
@@ -96,6 +106,15 @@ export class OPayService {
             },
           };
         } else {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.orderNo,
+            paymentMethod: 'Opay',
+          });
           return {
             responseCode: '10967',
             responseMessage: 'Invalid user ID',
@@ -103,6 +122,15 @@ export class OPayService {
           };
         }
       } else {
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(param),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: param.orderNo,
+          paymentMethod: 'Opay',
+        });
         return {
           responseCode: '05011',
           responseMessage: 'Duplicate transaction',
@@ -247,6 +275,15 @@ export class OPayService {
             '❌ Wallet not found for user_id:',
             transaction.user_id,
           );
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Wallet not found ',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.rawBody.payload.reference,
+            paymentMethod: 'Opay',
+          });
           return {
             success: false,
             message: 'Wallet not found for this user',

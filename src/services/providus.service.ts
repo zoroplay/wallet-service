@@ -11,6 +11,7 @@ import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
 import { ProvidusResponse } from 'src/proto/wallet.pb';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class ProvidusService {
@@ -25,6 +26,9 @@ export class ProvidusService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private readonly configService: ConfigService,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -133,6 +137,15 @@ export class ProvidusService {
       });
 
       if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.accountNumber,
+          paymentMethod: 'Providus',
+        });
         return {
           requestSuccessful: true,
           sessionId: data.sessionId,
@@ -148,6 +161,15 @@ export class ProvidusService {
         });
 
         if (existingSettlement) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Duplicate transaction',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.accountNumber,
+            paymentMethod: 'Providus',
+          });
           return {
             requestSuccessful: true,
             sessionId: data.sessionId,
@@ -171,6 +193,15 @@ export class ProvidusService {
 
       if (transaction.status === 1) {
         console.log('ℹ️ Transaction already marked successful.');
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already successful',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.accountNumber,
+          paymentMethod: 'Providus',
+        });
         return {
           requestSuccessful: true,
           sessionId: data.sessionId,
@@ -185,6 +216,15 @@ export class ProvidusService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.accountNumber,
+          paymentMethod: 'Providus',
+        });
         return {
           requestSuccessful: true,
           sessionId: data.sessionId,
@@ -205,6 +245,15 @@ export class ProvidusService {
       );
 
       console.log('✅ Transaction successfully processed');
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data.rawBody),
+        status: 0,
+        type: 'Webhook',
+        transaction_id: data.accountNumber,
+        paymentMethod: 'Providus',
+      });
       return {
         requestSuccessful: true,
         sessionId: data.sessionId,

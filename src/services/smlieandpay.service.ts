@@ -9,6 +9,7 @@ import { HelperService } from './helper.service';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
 import { SmileAndPayResponse } from 'src/proto/wallet.pb';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class SmileAndPayService {
@@ -22,6 +23,9 @@ export class SmileAndPayService {
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -186,6 +190,15 @@ export class SmileAndPayService {
         });
 
         if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param),
+            status: 0,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'SmileAndPay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
@@ -195,6 +208,15 @@ export class SmileAndPayService {
 
         if (transaction.status === 1) {
           console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already successful',
+            response: JSON.stringify(param),
+            status: 1,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'SmileAndPay',
+          });
           return {
             success: true,
             message: 'Transaction already successful',
@@ -211,6 +233,15 @@ export class SmileAndPayService {
             '❌ Wallet not found for user_id:',
             transaction.user_id,
           );
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(param),
+            status: 1,
+            type: 'Callback',
+            transaction_id: param.transactionRef,
+            paymentMethod: 'SmileAndPay',
+          });
           return {
             success: false,
             message: 'Wallet not found for this user',
@@ -229,6 +260,15 @@ export class SmileAndPayService {
           { status: 1, balance },
         );
         console.log('FINALLY');
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(param),
+          status: 1,
+          type: 'Completed',
+          transaction_id: param.transactionRef,
+          paymentMethod: 'SmileAndPay',
+        });
         return {
           statusCode: HttpStatus.OK,
           success: true,
