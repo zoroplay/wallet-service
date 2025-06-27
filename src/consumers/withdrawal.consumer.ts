@@ -195,15 +195,28 @@ export class WithdrawalConsumer extends WorkerHost {
     }
   }
 
-  async processMobileMoneyPayout(job: Job) {
+  async processMobileMoneyPayout(job: Job<any>) {
     console.log(`Processing withdrawal job ${job.id} of type ${job.name}...`);
 
     try {
       const data = job.data;
 
-      console.log(`Processing mobile money payout: Job ID ${job.id}`);
+      console.log('✅ Job added to mobile-money-request queue:', data);
 
       const autoDisbursement = data.autoDisbursement;
+
+      const balance = parseFloat(data.balance) - parseFloat(data.amount);
+
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          available_balance: balance,
+        },
+      );
 
       // save withdrawal request
       const withdrawal = new Withdrawal();
@@ -219,19 +232,6 @@ export class WithdrawalConsumer extends WorkerHost {
 
       await this.withdrawalRepository.save(withdrawal);
 
-      const balance = parseFloat(data.balance) - parseFloat(data.amount);
-
-      await this.walletRepository.update(
-        {
-          user_id: data.userId,
-          client_id: data.clientId,
-        },
-        {
-          // balance,
-          available_balance: balance,
-        },
-      );
-
       await this.saveUserBankAccount(data);
 
       let username = data.username;
@@ -239,12 +239,13 @@ export class WithdrawalConsumer extends WorkerHost {
         username = '255' + username.replace(/^0+/, '');
       }
 
+      const correspondent = await this.helperService.getCorrespondent(username);
       const payoutPayload = {
         payoutId: data.withdrawalCode,
         amount: data.amount.toString(),
         currency: 'TZS',
         country: 'TZA',
-        correspondent: this.helperService.getCorrespondent(username),
+        correspondent: correspondent,
         recipient: {
           address: { value: username },
           type: 'MSISDN',
@@ -260,8 +261,6 @@ export class WithdrawalConsumer extends WorkerHost {
         ],
         clientId: data.clientId,
       };
-
-      await this.pawapayService.createPayout(payoutPayload);
 
       await this.helperService.saveTransaction({
         clientId: data.clientId,
@@ -301,6 +300,7 @@ export class WithdrawalConsumer extends WorkerHost {
             withdrawalId: withdrawal.id,
             comment: 'automated withdrawal',
             updatedBy: 'System',
+            result: payoutPayload,
           });
           console.log('transfer response', resp);
         }

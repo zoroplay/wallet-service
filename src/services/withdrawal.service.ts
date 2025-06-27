@@ -16,7 +16,7 @@ import {
   WithdrawRequest,
   WithdrawResponse,
 } from 'src/proto/wallet.pb';
-import { Between, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { IdentityService } from 'src/identity/identity.service';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';

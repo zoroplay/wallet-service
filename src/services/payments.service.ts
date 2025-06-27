@@ -595,6 +595,7 @@ export class PaymentService {
     action,
     comment,
     updatedBy,
+    result = undefined,
   }): Promise<any> {
     try {
       const wRequest = await this.withdrawalRepository.findOne({
@@ -628,9 +629,25 @@ export class PaymentService {
                   );
                   break;
                 case 'monnify':
+                  resp = await this.monnifyService.disburseFunds(
+                    wRequest,
+                    clientId,
+                  );
                   break;
                 case 'flutterwave':
+                  resp = this.flutterwaveService.disburseFunds(
+                    wRequest,
+                    clientId,
+                  );
                   break;
+                case 'pawapay':
+                  if (!result) {
+                    console.log(
+                      'Missing payout payload for pawapay disbursement',
+                    );
+                  }
+                  resp = await this.pawapayService.createPayout(result);
+
                 default:
                   break;
               }

@@ -351,8 +351,9 @@ export interface CreatePawapayRequest {
   source: string;
   amount: number;
   action: string;
-  operator: string;
+  operator?: string | undefined;
   depositId?: string | undefined;
+  username?: string | undefined;
 }
 
 export interface FetchUsersWithdrawalRequest {

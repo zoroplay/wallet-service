@@ -498,6 +498,7 @@ export class PawapayService {
       const settings = await this.pawapaySettings(data.clientId);
 
       console.log('BODY:::', data);
+      console.log(settings.base_url);
 
       const res = await axios.post(`${settings.base_url}/payouts`, data, {
         headers: {
@@ -505,26 +506,16 @@ export class PawapayService {
           Authorization: `Bearer ${settings.secret_key}`,
         },
       });
-      console.log('ACT::', res.data);
-      if (res.data.status === 'REJECTED')
+      console.log(res.data);
+      if (res.data.status === 'ACCEPTED') {
         return {
-          success: false,
-          message: res.data.rejectionReason.rejectionMessage,
+          success: true,
+          data: res.data,
+          transactionNo: res.data.payoutId,
         };
-
-      if (res.data.status === 'DUPLICATE_IGNORED')
-        return {
-          success: false,
-          message: res.data.rejectionReason.rejectionMessage,
-        };
-      console.log('PAYOUT RESPONSE::::', res.data);
-
-      return {
-        success: true,
-        data: res.data,
-        transactionNo: res.data.payoutId,
-      };
+      }
     } catch (e) {
+      console.log('FROM', e.data);
       return {
         success: false,
         message: e.message,
@@ -534,6 +525,7 @@ export class PawapayService {
 
   async pawapayPayout(data) {
     try {
+      console.log('FOM PAY', data);
       const wallet = await this.walletRepository.findOne({
         where: {
           user_id: data.userId,
@@ -583,23 +575,22 @@ export class PawapayService {
 
       const jobData: any = { ...data };
       jobData.autoDisbursement = autoDisbursement;
-      jobData.withdrawalCode = generateTrxNo();
+      jobData.withdrawalCode = uuidv4();
       jobData.balance = wallet.available_balance;
 
       await this.withdrawalQueue.add('mobile-money-request', jobData, {
         jobId: `${data.userId}:${data.clientId}:${data.operator}:${data.amount}`,
         delay: 5000,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
       });
 
       return {
         success: true,
-        message: 'Payout request queued',
-        data: { transactionRef: jobData.withdrawalCode },
+        status: HttpStatus.OK,
+        message: 'Successful',
+        data: {
+          balance: jobData.balance,
+          code: jobData.withdrawalCode,
+        },
       };
     } catch (e) {
       return {
