@@ -55,6 +55,7 @@ export class TigoService {
       const token = await axios.post(TIGO_TOKEN, requestBody, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
+      console.log(token);
 
       if (!token) {
         console.error('❌ Failed to retrieve access token');

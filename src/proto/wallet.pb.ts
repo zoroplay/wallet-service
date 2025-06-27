@@ -132,6 +132,7 @@ export interface ProvidusResponse {
 export interface FidelityWebhookRequest {
   transactionReference: string;
   clientId: number;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface FidelityResponse {
@@ -350,8 +351,9 @@ export interface CreatePawapayRequest {
   source: string;
   amount: number;
   action: string;
-  operator: string;
+  operator?: string | undefined;
   depositId?: string | undefined;
+  username?: string | undefined;
 }
 
 export interface FetchUsersWithdrawalRequest {
@@ -1388,6 +1390,8 @@ export interface WalletServiceClient {
 
   verifySmileAndPay(request: VerifySmile): Observable<VerifySmileRes>;
 
+  pawapayPayout(request: CreatePawapayRequest): Observable<WithdrawResponse>;
+
   financialPerformance(request: ClientRequest): Observable<FinancialPerformanceResponse>;
 
   playerBalances(request: ClientRequest): Observable<PlayerBalanceResponse>;
@@ -1803,6 +1807,10 @@ export interface WalletServiceController {
 
   verifySmileAndPay(request: VerifySmile): Promise<VerifySmileRes> | Observable<VerifySmileRes> | VerifySmileRes;
 
+  pawapayPayout(
+    request: CreatePawapayRequest,
+  ): Promise<WithdrawResponse> | Observable<WithdrawResponse> | WithdrawResponse;
+
   financialPerformance(
     request: ClientRequest,
   ): Promise<FinancialPerformanceResponse> | Observable<FinancialPerformanceResponse> | FinancialPerformanceResponse;
@@ -1940,6 +1948,7 @@ export function WalletServiceControllerMethods() {
       "globusWebhook",
       "smileAndPayWebhook",
       "verifySmileAndPay",
+      "pawapayPayout",
       "financialPerformance",
       "playerBalances",
       "overallGames",

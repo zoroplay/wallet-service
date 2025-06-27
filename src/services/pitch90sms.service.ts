@@ -78,6 +78,10 @@ export class Pitch90SMSService {
     const callbackData = new CallbackLog();
     callbackData.client_id = data.clientId;
     callbackData.request = JSON.stringify(data);
+    callbackData.transaction_id = data.refId;
+    callbackData.type = 'Deposit Notification';
+    callbackData.paymentMethod = 'Stkpush';
+    callbackData.status = 1;
     let response = {};
     const callback = await this.callbackLogRepository.save(callbackData);
 
@@ -207,6 +211,10 @@ export class Pitch90SMSService {
     const callbackData = new CallbackLog();
     callbackData.client_id = data.clientId;
     callbackData.request = JSON.stringify(data);
+    callbackData.transaction_id = data.ref_id;
+    callbackData.type = 'Withdrawal Notification';
+    callbackData.paymentMethod = 'Stkpush';
+    callbackData.status = 1;
     let response = {};
     const callback = await this.callbackLogRepository.save(callbackData);
 

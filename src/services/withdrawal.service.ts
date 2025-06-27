@@ -16,7 +16,7 @@ import {
   WithdrawRequest,
   WithdrawResponse,
 } from 'src/proto/wallet.pb';
-import { Between, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { IdentityService } from 'src/identity/identity.service';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { Bank } from 'src/entity/bank.entity';
@@ -41,7 +41,7 @@ export class WithdrawalService {
   ) {}
 
   async requestWithdrawal(data: WithdrawRequest): Promise<WithdrawResponse> {
-    // console.log(data);
+     console.log(data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: {
@@ -72,6 +72,7 @@ export class WithdrawalService {
       const autoDisbursement = await this.identityService.getWithdrawalSettings(
         { clientId: data.clientId, userId: data.userId },
       );
+      console.log('autoDisbursement', autoDisbursement);
 
       if (autoDisbursement.minimumWithdrawal > data.amount)
         return {

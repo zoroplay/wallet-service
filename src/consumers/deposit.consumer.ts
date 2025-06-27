@@ -11,7 +11,7 @@ import { Repository } from 'typeorm';
 @Processor('deposit')
 export class DepositConsumer extends WorkerHost {
   protected logger = new Logger(DepositConsumer.name);
-  
+
   constructor(
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
@@ -19,14 +19,14 @@ export class DepositConsumer extends WorkerHost {
     private readonly transactionRepository: Repository<Transaction>,
 
     private readonly identityService: IdentityService,
-    private readonly helperService: HelperService
+    private readonly helperService: HelperService,
   ) {
-    super()
+    super();
   }
 
   async process(job: Job, token?: string): Promise<any> {
-    if(job.name === 'shop-deposit') {
-      await this.processShopDeposit(job)
+    if (job.name === 'shop-deposit') {
+      await this.processShopDeposit(job);
     } else {
       await this.processCredit(job);
     }
@@ -49,7 +49,9 @@ export class DepositConsumer extends WorkerHost {
       //update request status
       const senderBalance = fromWallet.available_balance - data.amount;
       // credit receiver balance
-      const receiverBalance = parseFloat(toWallet.available_balance.toString()) + parseFloat(data.amount.toString(  ));
+      const receiverBalance =
+        parseFloat(toWallet.available_balance.toString()) +
+        parseFloat(data.amount.toString());
 
       //update wallets
       await this.walletRepository.update(
@@ -115,7 +117,7 @@ export class DepositConsumer extends WorkerHost {
       console.log(`Processing credit job ${job.id} of type ${job.name}...`);
 
       const data: any = job.data;
-      
+
       //to-do save transaction log
       await this.helperService.saveTransaction({
         clientId: data.clientId,
@@ -126,7 +128,7 @@ export class DepositConsumer extends WorkerHost {
         channel: data.channel,
         source: data.source,
         fromUserId: 0,
-        fromUsername: "System",
+        fromUsername: 'System',
         fromUserBalance: 0,
         toUserId: data.userId,
         toUsername: data.username,
@@ -143,7 +145,7 @@ export class DepositConsumer extends WorkerHost {
         {
           // balance,
           [data.wallet]: data.balance,
-        }
+        },
       );
 
       // send deposit to trackier

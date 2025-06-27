@@ -669,6 +669,12 @@ export class AppController {
   HandleCreatePawaPay(param: CreatePawapayRequest) {
     return this.paymentService.createRequest(param);
   }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayPayout')
+  HandlePawaPayPayout(param: CreatePawapayRequest) {
+    return this.pawapayService.pawapayPayout(param);
+  }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandleCreateBulkPawaPay')
   HandleCreateBulkPawaPay(param: CreateBulkPawapayRequest) {
     return this.paymentService.createBulkPayout(param);
