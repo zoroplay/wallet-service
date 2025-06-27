@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { OnQueueCompleted } from '@nestjs/bull';
-import { Processor, WorkerHost} from '@nestjs/bullmq';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { generateTrxNo } from 'src/common/helpers';
@@ -10,12 +10,12 @@ import { Withdrawal } from 'src/entity/withdrawal.entity';
 import { WithdrawalAccount } from 'src/entity/withdrawal_account.entity';
 import { IdentityService } from 'src/identity/identity.service';
 import { HelperService } from 'src/services/helper.service';
+import { PawapayService } from 'src/services/pawapay.service';
 import { PaymentService } from 'src/services/payments.service';
 import { Repository } from 'typeorm';
 
 @Processor('withdrawal')
 export class WithdrawalConsumer extends WorkerHost {
-  
   constructor(
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
@@ -29,15 +29,18 @@ export class WithdrawalConsumer extends WorkerHost {
     private readonly helperService: HelperService,
     private readonly paymentService: PaymentService,
     private readonly identityService: IdentityService,
+    private pawapayService: PawapayService,
   ) {
     super();
   }
 
   async process(job: Job, token?: string): Promise<any> {
     if (job.name === 'withdrawal-request') {
-      await this.processWithdrawal(job)
+      await this.processWithdrawal(job);
     } else if (job.name === 'shop-withdrawal') {
-      await this.processShopWithdrawal(job)
+      await this.processShopWithdrawal(job);
+    } else if (job.name === 'mobile-money-request') {
+      await this.processMobileMoneyPayout(job);
     } else {
       await this.debitUser(job);
     }
@@ -62,10 +65,9 @@ export class WithdrawalConsumer extends WorkerHost {
         {
           // balance,
           [data.wallet]: data.balance,
-        }
+        },
       );
-      
-      
+
       // to-do save transaction log
       await this.helperService.saveTransaction({
         clientId: data.clientId,
@@ -79,7 +81,7 @@ export class WithdrawalConsumer extends WorkerHost {
         fromUsername: data.username,
         fromUserBalance: data.balance,
         toUserId: 0,
-        toUsername: "System",
+        toUsername: 'System',
         toUserBalance: 0,
         status: 1,
         walletType: data.walletType,
@@ -101,7 +103,6 @@ export class WithdrawalConsumer extends WorkerHost {
       // } catch (e) {
       //   console.log('trackier error: Debit User', e.message)
       // }
-
     } catch (e) {
       console.log('error debiting user', e.message);
     }
@@ -194,6 +195,123 @@ export class WithdrawalConsumer extends WorkerHost {
     }
   }
 
+  async processMobileMoneyPayout(job: Job) {
+    console.log(`Processing withdrawal job ${job.id} of type ${job.name}...`);
+
+    try {
+      const data = job.data;
+
+      console.log(`Processing mobile money payout: Job ID ${job.id}`);
+
+      const autoDisbursement = data.autoDisbursement;
+
+      // save withdrawal request
+      const withdrawal = new Withdrawal();
+      withdrawal.account_name = data.username;
+      withdrawal.bank_code = data.bankCode;
+      withdrawal.bank_name = data.operator;
+      withdrawal.account_number = data.username || '';
+      withdrawal.user_id = data.userId;
+      withdrawal.username = data.username;
+      withdrawal.client_id = data.clientId;
+      withdrawal.amount = data.amount;
+      withdrawal.withdrawal_code = data.withdrawalCode;
+
+      await this.withdrawalRepository.save(withdrawal);
+
+      const balance = parseFloat(data.balance) - parseFloat(data.amount);
+
+      await this.walletRepository.update(
+        {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+        {
+          // balance,
+          available_balance: balance,
+        },
+      );
+
+      await this.saveUserBankAccount(data);
+
+      let username = data.username;
+      if (!username.startsWith('255')) {
+        username = '255' + username.replace(/^0+/, '');
+      }
+
+      const payoutPayload = {
+        payoutId: data.withdrawalCode,
+        amount: data.amount.toString(),
+        currency: 'TZS',
+        country: 'TZA',
+        correspondent: this.helperService.getCorrespondent(username),
+        recipient: {
+          address: { value: username },
+          type: 'MSISDN',
+        },
+        statementDescription: 'Online Payouts',
+        customerTimestamp: new Date(),
+        metadata: [
+          {
+            fieldName: 'customerId',
+            fieldValue: username,
+            isPII: true,
+          },
+        ],
+        clientId: data.clientId,
+      };
+
+      await this.pawapayService.createPayout(payoutPayload);
+
+      await this.helperService.saveTransaction({
+        clientId: data.clientId,
+        transactionNo: withdrawal.withdrawal_code,
+        amount: data.amount,
+        description: 'withdrawal request',
+        subject: 'Withdrawal',
+        channel: data.type,
+        source: data.source,
+        fromUserId: data.userId,
+        fromUsername: data.username,
+        fromUserBalance: balance,
+        toUserId: 0,
+        toUsername: 'System',
+        toUserBalance: 0,
+        status: 1,
+      });
+
+      // if auto disbursement is enabled and
+      if (autoDisbursement.autoDisbursement === 1 && data.type !== 'cash') {
+        // check if withdrawal request has exceeded limit
+        const withdrawalCount = await this.paymentService.checkNoOfWithdrawals(
+          data.userId,
+        );
+
+        console.log(withdrawalCount);
+
+        if (
+          withdrawalCount <= autoDisbursement.autoDisbursementCount &&
+          data.amount >= autoDisbursement.autoDisbursementMin &&
+          data.amount <= autoDisbursement.autoDisbursementMax
+        ) {
+          console.log('initiate transfer');
+          const resp = await this.paymentService.updateWithdrawalStatus({
+            clientId: data.clientId,
+            action: 'approve',
+            withdrawalId: withdrawal.id,
+            comment: 'automated withdrawal',
+            updatedBy: 'System',
+          });
+          console.log('transfer response', resp);
+        }
+      }
+
+      console.log('✅ Payout processed successfully.');
+    } catch (error) {
+      console.log('error processing shop withdrawal', error.message);
+    }
+  }
+
   async processShopWithdrawal(job: Job<unknown>) {
     console.log(`Processing shop withdrawal job ${job.id}`);
     try {
@@ -244,7 +362,8 @@ export class WithdrawalConsumer extends WorkerHost {
       //check if withdrawal commission is available
       if (data.withdrawalCharge > 0) {
         // add commission to user balance
-        balance = parseFloat(balance.toString()) + parseFloat(data.withdrawalCharge);
+        balance =
+          parseFloat(balance.toString()) + parseFloat(data.withdrawalCharge);
 
         await this.walletRepository.update(
           {
@@ -275,7 +394,7 @@ export class WithdrawalConsumer extends WorkerHost {
         });
       }
     } catch (e) {
-      console.log('error processing shop withdrawal', e.message)
+      console.log('error processing shop withdrawal', e.message);
     }
   }
 

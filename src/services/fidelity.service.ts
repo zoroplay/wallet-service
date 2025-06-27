@@ -96,33 +96,68 @@ export class FidelityService {
         };
       }
 
-      if (transaction.status === 1) {
-        await this.callbacklogRepository.save({
-          client_id: data.clientId,
-          request: 'Transaction already successful',
-          response: JSON.stringify(data.rawBody),
-          status: 1,
-          type: 'Webhook',
-          transaction_id: data.transactionReference,
-          paymentMethod: 'Fidelity',
+      if (
+        data.rawBody.webhookBody.type === 'success' &&
+        data.rawBody.webhookBody.statusOk === true &&
+        data.rawBody.webhookBody.status === 201
+      ) {
+        if (transaction.status === 1) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already successful',
+            response: JSON.stringify(data.rawBody),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: data.transactionReference,
+            paymentMethod: 'Fidelity',
+          });
+          console.log('ℹ️ Transaction already marked successful.');
+          return {
+            success: true,
+            message: 'Transaction already successful',
+            statusCode: HttpStatus.OK,
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
         });
-        console.log('ℹ️ Transaction already marked successful.');
-        return {
-          success: true,
-          message: 'Transaction already successful',
-          statusCode: HttpStatus.OK,
-        };
-      }
 
-      const wallet = await this.walletRepository.findOne({
-        where: { user_id: transaction.user_id },
-      });
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.transactionReference,
+            paymentMethod: 'Fidelity',
+          });
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
 
-      if (!wallet) {
-        console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+        console.log('FINALLY');
         await this.callbacklogRepository.save({
           client_id: data.clientId,
-          request: 'Wallet not found',
+          request: 'Completed',
           response: JSON.stringify(data.rawBody),
           status: 0,
           type: 'Webhook',
@@ -130,37 +165,11 @@ export class FidelityService {
           paymentMethod: 'Fidelity',
         });
         return {
-          success: false,
-          message: 'Wallet not found for this user',
-          statusCode: HttpStatus.NOT_FOUND,
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
         };
       }
-
-      const balance =
-        parseFloat(wallet.available_balance.toString()) +
-        parseFloat(transaction.amount.toString());
-
-      await this.helperService.updateWallet(balance, transaction.user_id);
-
-      await this.transactionRepository.update(
-        { transaction_no: transaction.transaction_no },
-        { status: 1, balance },
-      );
-      console.log('FINALLY');
-      await this.callbacklogRepository.save({
-        client_id: data.clientId,
-        request: 'Completed',
-        response: JSON.stringify(data.rawBody),
-        status: 0,
-        type: 'Webhook',
-        transaction_id: data.transactionReference,
-        paymentMethod: 'Fidelity',
-      });
-      return {
-        statusCode: HttpStatus.OK,
-        success: true,
-        message: 'Transaction successfully verified and processed',
-      };
     } catch (error) {
       console.error('❌ OPay webhook processing error:', error.message);
       return {

@@ -12,6 +12,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
 import { CallbackLog } from 'src/entity/callback-log.entity';
+import { generateTrxNo } from 'src/common/helpers';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @Injectable()
 export class PawapayService {
@@ -28,6 +31,9 @@ export class PawapayService {
 
     @InjectRepository(CallbackLog)
     private callbacklogRepository: Repository<CallbackLog>,
+
+    @InjectQueue('withdrawal')
+    private readonly withdrawalQueue: Queue,
 
     private helperService: HelperService,
   ) {}
@@ -128,10 +134,64 @@ export class PawapayService {
           };
         }
 
-        if (transaction.status === 1) {
+        if (param.webhookBody.status === 'COMPLETED') {
+          if (transaction.status === 1) {
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Transaction already successful',
+              response: JSON.stringify(param.rawBody),
+              status: 1,
+              type: 'Webhook',
+              transaction_id: param.depositId,
+              paymentMethod: 'PawaPay',
+            });
+
+            return {
+              success: true,
+              message: 'Transaction already successful',
+            };
+          }
+
+          const wallet = await this.walletRepository.findOne({
+            where: { user_id: transaction.user_id },
+          });
+
+          console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+          if (!wallet) {
+            console.error(
+              '❌ Wallet not found for user_id:',
+              transaction.user_id,
+            );
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Wallet not found ',
+              response: JSON.stringify(param.rawBody),
+              status: 0,
+              type: 'Webhook',
+              transaction_id: param.depositId,
+              paymentMethod: 'PawaPay',
+            });
+            return {
+              success: false,
+              message: 'Wallet not found for this user',
+              status: HttpStatus.NOT_FOUND,
+            };
+          }
+
+          const balance =
+            parseFloat(wallet.available_balance.toString()) +
+            parseFloat(transaction.amount.toString());
+
+          await this.helperService.updateWallet(balance, transaction.user_id);
+          await this.transactionRepository.update(
+            { transaction_no: transaction.transaction_no },
+            { status: 1, balance },
+          );
+
           await this.callbacklogRepository.save({
             client_id: param.clientId,
-            request: 'Transaction already successful',
+            request: 'Completed',
             response: JSON.stringify(param.rawBody),
             status: 1,
             type: 'Webhook',
@@ -141,61 +201,9 @@ export class PawapayService {
 
           return {
             success: true,
-            message: 'Transaction already successful',
+            message: 'Transaction successfully verified and processed',
           };
         }
-
-        const wallet = await this.walletRepository.findOne({
-          where: { user_id: transaction.user_id },
-        });
-
-        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
-
-        if (!wallet) {
-          console.error(
-            '❌ Wallet not found for user_id:',
-            transaction.user_id,
-          );
-          await this.callbacklogRepository.save({
-            client_id: param.clientId,
-            request: 'Wallet not found ',
-            response: JSON.stringify(param.rawBody),
-            status: 0,
-            type: 'Webhook',
-            transaction_id: param.depositId,
-            paymentMethod: 'PawaPay',
-          });
-          return {
-            success: false,
-            message: 'Wallet not found for this user',
-            status: HttpStatus.NOT_FOUND,
-          };
-        }
-
-        const balance =
-          parseFloat(wallet.available_balance.toString()) +
-          parseFloat(transaction.amount.toString());
-
-        await this.helperService.updateWallet(balance, transaction.user_id);
-        await this.transactionRepository.update(
-          { transaction_no: transaction.transaction_no },
-          { status: 1, balance },
-        );
-
-        await this.callbacklogRepository.save({
-          client_id: param.clientId,
-          request: 'Completed',
-          response: JSON.stringify(param.rawBody),
-          status: 1,
-          type: 'Webhook',
-          transaction_id: param.depositId,
-          paymentMethod: 'PawaPay',
-        });
-
-        return {
-          success: true,
-          message: 'Transaction successfully verified and processed',
-        };
       }
     } catch (error) {
       console.log(error);
@@ -515,6 +523,83 @@ export class PawapayService {
         success: true,
         data: res.data,
         transactionNo: res.data.payoutId,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        message: e.message,
+      };
+    }
+  }
+
+  async pawapayPayout(data) {
+    try {
+      const wallet = await this.walletRepository.findOne({
+        where: {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+      });
+
+      if (!wallet) {
+        return { success: false, message: 'Wallet not found' };
+      }
+
+      if (wallet.available_balance < data.amount) {
+        return {
+          success: false,
+          message: 'Insufficient wallet balance for payout',
+        };
+      }
+
+      const autoDisbursement = await this.identityService.getWithdrawalSettings(
+        {
+          clientId: data.clientId,
+          userId: data.userId,
+        },
+      );
+
+      console.log('autoDisbursement', autoDisbursement);
+
+      if (autoDisbursement.minimumWithdrawal > data.amount)
+        return {
+          success: false,
+          status: HttpStatus.BAD_REQUEST,
+          message:
+            'Minimum withdrawable amount is ' +
+            autoDisbursement.minimumWithdrawal,
+          data: null,
+        };
+
+      if (autoDisbursement.maximumWithdrawal < data.amount)
+        return {
+          success: false,
+          status: HttpStatus.BAD_REQUEST,
+          message:
+            'Maximum withdrawable amount is ' +
+            autoDisbursement.maximumWithdrawal,
+          data: null,
+        };
+
+      const jobData: any = { ...data };
+      jobData.autoDisbursement = autoDisbursement;
+      jobData.withdrawalCode = generateTrxNo();
+      jobData.balance = wallet.available_balance;
+
+      await this.withdrawalQueue.add('mobile-money-request', jobData, {
+        jobId: `${data.userId}:${data.clientId}:${data.operator}:${data.amount}`,
+        delay: 5000,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Payout request queued',
+        data: { transactionRef: jobData.withdrawalCode },
       };
     } catch (e) {
       return {

@@ -119,7 +119,9 @@ export class GlobusService {
   }
 
   async handleWebhook(param): Promise<GlobusResponse> {
-    console.log('PARAM:::::::', param);
+    console.log('PARAM:::::::', param.clientId);
+    console.log('PARAM:::::::', param.headers);
+    console.log('PARAM:::::::', param.callbackData.partnerReference);
     try {
       const settings = await this.globusSettings(param.clientId);
 

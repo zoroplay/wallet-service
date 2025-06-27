@@ -98,6 +98,7 @@ export class ProvidusService {
 
   async handleWebhook(data): Promise<ProvidusResponse> {
     try {
+      console.log('data', data);
       const settings = await this.providusSettings(data.client_id);
       if (!settings) {
         return {
@@ -105,6 +106,32 @@ export class ProvidusService {
           sessionId: data.sessionId,
           responseMessage: 'Payment method not found',
           responseCode: '03',
+        };
+      }
+
+      if (
+        data.settlementId === undefined ||
+        data.settlementId === null ||
+        data.settlementId === ''
+      ) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
+        };
+      }
+
+      if (
+        data.accountNumber === undefined ||
+        data.accountNumber === null ||
+        data.accountNumber === ''
+      ) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.rawBody.webhookBody.sessionId,
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
         };
       }
 
