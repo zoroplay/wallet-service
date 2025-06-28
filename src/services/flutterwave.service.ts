@@ -56,9 +56,6 @@ export class FlutterwaveService {
           },
         );
 
-        console.log(response);
-
-        console.log(response.data);
 
         if (!response.data) {
           return {
