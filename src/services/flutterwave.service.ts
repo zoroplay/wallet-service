@@ -657,4 +657,40 @@ export class FlutterwaveService {
       console.error('Trackier error:', e.message);
     }
   }
+
+  async resolveAccountNumberFlutterwave(client_id, accountNo, bankCode) {
+    try {
+      const paymentSettings = await this.flutterwaveSettings(client_id);
+      if (!paymentSettings) {
+        return {
+          success: false,
+          message: 'Flutterwave has not been configured for client',
+        };
+      }
+
+      const resp = await axios.get(
+        `${paymentSettings.base_url}/accounts/resolve`,
+        {
+          params: {
+            account_number: accountNo,
+            account_bank: bankCode,
+          },
+          headers: {
+            Authorization: `Bearer ${paymentSettings.secret_key}`,
+          },
+        },
+      );
+
+      return {
+        success: resp.data.status === 'success',
+        data: resp.data.data,
+        message: resp.data.message,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        message: 'Something went wrong: ' + e.message,
+      };
+    }
+  }
 }
