@@ -640,6 +640,10 @@ export class PaymentService {
                     clientId,
                   );
                   break;
+
+                case 'korapay':
+                  resp = this.korapayService.disburseFunds(wRequest, clientId);
+                  break;
                 case 'pawapay':
                   if (!result) {
                     console.log(
@@ -909,8 +913,7 @@ export class PaymentService {
             return this.flutterwaveService.verifyTransaction(param);
           case 'korapay':
             return this.korapayService.verifyTransaction(param);
-          case 'pawapay':
-            return this.pawapayService.verifyTransaction(param);
+
           case 'fidelity':
             return this.fidelityService.handleCallback(param);
           case 'smileandpay':
@@ -987,8 +990,43 @@ export class PaymentService {
                 'Could not resolve account name. Check parameters or try again',
             };
           }
-
+          break;
         case 'flutterwave':
+          resp = await this.flutterwaveService.resolveAccountNumberFlutterwave(
+            param.clientId,
+            param.accountNumber,
+            param.bankCode,
+          );
+          if (resp.success) {
+            names = resp.data.account_name.toLowerCase().split(' ');
+            name = resp.data.account_name;
+          } else {
+            return {
+              success: false,
+              status: HttpStatus.NOT_FOUND,
+              message:
+                'Could not resolve account name. Check parameters or try again',
+            };
+          }
+          break;
+
+           case 'korapay':
+          resp = await this.korapayService.resolveAccountNumberKorapay(
+            param.clientId,
+            param.accountNumber,
+            param.bankCode,
+          );
+          if (resp.success) {
+            names = resp.data.account_name.toLowerCase().split(' ');
+            name = resp.data.account_name;
+          } else {
+            return {
+              success: false,
+              status: HttpStatus.NOT_FOUND,
+              message:
+                'Could not resolve account name. Check parameters or try again',
+            };
+          }
           break;
         case 'monnify':
           break;

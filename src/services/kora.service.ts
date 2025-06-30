@@ -300,7 +300,7 @@ export class KorapayService {
       if (!paymentSettings)
         return {
           success: false,
-          message: 'Flutterwave has not been configured for client',
+          message: 'Korapay has not been configured for client',
         };
 
       const hash = crypto
@@ -593,6 +593,101 @@ export class KorapayService {
       }
     } catch (e) {
       console.error('Trackier error:', e.message);
+    }
+  }
+
+  async disburseFunds(withdrawal: Withdrawal, client_id) {
+    try {
+      const paymentSettings = await this.korapaySettings(client_id);
+      if (!paymentSettings)
+        return {
+          success: false,
+          message: 'Korapay has not been configured for client',
+        };
+
+      const payload = {
+        reference: withdrawal.withdrawal_code,
+        destination: {
+          type: 'bank_account',
+          amount: withdrawal.amount.toString(),
+          currency: 'NGN',
+          narration: 'Withdrawal Payout',
+          bank_account: {
+            bank: withdrawal.bank_code,
+            account: withdrawal.account_number,
+          },
+          customer: {
+            name: withdrawal.account_name || 'Unknown',
+            email: 'no-reply@example.com',
+          },
+        },
+      };
+
+      const resp = await axios.post(
+        `${paymentSettings.base_url}/transactions/disburse`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${paymentSettings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (resp.data.status === true) {
+        await this.withdrawalRepository.update(
+          { id: withdrawal.id },
+          { status: 1 },
+        );
+        return { success: true, message: 'Funds disbursed successfully' };
+      } else {
+        return { success: false, message: resp.data.message };
+      }
+    } catch (e) {
+      return {
+        success: false,
+        message: `Unable to disburse funds: ${e.message}`,
+      };
+    }
+  }
+
+  async resolveAccountNumberKorapay(client_id, accountNo, bankCode) {
+    try {
+      const paymentSettings = await this.korapaySettings(client_id);
+      if (!paymentSettings) {
+        return {
+          success: false,
+          message: 'Korapay has not been configured for client',
+        };
+      }
+
+      const payload = {
+        account_number: accountNo,
+        bank_code: bankCode,
+        currency: 'NG',
+      };
+
+      const resp = await axios.post(
+        `${paymentSettings.base_url}/bank-account/resolve`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${paymentSettings.secret_key}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      return {
+        success: resp.data.status === true,
+        data: resp.data.data,
+        message: resp.data.message,
+      };
+    } catch (e) {
+      return {
+        success: false,
+        message: 'Something went wrong: ' + e.message,
+      };
     }
   }
 }
