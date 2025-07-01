@@ -9,6 +9,7 @@ import { HelperService } from './helper.service';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class MomoService {
@@ -24,6 +25,9 @@ export class MomoService {
     private readonly configService: ConfigService,
     //private identityService: IdentityService,
 
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
+
     private helperService: HelperService,
   ) {}
 
@@ -36,6 +40,10 @@ export class MomoService {
   async initiatePayment(data, client_id) {
     try {
       const referenceId = uuidv4();
+      const callbackUrl =
+        client_id === 4
+          ? `https://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback`
+          : `https://api.prod.sportsbookengine.com/api/v2/webhook/${client_id}/mtnmomo/callback`;
 
       const paymentSettings = await this.mtnmomoSettings(client_id);
       if (!paymentSettings)
@@ -152,9 +160,11 @@ export class MomoService {
   }
 
   async handleWebhook(data) {
-    console.log('MOMO-WEBHOOK');
+    const status = data.status;
 
-    console.log('TEST');
+    const externalId = data.externalId;
+    const clientId = data.clientId;
+
     try {
       const paymentSettings = await this.mtnmomoSettings(data.clientId);
       if (!paymentSettings)
@@ -165,56 +175,103 @@ export class MomoService {
       console.log('TEST 2');
       const transaction = await this.transactionRepository.findOne({
         where: {
-          client_id: data.clientId,
-          transaction_no: data.externalId,
+          client_id: clientId,
+          transaction_no: externalId,
           tranasaction_type: 'credit',
         },
       });
 
       console.log('TRX', transaction);
 
-      if (!transaction)
-        return {
-          success: false,
-          message: 'Transaction not found',
-          status: HttpStatus.NOT_FOUND,
-        };
+      if (status === 'SUCCESSFUL') {
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.externalId,
+            paymentMethod: 'Mtnmomo',
+          });
 
-      if (transaction.status === 1)
+          return {
+            success: false,
+            message: 'Transaction not found',
+            status: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        if (transaction.status === 1) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already successful',
+            response: JSON.stringify(data.rawBody),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: data.externalId,
+            paymentMethod: 'Mtnmomo',
+          });
+          return {
+            success: true,
+            message: 'Transaction already successful',
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(data.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.externalId,
+            paymentMethod: 'Mtnmomo',
+          });
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            status: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Completed',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.externalId,
+          paymentMethod: 'Mtnmomo',
+        });
+
+        console.log('COMPLETED');
+
         return {
           success: true,
-          message: 'Transaction already successful',
-        };
-
-      const wallet = await this.walletRepository.findOne({
-        where: { user_id: transaction.user_id },
-      });
-
-      console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
-
-      if (!wallet) {
-        console.error('❌ Wallet not found for user_id:', transaction.user_id);
-        return {
-          success: false,
-          message: 'Wallet not found for this user',
-          status: HttpStatus.NOT_FOUND,
+          message: 'Transaction successfully verified and processed',
         };
       }
-
-      const balance =
-        parseFloat(wallet.available_balance.toString()) +
-        parseFloat(transaction.amount.toString());
-
-      await this.helperService.updateWallet(balance, transaction.user_id);
-      await this.transactionRepository.update(
-        { transaction_no: transaction.transaction_no },
-        { status: 1, balance },
-      );
-
-      return {
-        success: true,
-        message: 'Transaction successfully verified and processed',
-      };
     } catch (error) {
       console.log('Tigo error', error);
       return { success: false, message: 'error occurred' };

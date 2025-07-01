@@ -9,6 +9,7 @@ import { HelperService } from './helper.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class TigoService {
@@ -23,6 +24,8 @@ export class TigoService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private readonly configService: ConfigService,
     private identityService: IdentityService,
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -52,6 +55,7 @@ export class TigoService {
       const token = await axios.post(TIGO_TOKEN, requestBody, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
+      console.log(token);
 
       if (!token) {
         console.error('❌ Failed to retrieve access token');
@@ -110,6 +114,15 @@ export class TigoService {
       });
 
       if (!user) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'User not found',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.txnId,
+          paymentMethod: 'Tigo',
+        });
         return {
           success: false,
           message: 'User not found',
@@ -132,6 +145,15 @@ export class TigoService {
         existingTransaction.transaction_no === data.txnId &&
         existingTransaction.status === 1
       ) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already successful',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: existingTransaction.transaction_no,
+          paymentMethod: 'Tigo',
+        });
         return {
           success: false,
           refId: data.txnId,
@@ -169,12 +191,23 @@ export class TigoService {
       console.log('TRX', transaction);
       console.log('TRX-USER-ID', transaction.user_id);
 
-      if (!transaction)
+      if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.txnId,
+          paymentMethod: 'Tigo',
+        });
+
         return {
           success: false,
           message: 'Transaction not found',
           status: HttpStatus.NOT_FOUND,
         };
+      }
 
       if (transaction.status === 1)
         return {
@@ -190,6 +223,15 @@ export class TigoService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.txnId,
+          paymentMethod: 'Tigo',
+        });
         return {
           success: false,
           message: 'Wallet not found for this user',
@@ -206,6 +248,16 @@ export class TigoService {
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
+
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data.rawBody),
+        status: 1,
+        type: 'Webhook',
+        transaction_id: data.txnId,
+        paymentMethod: 'Tigo',
+      });
 
       return {
         success: true,
@@ -240,18 +292,38 @@ export class TigoService {
 
       console.log('TRX', transaction);
 
-      if (!transaction)
+      if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.reference,
+          paymentMethod: 'Tigo',
+        });
         return {
           success: false,
           message: 'Transaction not found',
           status: HttpStatus.NOT_FOUND,
         };
+      }
 
-      if (transaction.status === 1)
+      if (transaction.status === 1) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already successful',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.reference,
+          paymentMethod: 'Tigo',
+        });
         return {
           success: true,
           message: 'Transaction already successful',
         };
+      }
 
       const wallet = await this.walletRepository.findOne({
         where: { user_id: transaction.user_id },
@@ -261,6 +333,15 @@ export class TigoService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.reference,
+          paymentMethod: 'Tigo',
+        });
         return {
           success: false,
           message: 'Wallet not found for this user',
@@ -277,6 +358,16 @@ export class TigoService {
         { transaction_no: transaction.transaction_no },
         { status: 1, balance },
       );
+
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data.rawBody),
+        status: 1,
+        type: 'Webhook',
+        transaction_id: data.reference,
+        paymentMethod: 'Tigo',
+      });
 
       return {
         success: true,

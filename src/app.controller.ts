@@ -62,6 +62,11 @@ import {
   ShopUsersSummaryRequest,
   OpayRequest,
   CorapayWebhookRequest,
+  SmileAndPayRequest,
+  VerifySmile,
+  ClientRequest,
+  OverallGamesRequest,
+  StatisticsRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -80,6 +85,10 @@ import { PawapayService } from './services/pawapay.service';
 import { MomoService } from './services/momo.service';
 import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
+import { FidelityService } from './services/fidelity.service';
+import { ProvidusService } from './services/providus.service';
+import { SmileAndPayService } from './services/smileandpay.service';
+import { DashboardService } from './services/dashboard.service';
 
 type RangeType = 'day' | 'week' | 'month' | 'year';
 const allowedRanges: RangeType[] = ['day', 'week', 'month', 'year'];
@@ -105,7 +114,118 @@ export class AppController {
     private summeryService: SummeryService,
     private oPayService: OPayService,
     private coralPayService: CoralPayService,
+    private smileAndPayService: SmileAndPayService,
+    private dashboardService: DashboardService,
+
   ) {}
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'FinancialPerformance')
+  FinancialPerformance(payload: ClientRequest) {
+    return this.dashboardService.financialPerformance(payload.clientId);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'PlayerBalances')
+  PlayerBalances(payload: ClientRequest) {
+    return this.dashboardService.balances(payload.clientId);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'Statistics')
+  Statistics(payload: StatisticsRequest) {
+    const { clientId, year } = payload;
+    return this.dashboardService.getMonthlyGamingTurnover(clientId, year);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGamesSport')
+  OverallGamesSport(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.getSportSummary(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGames')
+  OverallGames(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.getGamingSummary(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGamesOnline')
+  OverallGamesOnline(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.GamingSummaryForOnline(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'OverallGamesRetail')
+  OverallGamesRetail(payload: OverallGamesRequest) {
+    const { clientId, rangeZ, from, to } = payload;
+
+    // Validate the range input
+    const isValidRange = (value: string): value is RangeType => {
+      return allowedRanges.includes(value as RangeType);
+    };
+
+    const safeRange: RangeType | undefined = isValidRange(rangeZ)
+      ? (rangeZ as RangeType)
+      : undefined;
+
+    // Convert from/to ISO strings to Date objects if present
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.dashboardService.GamingSummaryForRetail(clientId, {
+      rangeZ: safeRange,
+      from: fromDate,
+      to: toDate,
+    });
+  }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetTransactionSummary')
   GetSummary(payload: SummaryRequest) {
@@ -175,6 +295,16 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'KorapayWebhook')
   korapayWebhook(param: KoraPayWebhookRequest) {
     return this.korapayService.processWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'SmileAndPayWebhook')
+  smileAndPayWebhook(param: SmileAndPayRequest) {
+    return this.smileAndPayService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'VerifySmileAndPay')
+  smileAndPayVerify(param: VerifySmile) {
+    return this.smileAndPayService.verifyTransaction(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')
@@ -507,6 +637,12 @@ export class AppController {
   HandleCreatePawaPay(param: CreatePawapayRequest) {
     return this.paymentService.createRequest(param);
   }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'PawapayPayout')
+  HandlePawaPayPayout(param: CreatePawapayRequest) {
+    return this.pawapayService.pawapayPayout(param);
+  }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'HandleCreateBulkPawaPay')
   HandleCreateBulkPawaPay(param: CreateBulkPawapayRequest) {
     return this.paymentService.createBulkPayout(param);

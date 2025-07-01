@@ -27,7 +27,7 @@ export class Withdrawal {
   @Column({ type: 'decimal', precision: 20, scale: 2, default: 0 })
   amount: number;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 40, nullable: true })
   withdrawal_code: string;
 
   @Column({ type: 'varchar' })
