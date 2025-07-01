@@ -12,6 +12,13 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "identity";
 
+export interface BasicUser {
+  id: number;
+  username: string;
+  role: string;
+  clientId: number;
+}
+
 export interface ClientIdRequest {
   clientId: number;
 }

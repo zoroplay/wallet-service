@@ -12,7 +12,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
 import { CallbackLog } from 'src/entity/callback-log.entity';
-import { generateTrxNo } from 'src/common/helpers';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 
@@ -97,6 +96,7 @@ export class PawapayService {
   }
 
   async verifyTransaction(param) {
+    console.log('THE_PARAM:::', param);
     try {
       const paymentSettings = await this.pawapaySettings(param.client_id);
       if (!paymentSettings)
@@ -134,7 +134,7 @@ export class PawapayService {
           };
         }
 
-        if (param.webhookBody.status === 'COMPLETED') {
+        if (param.status === 'COMPLETED') {
           if (transaction.status === 1) {
             await this.callbacklogRepository.save({
               client_id: param.clientId,

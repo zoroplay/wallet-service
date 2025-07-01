@@ -10,6 +10,7 @@ import { post, get } from 'src/common/axios';
 import { generateTrxNo } from 'src/common/helpers';
 import { IdentityService } from 'src/identity/identity.service';
 import { CallbackLog } from 'src/entity/callback-log.entity';
+import axios from 'axios';
 
 @Injectable()
 export class MonnifyService {
@@ -345,19 +346,41 @@ export class MonnifyService {
     }
   }
 
-  async resolveAccountNumber(client_id, accountNo, banckCode) {
+  async resolveAccountNumber(client_id, accountNo, bankCode) {
     try {
       const paymentSettings = await this.monnifySettings(client_id);
       // return false if paystack settings is not available
-      if (!paymentSettings)
+
+      if (!paymentSettings) {
         return {
           success: false,
-          message: 'Paystack has not been configured for client',
+          message: 'Monnify has not been configured for client',
         };
+      }
+
+      const authRes = await this.authenticate(paymentSettings);
       // const resp = await get(`${paymentSettings.base_url}/bank/resolve?account_number=${accountNo}&bank_code=${banckCode}`, {
       //     'Authorization': `Bearer ${paymentSettings.secret_key}`,
       // })
       // return {success: resp.status, data: resp.data, message: resp.message};
+      if (authRes.requestSuccessful) {
+        const resp = await axios.get(
+          `${paymentSettings.base_url}/api/v1/disbursements/account/validate?accountNumber=${accountNo}&bankCode=${bankCode}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authRes.responseBody.accessToken}`,
+            },
+          },
+        );
+
+        const result = resp.data;
+
+        return {
+          success: result.requestSuccessful,
+          data: result.responseBody,
+          message: result.responseMessage,
+        };
+      }
     } catch (e) {
       return { success: false, message: 'Something went wrong ' + e.message };
     }

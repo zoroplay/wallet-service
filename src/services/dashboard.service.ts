@@ -68,7 +68,21 @@ export class DashboardService {
 
       console.log('Raw response:', JSON.stringify(players, null, 2));
 
-      const playerUsers = players.data.filter(
+      const userInfos = players.data || [];
+
+      if (!Array.isArray(userInfos)) {
+        return {
+          success: false,
+          status: 500,
+          message: 'Invalid user response format',
+          totalOnlinePlayerBalance: '',
+          totalOnlinePlayerBonus: '',
+          totalRetailBalance: '',
+          totalRetailTrustBalance: '',
+        };
+      }
+
+      const playerUsers = userInfos.filter(
         (user) => user.role === 'Player' || user.role === null,
       );
       const playerUserIds = playerUsers.map((user) => user.id);
@@ -104,10 +118,12 @@ export class DashboardService {
         'Super Agent',
       ];
 
-      // Filter only 'Shop' roles
-      const retailUsers = players.data.filter((user) =>
+      const retailInfos = players.data || [];
+
+      const retailUsers = retailInfos.filter((user) =>
         retailRoles.includes(user.role),
       );
+
       const retailUserIds = retailUsers.map((user) => user.id);
 
       // Retail balance
@@ -149,6 +165,7 @@ export class DashboardService {
         totalRetailTrustBalance,
       };
     } catch (error) {
+      console.log(error);
       return {
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -357,7 +374,21 @@ export class DashboardService {
       // Get player users
       const players = await this.identityService.getClientUsers({ clientId });
 
-      const playerUsers = players.data.filter(
+      const userInfos = players.data || [];
+
+      if (!Array.isArray(userInfos)) {
+        return {
+          success: false,
+          status: 500,
+          message: 'Invalid user response format',
+          totalOnlinePlayerBalance: '',
+          totalOnlinePlayerBonus: '',
+          totalRetailBalance: '',
+          totalRetailTrustBalance: '',
+        };
+      }
+
+      const playerUsers = userInfos.filter(
         (user) => user.role === 'Player' || user.role === null,
       );
       const playerUserIds = playerUsers.map((user) => user.id);
@@ -548,9 +579,12 @@ export class DashboardService {
         'Master Agent',
         'Super Agent',
       ];
-      const retailUsers = players.data.filter((user) =>
+      const retailInfos = players.data || [];
+
+      const retailUsers = retailInfos.filter((user) =>
         retailRoles.includes(user.role),
       );
+
       const retailUserIds = retailUsers.map((user) => user.id);
 
       if (!retailUserIds.length) {
