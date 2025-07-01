@@ -68,7 +68,7 @@ export class DashboardService {
 
       console.log('Raw response:', JSON.stringify(players, null, 2));
 
-      const playerUsers = players.userInfos.filter(
+      const playerUsers = players.data.filter(
         (user) => user.role === 'Player' || user.role === null,
       );
       const playerUserIds = playerUsers.map((user) => user.id);
@@ -105,7 +105,7 @@ export class DashboardService {
       ];
 
       // Filter only 'Shop' roles
-      const retailUsers = players.userInfos.filter((user) =>
+      const retailUsers = players.data.filter((user) =>
         retailRoles.includes(user.role),
       );
       const retailUserIds = retailUsers.map((user) => user.id);
@@ -357,7 +357,7 @@ export class DashboardService {
       // Get player users
       const players = await this.identityService.getClientUsers({ clientId });
 
-      const playerUsers = players.userInfos.filter(
+      const playerUsers = players.data.filter(
         (user) => user.role === 'Player' || user.role === null,
       );
       const playerUserIds = playerUsers.map((user) => user.id);
@@ -548,7 +548,7 @@ export class DashboardService {
         'Master Agent',
         'Super Agent',
       ];
-      const retailUsers = players.userInfos.filter((user) =>
+      const retailUsers = players.data.filter((user) =>
         retailRoles.includes(user.role),
       );
       const retailUserIds = retailUsers.map((user) => user.id);
