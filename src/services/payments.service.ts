@@ -317,7 +317,6 @@ export class PaymentService {
                 description: 'Online Deposit (Opay)',
                 name: 'Sbe',
               },
-              //payMethod: 'OpayWalletNg',
             },
             param.clientId,
           );
@@ -1010,7 +1009,7 @@ export class PaymentService {
           }
           break;
 
-           case 'korapay':
+        case 'korapay':
           resp = await this.korapayService.resolveAccountNumberKorapay(
             param.clientId,
             param.accountNumber,
