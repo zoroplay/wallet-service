@@ -12,6 +12,49 @@ import { Struct } from "./google/protobuf/struct.pb";
 
 export const protobufPackage = "wallet";
 
+export interface MonthlyData {
+  month: string;
+  turnover: number;
+}
+
+export interface StatisticsRequest {
+  clientId: number;
+  year: string;
+}
+
+export interface ProductStatistics {
+  product: string;
+  monthlyData: MonthlyData[];
+}
+
+export interface StatisticsResponse {
+  year: string;
+  data: ProductStatistics[];
+}
+
+export interface OverallGamesRequest {
+  clientId: number;
+  rangeZ: string;
+  from: string;
+  to: string;
+}
+
+export interface ProductSummary {
+  product: string;
+  turnover: number;
+  margin: string;
+  ggr: number;
+  bonusGiven: number;
+  bonusSpent: number;
+  ngr: number;
+}
+
+export interface OverallGamesResponse {
+  startDate: string;
+  endDate: string;
+  data: ProductSummary[];
+}
+
 export interface ClientRequest {
   clientId: number;
 }
@@ -76,6 +119,7 @@ export interface ProvidusRequest {
   sessionId: string;
   headers: string;
   settlementId: string;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface ProvidusResponse {
@@ -88,6 +132,7 @@ export interface ProvidusResponse {
 export interface FidelityWebhookRequest {
   transactionReference: string;
   clientId: number;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface FidelityResponse {
@@ -229,6 +274,7 @@ export interface MtnmomoRequest {
   externalId: string;
   status: string;
   clientId: number;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface TigoW2aRequest {
@@ -238,6 +284,7 @@ export interface TigoW2aRequest {
   customerReferenceId: string;
   senderName: string;
   clientId: number;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface TigoW2aResponse {
@@ -250,6 +297,7 @@ export interface PawapayRequest {
   clientId: number;
   status: string;
   depositId: string;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface PawapayResponse {
@@ -271,6 +319,7 @@ export interface TigoWebhookRequest {
   event: string;
   body: string;
   Status: boolean;
+  rawBody: { [key: string]: any } | undefined;
 }
 
 export interface TigoResponse {
@@ -302,8 +351,10 @@ export interface CreatePawapayRequest {
   source: string;
   amount: number;
   action: string;
-  operator: string;
+  operator?: string | undefined;
   depositId?: string | undefined;
+  username?: string | undefined;
+  type?: string | undefined;
 }
 
 export interface FetchUsersWithdrawalRequest {
@@ -1340,9 +1391,21 @@ export interface WalletServiceClient {
 
   verifySmileAndPay(request: VerifySmile): Observable<VerifySmileRes>;
 
+  pawapayPayout(request: CreatePawapayRequest): Observable<WithdrawResponse>;
+
   financialPerformance(request: ClientRequest): Observable<FinancialPerformanceResponse>;
 
   playerBalances(request: ClientRequest): Observable<PlayerBalanceResponse>;
+
+  overallGames(request: OverallGamesRequest): Observable<OverallGamesResponse>;
+
+  overallGamesOnline(request: OverallGamesRequest): Observable<OverallGamesResponse>;
+
+  overallGamesRetail(request: OverallGamesRequest): Observable<OverallGamesResponse>;
+
+  overallGamesSport(request: OverallGamesRequest): Observable<OverallGamesResponse>;
+
+  statistics(request: StatisticsRequest): Observable<StatisticsResponse>;
 }
 
 export interface WalletServiceController {
@@ -1745,6 +1808,10 @@ export interface WalletServiceController {
 
   verifySmileAndPay(request: VerifySmile): Promise<VerifySmileRes> | Observable<VerifySmileRes> | VerifySmileRes;
 
+  pawapayPayout(
+    request: CreatePawapayRequest,
+  ): Promise<WithdrawResponse> | Observable<WithdrawResponse> | WithdrawResponse;
+
   financialPerformance(
     request: ClientRequest,
   ): Promise<FinancialPerformanceResponse> | Observable<FinancialPerformanceResponse> | FinancialPerformanceResponse;
@@ -1752,6 +1819,26 @@ export interface WalletServiceController {
   playerBalances(
     request: ClientRequest,
   ): Promise<PlayerBalanceResponse> | Observable<PlayerBalanceResponse> | PlayerBalanceResponse;
+
+  overallGames(
+    request: OverallGamesRequest,
+  ): Promise<OverallGamesResponse> | Observable<OverallGamesResponse> | OverallGamesResponse;
+
+  overallGamesOnline(
+    request: OverallGamesRequest,
+  ): Promise<OverallGamesResponse> | Observable<OverallGamesResponse> | OverallGamesResponse;
+
+  overallGamesRetail(
+    request: OverallGamesRequest,
+  ): Promise<OverallGamesResponse> | Observable<OverallGamesResponse> | OverallGamesResponse;
+
+  overallGamesSport(
+    request: OverallGamesRequest,
+  ): Promise<OverallGamesResponse> | Observable<OverallGamesResponse> | OverallGamesResponse;
+
+  statistics(
+    request: StatisticsRequest,
+  ): Promise<StatisticsResponse> | Observable<StatisticsResponse> | StatisticsResponse;
 }
 
 export function WalletServiceControllerMethods() {
@@ -1862,8 +1949,14 @@ export function WalletServiceControllerMethods() {
       "globusWebhook",
       "smileAndPayWebhook",
       "verifySmileAndPay",
+      "pawapayPayout",
       "financialPerformance",
       "playerBalances",
+      "overallGames",
+      "overallGamesOnline",
+      "overallGamesRetail",
+      "overallGamesSport",
+      "statistics",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

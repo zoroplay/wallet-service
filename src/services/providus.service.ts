@@ -11,6 +11,7 @@ import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import * as crypto from 'crypto';
 import { ProvidusResponse } from 'src/proto/wallet.pb';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
 @Injectable()
 export class ProvidusService {
@@ -25,6 +26,9 @@ export class ProvidusService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private readonly configService: ConfigService,
     private identityService: IdentityService,
+
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
     private helperService: HelperService,
   ) {}
@@ -91,7 +95,7 @@ export class ProvidusService {
 
   async handleWebhook(data): Promise<ProvidusResponse> {
     try {
-      console.log(data);
+      console.log('data', data);
       const settings = await this.providusSettings(data.client_id);
       if (!settings) {
         return {
@@ -99,6 +103,32 @@ export class ProvidusService {
           sessionId: data.sessionId,
           responseMessage: 'Payment method not found',
           responseCode: '03',
+        };
+      }
+
+      if (
+        data.settlementId === undefined ||
+        data.settlementId === null ||
+        data.settlementId === ''
+      ) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.sessionId,
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
+        };
+      }
+
+      if (
+        data.accountNumber === undefined ||
+        data.accountNumber === null ||
+        data.accountNumber === ''
+      ) {
+        return {
+          requestSuccessful: true,
+          sessionId: data.rawBody.webhookBody.sessionId,
+          responseMessage: 'rejected transaction',
+          responseCode: '02',
         };
       }
 
@@ -131,6 +161,15 @@ export class ProvidusService {
       });
 
       if (!transaction) {
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.accountNumber,
+          paymentMethod: 'Providus',
+        });
         return {
           requestSuccessful: true,
           sessionId: data.sessionId,
@@ -140,35 +179,44 @@ export class ProvidusService {
       }
 
       // 🔍 Check if the settlementId has already been processed (globally)
-      if (data.settlementId) {
-        const existingSettlement = await this.transactionRepository.findOne({
-          where: { settlementId: data.settlementId },
-        });
+      // if (data.settlementId) {
+      //   const existingSettlement = await this.transactionRepository.findOne({
+      //     where: { settlementId: data.settlementId },
+      //   });
 
-        if (existingSettlement) {
-          return {
-            requestSuccessful: true,
-            sessionId: data.sessionId,
-            responseMessage: 'duplicate transaction',
-            responseCode: '01',
-          };
-        }
+      //   if (existingSettlement) {
+      //     return {
+      //       requestSuccessful: true,
+      //       sessionId: data.sessionId,
+      //       responseMessage: 'duplicate transaction',
+      //       responseCode: '01',
+      //     };
+      //   }
 
-        // ✅ Update current transaction with settlementId if missing
-        if (!transaction.settlementId) {
-          await this.transactionRepository.update(
-            { id: transaction.id },
-            { settlementId: data.settlementId },
-          );
-          console.log(
-            '✅ Updated settlementId for transaction:',
-            transaction.transaction_no,
-          );
-        }
-      }
+      //   // ✅ Update current transaction with settlementId if missing
+      //   if (!transaction.settlementId) {
+      //     await this.transactionRepository.update(
+      //       { id: transaction.id },
+      //       { settlementId: data.settlementId },
+      //     );
+      //     console.log(
+      //       '✅ Updated settlementId for transaction:',
+      //       transaction.transaction_no,
+      //     );
+      //   }
+      // }
 
       if (transaction.status === 1) {
         console.log('ℹ️ Transaction already marked successful.');
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Transaction already successful',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.accountNumber,
+          paymentMethod: 'Providus',
+        });
         return {
           requestSuccessful: true,
           sessionId: data.sessionId,
@@ -183,6 +231,15 @@ export class ProvidusService {
 
       if (!wallet) {
         console.error('❌ Wallet not found for user_id:', transaction.user_id);
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Wallet not found',
+          response: JSON.stringify(data.rawBody),
+          status: 0,
+          type: 'Webhook',
+          transaction_id: data.accountNumber,
+          paymentMethod: 'Providus',
+        });
         return {
           requestSuccessful: true,
           sessionId: data.sessionId,
@@ -203,6 +260,15 @@ export class ProvidusService {
       );
 
       console.log('✅ Transaction successfully processed');
+      await this.callbacklogRepository.save({
+        client_id: data.clientId,
+        request: 'Completed',
+        response: JSON.stringify(data.rawBody),
+        status: 0,
+        type: 'Webhook',
+        transaction_id: data.accountNumber,
+        paymentMethod: 'Providus',
+      });
       return {
         requestSuccessful: true,
         sessionId: data.sessionId,

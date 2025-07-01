@@ -1,131 +1,254 @@
-// import { Injectable } from '@nestjs/common';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { PaymentMethod } from 'src/entity/payment.method.entity';
-// import { Transaction } from 'src/entity/transaction.entity';
-// import { Wallet } from 'src/entity/wallet.entity';
-// import { Repository } from 'typeorm';
-// import * as crypto from 'crypto';
-// import { Withdrawal } from 'src/entity/withdrawal.entity';
-// import { HelperService } from './helper.service';
-// import { v4 as uuidv4 } from 'uuid';
-// import { IdentityService } from 'src/identity/identity.service';
-// import axios from 'axios';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PaymentMethod } from 'src/entity/payment.method.entity';
+import { Transaction } from 'src/entity/transaction.entity';
+import { Wallet } from 'src/entity/wallet.entity';
+import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
+import { Withdrawal } from 'src/entity/withdrawal.entity';
+import { HelperService } from './helper.service';
+import { IdentityService } from 'src/identity/identity.service';
+import axios from 'axios';
+import { GlobusResponse } from 'src/proto/wallet.pb';
+import { CallbackLog } from 'src/entity/callback-log.entity';
 
-// @Injectable()
-// export class GlobusService {
-//   constructor(
-//     @InjectRepository(PaymentMethod)
-//     private readonly paymentMethodRepository: Repository<PaymentMethod>,
-//     @InjectRepository(Transaction)
-//     private readonly transactionRepository: Repository<Transaction>,
-//     @InjectRepository(Wallet)
-//     private readonly walletRepository: Repository<Wallet>,
-//     @InjectRepository(Withdrawal)
-//     private readonly withdrawalRepository: Repository<Withdrawal>,
-//     private identityService: IdentityService,
+@Injectable()
+export class GlobusService {
+  constructor(
+    @InjectRepository(PaymentMethod)
+    private readonly paymentMethodRepository: Repository<PaymentMethod>,
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(Wallet)
+    private readonly walletRepository: Repository<Wallet>,
+    @InjectRepository(Withdrawal)
+    private readonly withdrawalRepository: Repository<Withdrawal>,
+    private identityService: IdentityService,
 
-//     private helperService: HelperService,
-//   ) {}
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
 
-//   private async globusSettings(client_id: number) {
-//     return await this.paymentMethodRepository.findOne({
-//       where: {
-//         provider: 'globus',
-//         client_id,
-//       },
-//     });
-//   }
+    private helperService: HelperService,
+  ) {}
 
-//   async auth() {
-//     try {
-//       const res = await axios.post(
-//         'https://tppservice.globusbank.com:2020/AuthService/connect/token',
-//         {
-//           grant_type: 'password',
-//           username: process.env.GLOBUS_USERNAME,
-//           password: process.env.GLOBUS_PASSWORD,
-//           client_id: process.env.GLOBUS_CLIENT_ID,
-//         },
-//       );
+  private async globusSettings(client_id: number) {
+    return await this.paymentMethodRepository.findOne({
+      where: {
+        provider: 'globus',
+        client_id,
+      },
+    });
+  }
 
-//       console.log(res);
+  private sha256(data) {
+    return crypto.createHash('sha256').update(data).digest('hex');
+  }
 
-//       return res.data.access_token;
-//     } catch (error) {
-//       console.error(
-//         'Globus Error:',
-//         error.response ? error.response.data : error.message,
-//       );
-//       return {
-//         success: false,
-//         message: error.response ? error.response.data : error.message,
-//       };
-//     }
-//   }
+  async initiatePayment(data, client_id) {
+    try {
+      const settings = await this.globusSettings(client_id);
 
-//   async initiatePayment(data, client_id) {
-//     //     try {
-//     //       const settings = await this.globusSettings(client_id);
+      if (!settings)
+        return {
+          success: false,
+          message: 'Globus has not been configured for client',
+        };
 
-//     //       if (!settings)
-//     //         return {
-//     //           success: false,
-//     //           message: 'PawaPay has not been configured for client',
-//     //         };
+      const clientId = settings.public_key;
 
-//     const clientId = this.auth();
-//     const url =
-//       'https://tppservice.globusbank.com:2020/api/Account/generateVirtualAccountLite';
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-//     //  const headers = {
-//     //    'Content-Type': 'application/json',
-//     //    ClientID: clientId,
-//     //  };
+      const username = this.sha256(`${date}${clientId}`);
+      const password = this.sha256(clientId);
 
-//     const body = {
-//       AccountName: data.accountName,
-//       VirtualAccountNumber: data.virtualAccountNumber,
-//       NubanAccountNumber: data.linkedPartnerAccountNumber,
-//       CanExpire: data.canExpire ?? false,
-//       ExpiredTime: data.expiredTime ?? 60,
-//       hasTransactionAmount: data.hasTransactionAmount ?? false,
-//       TransactionAmount: data.transactionAmount ?? 0,
-//     };
+      const auth = await axios.post(
+        'https://omniauth.globusbank.com/AuthService/connect/token',
+        {
+          grant_type: 'password',
+          username: username,
+          password: password,
+          client_id: settings.public_key,
+          client_secret: settings.secret_key,
+          scope: 'KORET',
+        },
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
 
-//     const response = await axios.post(url, body, {
-//       headers: {
-//         'Content-Type': 'application/json',
-//         ClientID: clientId,
-//       },
-//     });
-//     return response.data;
-//   }
-//   catch(error) {
-//     console.error(
-//       'Globus Error:',
-//       error.response ? error.response.data : error.message,
-//     );
-//     return {
-//       success: false,
-//       message: error.response ? error.response.data : error.message,
-//     };
-//   }
+      const accessToken = auth.data.access_token;
 
-//   //   handleGlobusWebhook = async (data: any) => {
-//   //     const { reference } = data;
+      const payload = {
+        ...data,
+        linkedPartnerAccountNumber: settings.merchant_id,
+      };
 
-//   //     const token = await this.auth();
+      console.log(payload);
 
-//   //     const res = await axios.get(
-//   //       `https://globus-api.com/api/TransactionStatus?reference=${reference}`,
-//   //       {
-//   //         headers: { Authorization: `Bearer ${token}` },
-//   //       },
-//   //     );
+      const url = `${settings.base_url}/api/v2/virtual-account-max`;
+      console.log('CHECK 1');
+      console.log('URL::::', url);
 
-//   //     if (res.status === 'successful') {
-//   //       console.log('update wallet');
-//   //     }
-//   //     return { message: 'Wallet funded successfully' };
-//   //   };
-// }
+      const response = await axios.post(url, payload, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          ClientID: clientId,
+        },
+      });
+
+      console.log('DATA::::', response.data);
+      console.log('RESULT:::', response.data.result);
+      return {
+        status: true,
+        data: response.data.result,
+      };
+    } catch (error) {
+      console.log('THE_ERROR', error);
+      console.error(
+        'Globus Error:',
+        error.response ? error.response.data : error.message,
+      );
+      return {
+        success: false,
+        message: error.response ? error.response.data : error.message,
+      };
+    }
+  }
+
+  async handleWebhook(param): Promise<GlobusResponse> {
+    console.log('PARAM:::::::', param.clientId);
+    console.log('PARAM:::::::', param.headers);
+    console.log('PARAM:::::::', param.callbackData.partnerReference);
+    try {
+      const settings = await this.globusSettings(param.clientId);
+
+      if (!settings) {
+        return {
+          statusCode: HttpStatus.BAD_REQUEST,
+          success: false,
+          message: 'Globus has not been configured for client',
+        };
+      }
+      console.log('HEADERS:::', param.headers);
+
+      console.log('I GOT BEFORE TRX ');
+
+      if (settings.public_key !== param.headers) {
+        return {
+          success: false,
+          message: 'Invalid ClientID from headers',
+          statusCode: HttpStatus.BAD_REQUEST,
+        };
+      }
+
+      if (
+        param.callbackData.transactionStatus === 'Successful' &&
+        param.callbackData.paymentStatus === 'Complete'
+      ) {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: param.clientId,
+            transaction_no: param.callbackData.partnerReference,
+            tranasaction_type: 'credit',
+          },
+        });
+
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param.callbackData),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.callbackData.partnerReference,
+            paymentMethod: 'Globus',
+          });
+          return {
+            success: false,
+            message: 'Transaction not found',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        if (transaction.status === 1) {
+          console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction already successful',
+            response: JSON.stringify(param.callbackData),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: param.callbackData.partnerReference,
+            paymentMethod: 'Globus',
+          });
+          return {
+            success: true,
+            message: 'Transaction already successful',
+            statusCode: HttpStatus.OK,
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(param.callbackData),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.callbackData.partnerReference,
+            paymentMethod: 'Globus',
+          });
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+        console.log('FINALLY');
+        await this.callbacklogRepository.save({
+          client_id: param.clientId,
+          request: 'WCompleted',
+          response: JSON.stringify(param.callbackData),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: param.callbackData.partnerReference,
+          paymentMethod: 'Globus',
+        });
+        return {
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
+    } catch (error) {
+      console.error('❌ Globus webhook processing error:', error.message);
+      return {
+        success: false,
+        message: 'Error occurred during processing',
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+}

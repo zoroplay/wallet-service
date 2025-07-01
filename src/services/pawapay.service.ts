@@ -11,6 +11,9 @@ import { HelperService } from './helper.service';
 import { v4 as uuidv4 } from 'uuid';
 import { IdentityService } from 'src/identity/identity.service';
 import axios from 'axios';
+import { CallbackLog } from 'src/entity/callback-log.entity';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 
 @Injectable()
 export class PawapayService {
@@ -25,6 +28,12 @@ export class PawapayService {
     private readonly withdrawalRepository: Repository<Withdrawal>,
     private identityService: IdentityService,
 
+    @InjectRepository(CallbackLog)
+    private callbacklogRepository: Repository<CallbackLog>,
+
+    @InjectQueue('withdrawal')
+    private readonly withdrawalQueue: Queue,
+
     private helperService: HelperService,
   ) {}
 
@@ -37,74 +46,6 @@ export class PawapayService {
     });
   }
 
-  // async generatePaymentLink(data, client_id) {
-  //   try {
-  //     console.log('CHECK-1');
-  //     const settings = await this.pawapaySettings(client_id);
-
-  //     if (!settings)
-  //       return {
-  //         success: false,
-  //         message: 'PawaPay has not been configured for client',
-  //       };
-
-  //     const contentDigest = this.generateContentDigest(data);
-  //     const contentType = 'application/json; charset=UTF-8';
-  //     const signatureDate = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-  //     const signatureBase =
-  //       `"content-digest": ${contentDigest}\n` +
-  //       `"content-type": ${contentType}\n` +
-  //       `"signature-date": ${signatureDate}`;
-
-  //     //const privateKey = settings.public_key;
-  //     const privateKey = settings.public_key.replace(/\\n/g, '\n');
-
-  //     const signer = crypto.createSign('RSA-SHA512');
-  //     signer.update(signatureBase);
-  //     signer.end();
-  //     const signature = signer.sign(privateKey, 'base64');
-
-  //     const created = Math.floor(Date.now() / 1000);
-  //     const expires = created + 300;
-  //     const signatureInput = `sig-pp=("content-digest" "content-type" "signature-date");keyid="${settings.merchant_id}";alg="rsa-v1_5-sha512";created=${created};expires=${expires}`;
-  //     const signatureHeader = `sig-pp=:${signature}:`;
-
-  //     console.log('Signature Base:', signatureBase);
-  //     console.log('Signature:', signature);
-  //     console.log('Signature Input:', signatureInput);
-  //     console.log('Signature Header:', signatureHeader);
-
-  //     const response = await fetch(`${settings.base_url}/deposits`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Digest': contentDigest,
-  //         'Content-Type': contentType,
-  //         'Signature-Date': signatureDate,
-  //         'Signature-Input': signatureInput,
-  //         Signature: signatureHeader,
-  //         Authorization: `Bearer ${settings.secret_key}`,
-  //       },
-  //       body: JSON.stringify(data),
-  //     });
-
-  //     const responseData = await response.json();
-  //     console.log('FULL RESPONSE:::::::', responseData);
-
-  //     console.log('CHECK-3');
-
-  //     return { success: true, data: responseData };
-  //   } catch (error) {
-  //     console.error(
-  //       'PawaPay Error:',
-  //       error.response ? error.responseData.data : error.message,
-  //     );
-  //     return {
-  //       success: false,
-  //       message: error.responseData?.data.errorMessage || error.message,
-  //     };
-  //   }
-  // }
-
   async generatePaymentLink(data, client_id) {
     try {
       console.log('CHECK-1');
@@ -115,7 +56,10 @@ export class PawapayService {
           success: false,
           message: 'PawaPay has not been configured for client',
         };
-      console.log('FINAL_PHONE NUMBER::', data.msisdn);
+      console.log('PAYLOAD:::', data);
+
+      // const url = 'https://api.pawapay.io';
+      // const key = process.env.PAWAPAY_PROD;
 
       const response = await fetch(`${settings.base_url}/deposits`, {
         method: 'POST',
@@ -152,6 +96,7 @@ export class PawapayService {
   }
 
   async verifyTransaction(param) {
+    console.log('THE_PARAM:::', param);
     try {
       const paymentSettings = await this.pawapaySettings(param.client_id);
       if (!paymentSettings)
@@ -171,53 +116,94 @@ export class PawapayService {
           },
         });
         console.log('TRX', transaction.transaction_no);
-        console.log('TRX', transaction);
 
-        if (!transaction)
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(param.rawBody),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: param.depositId,
+            paymentMethod: 'PawaPay',
+          });
           return {
             success: false,
             message: 'Transaction not found',
             status: HttpStatus.NOT_FOUND,
           };
-
-        if (transaction.status === 1)
-          return {
-            success: true,
-            message: 'Transaction already successful',
-          };
-
-        const wallet = await this.walletRepository.findOne({
-          where: { user_id: transaction.user_id },
-        });
-
-        console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
-
-        if (!wallet) {
-          console.error(
-            '❌ Wallet not found for user_id:',
-            transaction.user_id,
-          );
-          return {
-            success: false,
-            message: 'Wallet not found for this user',
-            status: HttpStatus.NOT_FOUND,
-          };
         }
 
-        const balance =
-          parseFloat(wallet.available_balance.toString()) +
-          parseFloat(transaction.amount.toString());
+        if (param.status === 'COMPLETED') {
+          if (transaction.status === 1) {
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Transaction already successful',
+              response: JSON.stringify(param.rawBody),
+              status: 1,
+              type: 'Webhook',
+              transaction_id: param.depositId,
+              paymentMethod: 'PawaPay',
+            });
 
-        await this.helperService.updateWallet(balance, transaction.user_id);
-        await this.transactionRepository.update(
-          { transaction_no: transaction.transaction_no },
-          { status: 1, balance },
-        );
+            return {
+              success: true,
+              message: 'Transaction already successful',
+            };
+          }
 
-        return {
-          success: true,
-          message: 'Transaction successfully verified and processed',
-        };
+          const wallet = await this.walletRepository.findOne({
+            where: { user_id: transaction.user_id },
+          });
+
+          console.log('🔍 Found Wallet:', JSON.stringify(wallet, null, 2));
+
+          if (!wallet) {
+            console.error(
+              '❌ Wallet not found for user_id:',
+              transaction.user_id,
+            );
+            await this.callbacklogRepository.save({
+              client_id: param.clientId,
+              request: 'Wallet not found ',
+              response: JSON.stringify(param.rawBody),
+              status: 0,
+              type: 'Webhook',
+              transaction_id: param.depositId,
+              paymentMethod: 'PawaPay',
+            });
+            return {
+              success: false,
+              message: 'Wallet not found for this user',
+              status: HttpStatus.NOT_FOUND,
+            };
+          }
+
+          const balance =
+            parseFloat(wallet.available_balance.toString()) +
+            parseFloat(transaction.amount.toString());
+
+          await this.helperService.updateWallet(balance, transaction.user_id);
+          await this.transactionRepository.update(
+            { transaction_no: transaction.transaction_no },
+            { status: 1, balance },
+          );
+
+          await this.callbacklogRepository.save({
+            client_id: param.clientId,
+            request: 'Completed',
+            response: JSON.stringify(param.rawBody),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: param.depositId,
+            paymentMethod: 'PawaPay',
+          });
+
+          return {
+            success: true,
+            message: 'Transaction successfully verified and processed',
+          };
+        }
       }
     } catch (error) {
       console.log(error);
@@ -342,50 +328,6 @@ export class PawapayService {
       );
     }
   }
-
-  // async generatePaymentLink(data, client_id) {
-  //   try {
-  //     console.log('CHECK-1');
-  //     const settings = await this.pawapaySettings(client_id);
-
-  //     if (!settings)
-  //       return {
-  //         success: false,
-  //         message: 'PawaPay has not been configured for client',
-  //       };
-  //     console.log('CHECK-2');
-
-  //     console.log('DATA:::', data);
-  //     console.log(data.depositId);
-
-  //     const res = await axios.post(
-  //       `	https://api.sandbox.pawapay.cloud/deposits`,
-  //       data,
-  //       {
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //           Authorization: `Bearer ${process.env.PAWAPAY}`,
-  //         },
-  //       },
-  //     );
-  //    console.log(res)
-  //     console.log('CHECK-3');
-  //     if (res.status === 200) {
-  //       console.log("DONE", res.data)
-  //       return { success: true, data: res.data };
-
-  //     }
-  //   } catch (error) {
-  //     console.error(
-  //       'PawaPay Error:',
-  //       error.response ? error.response.data : error.message,
-  //     );
-  //     return {
-  //       success: false,
-  //       message: error.response ? error.response.data : error.message,
-  //     };
-  //   }
-  // }
 
   signRequest(
     contentDigest: string,
@@ -551,78 +493,104 @@ export class PawapayService {
     }
   }
 
-  async createPayout({
-    user,
-    amount,
-    payoutId,
-    operator,
-    clientId,
-  }: {
-    user: any;
-    amount: number;
-    payoutId: string;
-    operator: string;
-    clientId: number;
-  }): Promise<{
-    success: boolean;
-    data?: any;
-    transactionNo?: string;
-    message?: string;
-  }> {
+  async createPayout(data) {
     try {
-      const settings = await this.pawapaySettings(clientId);
+      const settings = await this.pawapaySettings(data.clientId);
 
-      const requestBody = {
-        payoutId,
-        amount: amount,
-        currency: 'TZS',
-        // country: _corr.data.country,
-        // correspondent: _corr.data.correspondent,
-        country: 'TZA',
-        correspondent: operator,
-        recipient: {
-          type: 'MSISDN',
-          address: { value: `255${user.username}` },
+      console.log('BODY:::', data);
+      console.log(settings.base_url);
+
+      const res = await axios.post(`${settings.base_url}/payouts`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.secret_key}`,
         },
-        statementDescription: 'Online Payouts',
-        customerTimestamp: new Date(),
-        metadata: [
-          {
-            fieldName: 'customerId',
-            fieldValue: user.email,
-            isPII: true,
-          },
-        ],
+      });
+      console.log(res.data);
+      if (res.data.status === 'ACCEPTED') {
+        return {
+          success: true,
+          data: res.data,
+          transactionNo: res.data.payoutId,
+        };
+      }
+    } catch (e) {
+      console.log('FROM', e.data);
+      return {
+        success: false,
+        message: e.message,
       };
+    }
+  }
 
-      const contentDigest = this.generateContentDigest(requestBody);
-      const res = await axios.post(
-        `${settings.base_url}/payouts`,
-        requestBody,
+  async pawapayPayout(data) {
+    try {
+      console.log('FOM PAY', data);
+      const wallet = await this.walletRepository.findOne({
+        where: {
+          user_id: data.userId,
+          client_id: data.clientId,
+        },
+      });
+
+      if (!wallet) {
+        return { success: false, message: 'Wallet not found' };
+      }
+
+      if (wallet.available_balance < data.amount) {
+        return {
+          success: false,
+          message: 'Insufficient wallet balance for payout',
+        };
+      }
+
+      const autoDisbursement = await this.identityService.getWithdrawalSettings(
         {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${settings.secret_key}`,
-            'Content-Digest': contentDigest,
-          },
+          clientId: data.clientId,
+          userId: data.userId,
         },
       );
-      if (res.data.status === 'REJECTED')
+
+      console.log('autoDisbursement', autoDisbursement);
+
+      if (autoDisbursement.minimumWithdrawal > data.amount)
         return {
           success: false,
-          message: res.data.rejectionReason.rejectionMessage,
+          status: HttpStatus.BAD_REQUEST,
+          message:
+            'Minimum withdrawable amount is ' +
+            autoDisbursement.minimumWithdrawal,
+          data: null,
         };
 
-      if (res.data.status === 'DUPLICATE_IGNORED')
+      if (autoDisbursement.maximumWithdrawal < data.amount)
         return {
           success: false,
-          message: res.data.rejectionReason.rejectionMessage,
+          status: HttpStatus.BAD_REQUEST,
+          message:
+            'Maximum withdrawable amount is ' +
+            autoDisbursement.maximumWithdrawal,
+          data: null,
         };
+
+      const jobData: any = { ...data };
+      jobData.autoDisbursement = autoDisbursement;
+      jobData.withdrawalCode = uuidv4();
+      jobData.balance = wallet.available_balance;
+
+      await this.withdrawalQueue.add('mobile-money-request', jobData, {
+        jobId: `${data.userId}:${data.clientId}:${data.operator}:${data.amount}`,
+        delay: 5000,
+      });
 
       return {
         success: true,
-        data: res.data,
-        transactionNo: res.data.payoutId,
+        status: HttpStatus.OK,
+        message: 'Successful',
+        data: {
+          balance: jobData.balance,
+          code: jobData.withdrawalCode,
+        },
       };
     } catch (e) {
       return {

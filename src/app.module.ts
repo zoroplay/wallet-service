@@ -50,6 +50,13 @@ import { ProvidusService } from './services/providus.service';
 import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
 import { FidelityService } from './services/fidelity.service';
+import { SmileAndPayService } from './services/smileandpay.service';
+import { DashboardService } from './services/dashboard.service';
+import { TransactionArchiveService } from './services/transaction-archive.service';
+import { ArchivedTransaction } from './entity/archivetransaction.entity';
+import { GlobusService } from './services/globus.service';
+
+console.log('ENTITY CHECK', CallbackLog);
 
 @Module({
   imports: [
@@ -91,6 +98,7 @@ import { FidelityService } from './services/fidelity.service';
     }),
     TypeOrmModule.forFeature([
       Bank,
+      ArchivedTransaction,
       PaymentMethod,
       Transaction,
       Wallet,
@@ -106,6 +114,7 @@ import { FidelityService } from './services/fidelity.service';
     IdentityModule,
     RetailModule,
   ],
+  
   controllers: [AppController],
   providers: [
     AppService,
@@ -138,6 +147,10 @@ import { FidelityService } from './services/fidelity.service';
     SummeryService,
     CoralPayService,
     FidelityService,
+    SmileAndPayService,
+    DashboardService,
+    TransactionArchiveService,
+    GlobusService
   ],
 })
 export class AppModule {}
