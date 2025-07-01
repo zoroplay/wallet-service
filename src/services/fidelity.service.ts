@@ -69,12 +69,12 @@ export class FidelityService {
   async handleWebhook(data) {
     console.log('REAL_DATA::::', data);
     try {
-      console.log('RAW_BODY:::', data);
+      console.log('RAW_BODY:::', data.rawBody.payload);
 
       const transaction = await this.transactionRepository.findOne({
         where: {
           client_id: data.clientId,
-          transaction_no: data.transactionReference,
+          transaction_no: data.reference,
           tranasaction_type: 'credit',
         },
       });
