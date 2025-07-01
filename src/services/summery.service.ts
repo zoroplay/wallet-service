@@ -346,7 +346,6 @@ export class SummeryService {
 
         summary.push({
           userId,
-          username: shopUser.username,
           numberOfDeposits: parseInt(deposit?.count || '0', 10),
           totalDeposits: parseFloat(deposit?.total || '0'),
           numberOfWithdrawals: parseInt(withdrawal?.count || '0', 10),

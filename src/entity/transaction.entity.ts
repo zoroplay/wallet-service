@@ -59,9 +59,6 @@ export class Transaction {
   @Column({ type: 'tinyint', default: 0 })
   status: number;
 
-  @Column({ type: 'varchar', nullable: true })
-  settlementId: string;
-
   @Index()
   @CreateDateColumn()
   created_at: string;

@@ -72,17 +72,14 @@ export class ProvidusService {
       'X-Auth-Signature': xAuthSignature,
     };
 
+    console.log('HEADERS:', headers);
+    //console.log('DATA:', data);
+
     try {
       const response = await axios.post(url, data, { headers });
-
       console.log('RESPONSE', response.data);
 
-      console.log('RESPONSE', response);
-
-      return {
-        success: true,
-        data: response.data,
-      };
+      return response.data;
     } catch (error) {
       console.error(
         '❌ Error during Providus payment initiation:',
@@ -182,41 +179,32 @@ export class ProvidusService {
       }
 
       // 🔍 Check if the settlementId has already been processed (globally)
-      if (data.settlementId) {
-        const existingSettlement = await this.transactionRepository.findOne({
-          where: { settlementId: data.settlementId },
-        });
+      // if (data.settlementId) {
+      //   const existingSettlement = await this.transactionRepository.findOne({
+      //     where: { settlementId: data.settlementId },
+      //   });
 
-        if (existingSettlement) {
-          await this.callbacklogRepository.save({
-            client_id: data.clientId,
-            request: 'Duplicate transaction',
-            response: JSON.stringify(data.rawBody),
-            status: 0,
-            type: 'Webhook',
-            transaction_id: data.accountNumber,
-            paymentMethod: 'Providus',
-          });
-          return {
-            requestSuccessful: true,
-            sessionId: data.sessionId,
-            responseMessage: 'duplicate transaction',
-            responseCode: '01',
-          };
-        }
+      //   if (existingSettlement) {
+      //     return {
+      //       requestSuccessful: true,
+      //       sessionId: data.sessionId,
+      //       responseMessage: 'duplicate transaction',
+      //       responseCode: '01',
+      //     };
+      //   }
 
-        // ✅ Update current transaction with settlementId if missing
-        if (!transaction.settlementId) {
-          await this.transactionRepository.update(
-            { id: transaction.id },
-            { settlementId: data.settlementId },
-          );
-          console.log(
-            '✅ Updated settlementId for transaction:',
-            transaction.transaction_no,
-          );
-        }
-      }
+      //   // ✅ Update current transaction with settlementId if missing
+      //   if (!transaction.settlementId) {
+      //     await this.transactionRepository.update(
+      //       { id: transaction.id },
+      //       { settlementId: data.settlementId },
+      //     );
+      //     console.log(
+      //       '✅ Updated settlementId for transaction:',
+      //       transaction.transaction_no,
+      //     );
+      //   }
+      // }
 
       if (transaction.status === 1) {
         console.log('ℹ️ Transaction already marked successful.');

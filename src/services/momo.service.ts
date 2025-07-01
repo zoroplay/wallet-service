@@ -57,7 +57,7 @@ export class MomoService {
       await axios.post(
         `${paymentSettings.base_url}/v1_0/apiuser`,
         {
-          providerCallbackHost: callbackUrl,
+          providerCallbackHost: 'api.staging.sportsbookengine.com',
         },
         {
           headers: {
@@ -90,7 +90,7 @@ export class MomoService {
       const tokenResponse = await axios.post(
         `${paymentSettings.base_url}/collection/token/`,
         {
-          providerCallbackHost: callbackUrl,
+          providerCallbackHost: 'http://api.staging.sportsbookengine.com',
         },
         {
           auth: {
@@ -123,19 +123,18 @@ export class MomoService {
 
       // Step 5: Send Payment Request
       console.log('CHECK_5');
-      console.log('PayerId', paymentId);
       const response = await axios.post(
         `${paymentSettings.base_url}/collection/v1_0/requesttopay`,
         payload,
         {
           headers: {
-            //'X-Callback-Url': callbackUrl,
+            Authorization: `Bearer ${token}`,
             'X-Reference-Id': paymentId,
             'X-Target-Environment': 'sandbox',
             'Content-Type': 'application/json',
             'Ocp-Apim-Subscription-Key': paymentSettings.secret_key,
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
+            'X-Callback-Url':
+              'http://api.staging.sportsbookengine.com/api/v2/webhook/4/mtnmomo/callback',
           },
         },
       );
