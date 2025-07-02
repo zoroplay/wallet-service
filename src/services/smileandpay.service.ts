@@ -286,4 +286,36 @@ export class SmileAndPayService {
       };
     }
   }
+
+  async disburseFunds(withdrawal: Withdrawal, client_id) {
+    try {
+      const settings = await this.smileAndPaySettings(client_id);
+
+      if (!settings)
+        return {
+          success: false,
+          message: 'SmileAndPay has not been configured for client',
+        };
+
+      const url = `${settings.base_url}/disbursement/pay-out`;
+
+      const response = await axios.post(url, withdrawal, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': settings.public_key,
+          'x-api-secret': settings.secret_key,
+        },
+      });
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Unable to disburse funds: ${error.message}`,
+      };
+    }
+  }
 }
