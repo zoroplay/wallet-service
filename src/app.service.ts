@@ -625,77 +625,78 @@ export class AppService {
     useArchive = false,
   }): Promise<UserTransactionResponse> {
     try {
-      const results = [];
-
-      if (useArchive && !this.archivedTransactionsRepository) {
-        return {
-          success: false,
-          message: 'Archive repo not available',
-          data: null,
-        };
-      }
-
       const repo = useArchive
         ? this.archivedTransactionsRepository
         : this.transactionRepository;
+
+      if (useArchive && !repo) {
+        return {
+          success: true,
+          message: 'Archive not available',
+          data: [],
+          meta: {
+            page,
+            perPage: limit,
+            total: 0,
+            lastPage: 0,
+            nextPage: null,
+            prevPage: null,
+          },
+        };
+      }
 
       const query = repo
         .createQueryBuilder('transaction')
         .where('transaction.client_id = :clientId', { clientId })
         .andWhere('transaction.user_id = :userId', { userId });
 
-      if (startDate && startDate !== '') {
+      if (startDate) {
         query.andWhere('DATE(transaction.created_at) >= :startDate', {
           startDate,
         });
       }
-
-      if (endDate && endDate !== '') {
+      if (endDate) {
         query.andWhere('DATE(transaction.created_at) <= :endDate', { endDate });
       }
 
-      const total = await query.clone().getCount();
+      const [transactions, total] = await Promise.all([
+        query
+          .orderBy('transaction.created_at', 'DESC')
+          .limit(limit)
+          .offset((page - 1) * limit)
+          .getRawMany(),
+        query.getCount(),
+      ]);
 
-      const offset = (page - 1) * limit;
+      const formatted = transactions.map((t) => ({
+        id: t.transaction_id,
+        referenceNo: t.transaction_transaction_no,
+        amount: t.transaction_amount,
+        balance: t.transaction_balance,
+        subject: t.transaction_subject,
+        type: t.transaction_tranasaction_type, // keep this if DB column really is misspelled
+        description: t.transaction_description,
+        transactionDate: t.transaction_created_at,
+        channel: t.transaction_channel,
+        status: t.transaction_status,
+        wallet: t.transaction_wallet,
+      }));
 
-      console.log('Using repo:', useArchive ? 'archived' : 'live');
-      console.log('Repo constructor:', repo.constructor.name);
-
-      const transactions = await query
-        .orderBy('transaction.created_at', 'DESC')
-        .limit(limit)
-        .offset(offset)
-        .getRawMany();
-
-      const pager = paginateResponse([transactions, total], page, limit);
-
-      const meta: MetaData = {
-        page,
-        perPage: limit,
-        total,
-        lastPage: pager.lastPage,
-        nextPage: pager.nextPage,
-        prevPage: pager.prevPage,
+      return {
+        success: true,
+        message: 'Successful',
+        data: formatted,
+        meta: {
+          page,
+          perPage: limit,
+          total,
+          lastPage: Math.ceil(total / limit),
+          nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
+          prevPage: page > 1 ? page - 1 : null,
+        },
       };
-
-      for (const transaction of transactions) {
-        results.push({
-          id: transaction.transaction_id,
-          referenceNo: transaction.transaction_transaction_no,
-          amount: transaction.transaction_amount,
-          balance: transaction.transaction_balance,
-          subject: transaction.transaction_subject,
-          type: transaction.transaction_tranasaction_type,
-          description: transaction.transaction_description,
-          transactionDate: transaction.transaction_created_at,
-          channel: transaction.transaction_channel,
-          status: transaction.transaction_status,
-          wallet: transaction.transaction_wallet,
-        });
-      }
-
-      return { success: true, message: 'Successful', data: results, meta };
-    } catch (e) {
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
       return {
         success: false,
         message: 'Unable to fetch transactions',
