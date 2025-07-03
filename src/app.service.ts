@@ -627,7 +627,14 @@ export class AppService {
     try {
       const results = [];
 
-      // Choose the correct repository
+      if (useArchive && !this.archivedTransactionsRepository) {
+        return {
+          success: false,
+          message: 'Archive repo not available',
+          data: null,
+        };
+      }
+
       const repo = useArchive
         ? this.archivedTransactionsRepository
         : this.transactionRepository;
@@ -650,6 +657,9 @@ export class AppService {
       const total = await query.clone().getCount();
 
       const offset = (page - 1) * limit;
+
+      console.log('Using repo:', useArchive ? 'archived' : 'live');
+      console.log('Repo constructor:', repo.constructor.name);
 
       const transactions = await query
         .orderBy('transaction.created_at', 'DESC')
