@@ -1078,6 +1078,7 @@ export interface UserTransactionRequest {
   userId: number;
   startDate: string;
   endDate: string;
+  useArchive?: boolean | undefined;
   page?: number | undefined;
   limit?: number | undefined;
 }
