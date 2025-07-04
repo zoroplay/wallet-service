@@ -45,9 +45,22 @@ export class TigoService {
         message: 'Tigo has not been configured for client',
       };
 
+    // ✅ Choose URLs based on client_id
+    const isTestClient = client_id === 4;
+
+    const TIGO_TOKEN = isTestClient
+      ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-GetToken'
+      : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMGetTokenPush';
+
+    console.log('TOKEN:', TIGO_TOKEN);
+
+    const PAY_URL = isTestClient
+      ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-PushBillPay'
+      : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMPushBillPay';
+
+    console.log('PAY_URL:', PAY_URL);
+
     try {
-      const TIGO_TOKEN =
-        'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-GetToken';
       const requestBody = new URLSearchParams();
       requestBody.append('username', paymentSettings.public_key);
       requestBody.append('password', paymentSettings.secret_key);
@@ -70,9 +83,7 @@ export class TigoService {
         BillerMSISDN: paymentSettings.merchant_id,
       };
 
-      const payUrl =
-        'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-PushBillPay';
-      const response = await axios.post(payUrl, payload, {
+      const response = await axios.post(PAY_URL, payload, {
         headers: {
           Authorization: `Bearer ${token.data.access_token}`, // ✅ Missing authorization header added
           Username: paymentSettings.public_key,
