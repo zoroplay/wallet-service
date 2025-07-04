@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { IdentityService } from 'src/identity/identity.service';
 import { CallbackLog } from 'src/entity/callback-log.entity';
+import { create } from 'xmlbuilder2';
 
 @Injectable()
 export class TigoService {
@@ -437,6 +438,72 @@ export class TigoService {
       return {
         success: false,
         message: 'Payment request failed',
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  async handleDisbusment(data, clientId) {
+    const paymentSettings = await this.tigoSettings(clientId);
+    if (!paymentSettings)
+      return {
+        success: false,
+        message: 'Tigo has not been configured for client',
+      };
+
+    const xmlPayload = create({ version: '1.0' })
+      .ele('COMMAND')
+      .ele('TYPE')
+      .txt('REQMFICI')
+      .up()
+      .ele('REFERENCEID')
+      .txt(data.referenceId)
+      .up()
+      .ele('MSISDN')
+      .txt(data.userMsisdn)
+      .up()
+      .ele('PIN')
+      .txt(paymentSettings.secret_key)
+      .up()
+      .ele('MSISDN1')
+      .txt(paymentSettings.merchant_id)
+      .up()
+      .ele('AMOUNT')
+      .txt(data.amount.toString())
+      .up()
+      .ele('SENDERNAME')
+      .txt(data.datauserName)
+      .up()
+      .ele('BRAND_ID')
+      .txt('5714')
+      .up()
+      .ele('LANGUAGE1')
+      .txt('en')
+      .end({ prettyPrint: true });
+
+    const url =
+      clientId === 4
+        ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-MFICashIn'
+        : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMMFICashIn';
+
+    try {
+      const res = await axios.post(url, xmlPayload, {
+        headers: { 'Content-Type': 'application/xml' },
+      });
+
+      console.log('Tigo Withdrawal Response:', res.data);
+      return {
+        success: true,
+        rawResponse: res.data,
+      };
+    } catch (error) {
+      console.error(
+        'Tigo withdrawal error:',
+        error.response?.data || error.message,
+      );
+      return {
+        success: false,
+        message: 'Withdrawal failed',
         error: error.response?.data || error.message,
       };
     }
