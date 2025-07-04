@@ -703,10 +703,10 @@
   resolved "https://registry.npmjs.org/@lukeed/csprng/-/csprng-1.1.0.tgz"
   integrity sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==
 
-"@msgpackr-extract/msgpackr-extract-linux-x64@3.0.2":
+"@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.2":
   version "3.0.2"
-  resolved "https://registry.npmjs.org/@msgpackr-extract/msgpackr-extract-linux-x64/-/msgpackr-extract-linux-x64-3.0.2.tgz"
-  integrity sha512-gsWNDCklNy7Ajk0vBBf9jEx04RUxuDQfBse918Ww+Qb9HCPoGzS+XJTLe96iN3BVK7grnLiYghP/M4L8VsaHeA==
+  resolved "https://registry.npmjs.org/@msgpackr-extract/msgpackr-extract-darwin-arm64/-/msgpackr-extract-darwin-arm64-3.0.2.tgz"
+  integrity sha512-9bfjwDxIDWmmOKusUcqdS4Rw+SETlp9Dy39Xui9BEGEk19dDwH0jhipwFzEff/pFg95NKymc6TOTbRKcWeRqyQ==
 
 "@nestjs/bull-shared@^10.2.2":
   version "10.2.2"
@@ -2971,6 +2971,11 @@ fs.realpath@^1.0.0:
   resolved "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz"
   integrity sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==
 
+fsevents@^2.3.2, fsevents@~2.3.2:
+  version "2.3.3"
+  resolved "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz"
+  integrity sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==
+
 function-bind@^1.1.2:
   version "1.1.2"
   resolved "https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz"
@@ -4931,7 +4936,7 @@ safe-json-stringify@~1:
 
 "sbe-service-proto@github:zoroplay/sbe-service-proto":
   version "1.0.0"
-  resolved "git+ssh://git@github.com/zoroplay/sbe-service-proto.git#2bdfcfb9c0124619a8d4ffc83ad43fbbb273a796"
+  resolved "git+ssh://git@github.com/zoroplay/sbe-service-proto.git#c1a106dd201d231ccf27243d14cb5697f3f56f9a"
 
 schema-utils@^3.1.1, schema-utils@^3.2.0:
   version "3.3.0"

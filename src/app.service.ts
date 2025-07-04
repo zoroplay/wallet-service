@@ -36,8 +36,7 @@ import * as dayjs from 'dayjs';
 
 import { Bank } from './entity/bank.entity';
 import { IdentityService } from './identity/identity.service';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { ArchivedTransaction } from './entity/archivetransaction.entity';
 var customParseFormat = require('dayjs/plugin/customParseFormat');
 
 dayjs.extend(customParseFormat);
@@ -59,6 +58,9 @@ export class AppService {
     private identityService: IdentityService,
     // @InjectQueue('deposit')
     // private depositQueue: Queue,
+
+    @InjectRepository(Transaction)
+    private archivedTransactionsRepository: Repository<ArchivedTransaction>,
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -284,7 +286,7 @@ export class AppService {
         channel: data.channel,
         source: data.source,
         fromUserId: 0,
-        fromUsername: "System",
+        fromUsername: 'System',
         fromUserBalance: 0,
         toUserId: data.userId,
         toUsername: data.username,
@@ -295,20 +297,24 @@ export class AppService {
 
       // send deposit to trackier
       try {
-        const keys = await this.identityService.getTrackierKeys({itemId: data.clientId});
+        const keys = await this.identityService.getTrackierKeys({
+          itemId: data.clientId,
+        });
 
-        if (keys.success){
-          await this.helperService.sendActivity({
-            subject: data.subject,
-            username: data.username,
-            amount: data.amount,
-            transactionId: transactionNo,
-            clientId: data.clientId,
-          },  keys.data);
+        if (keys.success) {
+          await this.helperService.sendActivity(
+            {
+              subject: data.subject,
+              username: data.username,
+              amount: data.amount,
+              transactionId: transactionNo,
+              clientId: data.clientId,
+            },
+            keys.data,
+          );
         }
-
       } catch (e) {
-        console.log('Trackier error: Credit User', e.message)
+        console.log('Trackier error: Credit User', e.message);
       }
 
       wallet.balance = balance;
@@ -327,41 +333,56 @@ export class AppService {
       });
 
       const amount = parseFloat(data.amount);
-      
 
       let balance = 0;
       let walletBalance = 'available_balance';
       let walletType = 'Main';
       switch (data.wallet) {
-        case "sport-bonus":
+        case 'sport-bonus':
           if (wallet.sport_bonus_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
-          walletBalance = "sport_bonus_balance";
-          walletType = "Sport Bonus";
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
+          walletBalance = 'sport_bonus_balance';
+          walletType = 'Sport Bonus';
           balance = wallet.sport_bonus_balance - amount;
           break;
-        case "virtual":
+        case 'virtual':
           if (wallet.virtual_bonus_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
 
-          walletBalance = "virtual_bonus_balance";
-          walletType = "Virtual Bonus";
+          walletBalance = 'virtual_bonus_balance';
+          walletType = 'Virtual Bonus';
           balance = wallet.virtual_bonus_balance - amount;
           break;
-        case "casino":
+        case 'casino':
           if (wallet.casino_bonus_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
 
-          walletBalance = "casino_bonus_balance";
-          walletType = "Casino Bonus";
+          walletBalance = 'casino_bonus_balance';
+          walletType = 'Casino Bonus';
           balance = wallet.casino_bonus_balance - amount;
           break;
-        case "trust":
+        case 'trust':
           if (wallet.trust_balance < amount)
-            return handleError('Insufficent balance', null, HttpStatus.BAD_REQUEST);
-          
-          walletBalance = "trust_balance";
-          walletType = "Trust";
+            return handleError(
+              'Insufficent balance',
+              null,
+              HttpStatus.BAD_REQUEST,
+            );
+
+          walletBalance = 'trust_balance';
+          walletType = 'Trust';
           balance = wallet.trust_balance - amount;
           break;
         default:
@@ -540,31 +561,31 @@ export class AppService {
       const skip = (page - 1) * limit;
 
       let query = this.transactionRepository
-        .createQueryBuilder("transaction")
-        .where("client_id = :clientId", { clientId })
-        .andWhere("user_id != 0")
-        .andWhere("subject = :type", { type: "Deposit" })
-        .andWhere("created_at >= :startDate", { startDate })
-        .andWhere("created_at <= :endDate", { endDate });
+        .createQueryBuilder('transaction')
+        .where('client_id = :clientId', { clientId })
+        .andWhere('user_id != 0')
+        .andWhere('subject = :type', { type: 'Deposit' })
+        .andWhere('created_at >= :startDate', { startDate })
+        .andWhere('created_at <= :endDate', { endDate });
 
-      if (paymentMethod !== "")
-        query = query.andWhere("channel = :paymentMethod", { paymentMethod });
+      if (paymentMethod !== '')
+        query = query.andWhere('channel = :paymentMethod', { paymentMethod });
 
-      if (username !== "")
-        query = query.andWhere("username = :username", { username });
+      if (username !== '')
+        query = query.andWhere('username = :username', { username });
 
       // if (status !== '')
       //   query = query.andWhere("status = :status", {status});
 
-      if (transactionId !== "")
-        query = query.andWhere("transaction_no = :transactionId", {
+      if (transactionId !== '')
+        query = query.andWhere('transaction_no = :transactionId', {
           transactionId,
         });
 
       // console.log(skip, limit)
 
       const result = await query
-        .orderBy("created_at", "DESC")
+        .orderBy('created_at', 'DESC')
         .take(limit)
         .skip(skip)
         .getMany();
@@ -573,16 +594,15 @@ export class AppService {
 
       const results = result.map((item) => ({
         ...item,
-        created_at: dayjs(item.created_at).format("YYYY-MM-DD HH:mm:ss"),
+        created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss'),
       }));
 
       return paginateResponse([results, total], page, limit);
     } catch (e) {
       console.log(e.message);
-      return paginateResponse([[], 0], 1, 100, "failed");
+      return paginateResponse([[], 0], 1, 100, 'failed');
     }
   }
-  
 
   async listBanks(): Promise<CommonResponseArray> {
     const banks = await this.bankRepository.find();
@@ -602,69 +622,81 @@ export class AppService {
     endDate,
     page = 1,
     limit = 50,
+    useArchive = false,
   }): Promise<UserTransactionResponse> {
-    // console.log(startDate, endDate, userId, clientId)
     try {
-      let results = [];
-      let query = this.transactionRepository
+      const repo = useArchive
+        ? this.archivedTransactionsRepository
+        : this.transactionRepository;
+
+      if (useArchive && !repo) {
+        return {
+          success: true,
+          message: 'Archive not available',
+          data: [],
+          meta: {
+            page,
+            perPage: limit,
+            total: 0,
+            lastPage: 0,
+            nextPage: null,
+            prevPage: null,
+          },
+        };
+      }
+
+      const query = repo
         .createQueryBuilder('transaction')
         .where('transaction.client_id = :clientId', { clientId })
         .andWhere('transaction.user_id = :userId', { userId });
 
-      if (startDate && startDate != '')
-        query.andWhere('DATE(created_at) >= :startDate', { startDate });
-
-      if (endDate && endDate != '')
-        query.andWhere('DATE(created_at) <= :endDate', { endDate });
-
-      const total = await query.clone().getCount();
-
-      let offset = 0;
-
-      if (page > 1) {
-        offset = (page - 1) * limit;
-        // offset = offset + 1;
+      if (startDate) {
+        query.andWhere('DATE(transaction.created_at) >= :startDate', {
+          startDate,
+        });
+      }
+      if (endDate) {
+        query.andWhere('DATE(transaction.created_at) <= :endDate', { endDate });
       }
 
-      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
+      const [transactions, total] = await Promise.all([
+        query
+          .orderBy('transaction.created_at', 'DESC')
+          .limit(limit)
+          .offset((page - 1) * limit)
+          .getRawMany(),
+        query.getCount(),
+      ]);
 
-      const transactions = await query
-        .orderBy('transaction.created_at', 'DESC')
-        .limit(limit)
-        .offset(offset)
-        .getRawMany();
+      const formatted = transactions.map((t) => ({
+        id: t.transaction_id,
+        referenceNo: t.transaction_transaction_no,
+        amount: t.transaction_amount,
+        balance: t.transaction_balance,
+        subject: t.transaction_subject,
+        type: t.transaction_tranasaction_type, // keep this if DB column really is misspelled
+        description: t.transaction_description,
+        transactionDate: t.transaction_created_at,
+        channel: t.transaction_channel,
+        status: t.transaction_status,
+        wallet: t.transaction_wallet,
+      }));
 
-      const pager = paginateResponse([transactions, total], page, limit);
-
-      const meta: MetaData = {
-        page,
-        perPage: limit,
-        total,
-        lastPage: pager.lastPage,
-        nextPage: pager.nextPage,
-        prevPage: pager.prevPage,
+      return {
+        success: true,
+        message: 'Successful',
+        data: formatted,
+        meta: {
+          page,
+          perPage: limit,
+          total,
+          lastPage: Math.ceil(total / limit),
+          nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
+          prevPage: page > 1 ? page - 1 : null,
+        },
       };
-
-      if (transactions.length > 0) {
-        for (const transaction of transactions) {
-          results.push({
-            id: transaction.transaction_id,
-            referenceNo: transaction.transaction_transaction_no,
-            amount: transaction.transaction_amount,
-            balance: transaction.transaction_balance,
-            subject: transaction.transaction_subject,
-            type: transaction.transaction_tranasaction_type,
-            description: transaction.transaction_description,
-            transactionDate: transaction.transaction_created_at,
-            channel: transaction.transaction_channel,
-            status: transaction.transaction_status,
-            wallet: transaction.transaction_wallet,
-          });
-        }
-      }
-
-      return { success: true, message: 'Successful', data: results, meta };
-    } catch (e) {
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
       return {
         success: false,
         message: 'Unable to fetch transactions',
