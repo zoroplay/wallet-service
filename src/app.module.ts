@@ -50,11 +50,12 @@ import { ProvidusService } from './services/providus.service';
 import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
 import { FidelityService } from './services/fidelity.service';
-import { GlobusService } from './services/globus.service';
-import { SmileAndPayService } from './services/smlieandpay.service';
+import { SmileAndPayService } from './services/smileandpay.service';
 import { DashboardService } from './services/dashboard.service';
 import { TransactionArchiveService } from './services/transaction-archive.service';
 import { ArchivedTransaction } from './entity/archivetransaction.entity';
+import { GlobusService } from './services/globus.service';
+import { BonusModule } from './bonus/bonus.module';
 
 console.log('ENTITY CHECK', CallbackLog);
 
@@ -110,6 +111,7 @@ console.log('ENTITY CHECK', CallbackLog);
       CashOut,
       SalesReport,
       CallbackLog,
+      BonusModule,
     ]),
     IdentityModule,
     RetailModule,
@@ -147,10 +149,10 @@ console.log('ENTITY CHECK', CallbackLog);
     SummeryService,
     CoralPayService,
     FidelityService,
-    GlobusService,
     SmileAndPayService,
     DashboardService,
     TransactionArchiveService,
+    GlobusService
   ],
 })
 export class AppModule {}

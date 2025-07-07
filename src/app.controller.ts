@@ -62,15 +62,12 @@ import {
   ShopUsersSummaryRequest,
   OpayRequest,
   CorapayWebhookRequest,
-  DeletePaymentMethodRequest,
-  FidelityWebhookRequest,
-  ProvidusRequest,
-  GlobusRequest,
   SmileAndPayRequest,
   VerifySmile,
   ClientRequest,
   OverallGamesRequest,
   StatisticsRequest,
+  TigoPayoutRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -91,8 +88,7 @@ import { SummeryService } from './services/summery.service';
 import { CoralPayService } from './services/coralpay.service';
 import { FidelityService } from './services/fidelity.service';
 import { ProvidusService } from './services/providus.service';
-import { GlobusService } from './services/globus.service';
-import { SmileAndPayService } from './services/smlieandpay.service';
+import { SmileAndPayService } from './services/smileandpay.service';
 import { DashboardService } from './services/dashboard.service';
 
 type RangeType = 'day' | 'week' | 'month' | 'year';
@@ -119,9 +115,6 @@ export class AppController {
     private summeryService: SummeryService,
     private oPayService: OPayService,
     private coralPayService: CoralPayService,
-    private fidelityService: FidelityService,
-    private providusService: ProvidusService,
-    private globusService: GlobusService,
     private smileAndPayService: SmileAndPayService,
     private dashboardService: DashboardService,
   ) {}
@@ -319,6 +312,11 @@ export class AppController {
     return this.tigoService.handleWebhook(param);
   }
 
+  @GrpcMethod(WALLET_SERVICE_NAME, 'TigoPayout')
+  tigoPayout(param: TigoPayoutRequest) {
+    return this.tigoService.handleDisbusment(param);
+  }
+
   @GrpcMethod(WALLET_SERVICE_NAME, 'OpayCallback')
   opayWebhook(param: OpayRequest) {
     return this.oPayService.handleWebhook(param);
@@ -327,21 +325,6 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CorapayWebhook')
   corapayWebhook(param: CorapayWebhookRequest) {
     return this.coralPayService.handleWebhook(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'FidelityWebhook')
-  fidelityWebhook(param: FidelityWebhookRequest) {
-    return this.fidelityService.handleWebhook(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'ProvidusWebhook')
-  providusWebhook(param: ProvidusRequest) {
-    return this.providusService.handleWebhook(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'GlobusWebhook')
-  globusWebhook(param: GlobusRequest) {
-    return this.globusService.handleWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoW2a')
@@ -376,16 +359,6 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'CreateWallet')
   CreateWallet(param: CreateWalletRequest) {
     return this.appService.createWallet(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'UpdatePaymentMethod')
-  UpdatePaymentMethod(param: PaymentMethodRequest) {
-    return this.appService.updatePaymentMethod(param);
-  }
-
-  @GrpcMethod(WALLET_SERVICE_NAME, 'DeletePaymentMethod')
-  DeletePaymentMethod(param: DeletePaymentMethodRequest) {
-    return this.appService.deletePaymentMethod(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'GetBalance')
