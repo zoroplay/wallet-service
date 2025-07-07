@@ -13,6 +13,7 @@ import { generateTrxNo } from 'src/common/helpers';
 import * as https from 'https';
 import { IdentityService } from 'src/identity/identity.service';
 import { CallbackLog } from 'src/entity/callback-log.entity';
+import { BonusService } from 'src/bonus/bonus.service';
 
 @Injectable()
 export class PaystackService {
@@ -30,6 +31,7 @@ export class PaystackService {
 
     private helperService: HelperService,
     private identityService: IdentityService,
+    private bonusService: BonusService,
   ) {}
 
   async generatePaymentLink(data, client_id) {
@@ -525,6 +527,36 @@ export class PaystackService {
       { status: 1, balance },
     );
 
+    // Check and award user bonus after successful transaction
+    try {
+      const userBonus = await this.bonusService.getUserBonus(
+        {
+          userId: transaction.user_id,
+          clientId: data.clientId,
+        },
+      );
+
+      console.log("userBonus", userBonus)
+
+      if (userBonus) {
+        // Award the bonus
+          await this.bonusService.awardBonus({
+            userId: transaction.user_id.toString(),
+            bonusId: userBonus.data.id,
+            amount: transaction.amount,
+            clientId: data.clientId,
+          });
+      }
+    } catch (bonusError) {
+      console.error('Bonus processing error:', bonusError.message);
+      // Log the bonus error but don't fail the main transaction
+      await this.logWebhook(
+        data,
+        `Bonus processing failed: ${bonusError.message}`,
+        0,
+      );
+    }
+
     try {
       const keys = await this.identityService.getTrackierKeys({
         itemId: data.clientId,
@@ -542,6 +574,8 @@ export class PaystackService {
           keys.data,
         );
       }
+
+
     } catch (e) {
       console.error('Trackier error:', e.message);
       // Don't fail the whole process for Trackier errors

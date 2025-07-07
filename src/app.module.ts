@@ -55,6 +55,7 @@ import { SmileAndPayService } from './services/smlieandpay.service';
 import { DashboardService } from './services/dashboard.service';
 import { TransactionArchiveService } from './services/transaction-archive.service';
 import { ArchivedTransaction } from './entity/archivetransaction.entity';
+import { BonusModule } from './bonus/bonus.module';
 
 console.log('ENTITY CHECK', CallbackLog);
 
@@ -113,6 +114,7 @@ console.log('ENTITY CHECK', CallbackLog);
     ]),
     IdentityModule,
     RetailModule,
+    BonusModule
   ],
   
   controllers: [AppController],
