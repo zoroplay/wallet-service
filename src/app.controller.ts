@@ -67,6 +67,7 @@ import {
   ClientRequest,
   OverallGamesRequest,
   StatisticsRequest,
+  TigoPayoutRequest,
 } from 'src/proto/wallet.pb';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PaymentService } from './services/payments.service';
@@ -116,7 +117,6 @@ export class AppController {
     private coralPayService: CoralPayService,
     private smileAndPayService: SmileAndPayService,
     private dashboardService: DashboardService,
-
   ) {}
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FinancialPerformance')
@@ -310,6 +310,11 @@ export class AppController {
   @GrpcMethod(WALLET_SERVICE_NAME, 'TigoWebhook')
   tigoWebhook(param: TigoWebhookRequest) {
     return this.tigoService.handleWebhook(param);
+  }
+
+  @GrpcMethod(WALLET_SERVICE_NAME, 'TigoPayout')
+  tigoPayout(param: TigoPayoutRequest) {
+    return this.tigoService.handleDisbusment(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'OpayCallback')
