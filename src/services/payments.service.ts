@@ -291,6 +291,35 @@ export class PaymentService {
 
           break;
 
+        case 'fidelity_transfer':
+          transactionNo = generateTrxNo();
+          const fidelityPayEmail =
+            user.email || `noemail+${user.username}@${user.siteUrl}`;
+
+          const accountName = `Betting Wallet - ${user.username}`;
+          const fPayRes = await this.fidelityService.handlePay(
+            {
+              account_name: accountName,
+              account_type: 'Dynamic',
+              bank_code: '117',
+              account_reference: transactionNo,
+              customer_first_name: user.username,
+              customer_last_name: user.username,
+              customer_email: fidelityPayEmail,
+              customer_phone_number: user.username,
+              transaction_description: 'Online Deposit (Fidelity)',
+              transaction_amount: param.amount,
+              expires_in_minutes: 30,
+            },
+
+            param.clientId,
+          );
+          description = 'Online Deposit (Fidelity)';
+
+          link = JSON.stringify(fPayRes.data);
+
+          break;
+
         case 'opay':
           console.log('Opay');
           transactionNo = generateTrxNo();
@@ -918,6 +947,8 @@ export class PaymentService {
             return this.fidelityService.handleCallback(param);
           case 'smileandpay':
             return this.smileAndPayService.verifyTransaction(param);
+            case 'fidelity_transfer':
+            return this.fidelityService.handleVerifyPay(param);
           default:
             return {
               success: false,

@@ -9,6 +9,8 @@ import { HelperService } from './helper.service';
 import { ConfigService } from '@nestjs/config';
 import { IdentityService } from 'src/identity/identity.service';
 import { CallbackLog } from 'src/entity/callback-log.entity';
+import axios from 'axios';
+import * as Buffer from 'buffer';
 
 @Injectable()
 export class FidelityService {
@@ -180,6 +182,41 @@ export class FidelityService {
     }
   }
 
+  async handlePay(data, client_id) {
+    try {
+      const setting = await this.fidelitySettings(client_id);
+
+      if (!setting) {
+        return {
+          success: false,
+          message: 'Fidelity has not been configured for client',
+        };
+      }
+      const encodedKey = Buffer.Buffer.from(setting.public_key).toString(
+        'base64',
+      );
+      const headers = {
+        Authorization: `Bearer ${encodedKey}`,
+        'Content-Type': 'application/json',
+      };
+      const url = `${setting.base_url}/merchant/virtual_account/generate_virtual_account/`;
+      const response = await axios.post(url, data, { headers });
+
+      return response.data;
+    } catch (error) {
+      console.error(
+        '❌ Error during PayGate payment initiation:',
+        error.response || error.message,
+      );
+
+      return {
+        success: false,
+        message: 'Payment request failed',
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
   async handleCallback(data) {
     console.log('REAL_DATA CALLBACK::::', data);
     try {
@@ -280,7 +317,145 @@ export class FidelityService {
         message: 'Transaction successfully verified and processed',
       };
     } catch (error) {
-      console.error('❌ OPay webhook processing error:', error.message);
+      console.error('❌ Fidelity webhook processing error:', error.message);
+      return {
+        success: false,
+        message: 'Error occurred during processing',
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+
+  async handleVerifyPay(data) {
+    try {
+      const setting = await this.fidelitySettings(data.clientId);
+
+      if (!setting) {
+        return {
+          success: false,
+          message: 'Fidelity has not been configured for client',
+        };
+      }
+      const encodedKey = Buffer.Buffer.from(setting.public_key).toString(
+        'base64',
+      );
+      const headers = {
+        Authorization: `Bearer ${encodedKey}`,
+        'Content-Type': 'application/json',
+      };
+      const url = `${setting.base_url}/transfer_notification_controller/transaction-query?
+transaction_reference=${data.transactionRef}`;
+
+      const response = await axios.get(url, { headers });
+
+      console.log(response.data.data.merchant_transaction_reference);
+      console.log(response.data.success);
+
+      if (
+        response.data.success === true &&
+        response.data.data.merchant_transaction_reference ===
+          data.transactionRef
+      ) {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: data.clientId,
+            transaction_no: data.transactionRef,
+            tranasaction_type: 'credit',
+          },
+        });
+        console.log('TRX', transaction);
+
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(data),
+            status: 0,
+            type: 'Callback',
+            transaction_id: data.transactionRef,
+            paymentMethod: 'Fidelity',
+          });
+          return {
+            success: false,
+            message: 'Transaction not found',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        if (transaction.status === 1) {
+          console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(data),
+            status: 1,
+            type: 'Callback',
+            transaction_id: data.transactionRef,
+            paymentMethod: 'Fidelity',
+          });
+          return {
+            success: true,
+            message: 'Transaction already successful',
+            statusCode: HttpStatus.OK,
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(data),
+            status: 0,
+            type: 'Callback',
+            transaction_id: data.transactionRef,
+            paymentMethod: 'Fidelity',
+          });
+          return {
+            success: false,
+            message: 'Wallet not found for this user',
+            statusCode: HttpStatus.NOT_FOUND,
+          };
+        }
+
+        console.log('WALLET', wallet);
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+        console.log('FINALLY');
+
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Completed',
+          response: JSON.stringify(data),
+          status: 1,
+          type: 'Callback',
+          transaction_id: data.transactionRef,
+          paymentMethod: 'Fidelity',
+        });
+        return {
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
+    } catch (error) {
+      console.error('❌ Fidelity webhook processing error:', error.message);
       return {
         success: false,
         message: 'Error occurred during processing',
