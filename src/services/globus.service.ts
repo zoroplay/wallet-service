@@ -61,9 +61,6 @@ export class GlobusService {
       const username = this.sha256(`${date}${clientId}`);
       const password = this.sha256(clientId);
 
-      console.log('USERNAME::', username);
-      console.log('PASSWORD::', password);
-
       const auth = await axios.post(
         'https://omniauth.globusbank.com/AuthService/connect/token',
         {
@@ -88,9 +85,11 @@ export class GlobusService {
         linkedPartnerAccountNumber: settings.merchant_id,
       };
 
-      console.log('PAYLOAD:::', payload);
+      console.log(payload);
 
       const url = `${settings.base_url}/api/v2/virtual-account-max`;
+      console.log('CHECK 1');
+      console.log('URL::::', url);
 
       const response = await axios.post(url, payload, {
         headers: {

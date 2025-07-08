@@ -1,14 +1,8 @@
+/* eslint-disable prettier/prettier */
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
-
+import { AwardBonusRequest, BONUS_PACKAGE_NAME, BonusServiceClient, CheckDepositBonusRequest, protobufPackage } from 'src/proto/bonus.pb';
 import { firstValueFrom } from 'rxjs';
-import {
-  BonusServiceClient,
-  BONUS_PACKAGE_NAME,
-  CheckDepositBonusRequest,
-  AwardBonusRequest,
-} from 'src/proto/bonus.pb';
-import { protobufPackage } from 'src/proto/wallet.pb';
 
 @Injectable()
 export class BonusService {
@@ -18,7 +12,9 @@ export class BonusService {
   private readonly client: ClientGrpc;
 
   public onModuleInit(): void {
-    this.svc = this.client.getService<BonusServiceClient>(BONUS_PACKAGE_NAME);
+    this.svc = this.client.getService<BonusServiceClient>(
+      BONUS_PACKAGE_NAME,
+    );
   }
 
   public async getUserBonus(data: CheckDepositBonusRequest) {
@@ -28,4 +24,5 @@ export class BonusService {
   public async awardBonus(data: AwardBonusRequest) {
     return await firstValueFrom(this.svc.awardBonus(data));
   }
+
 }

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable no-var */
 /* eslint-disable prettier/prettier */
@@ -7,6 +8,7 @@ import {
   CreateWalletRequest,
   CreditUserRequest,
   DebitUserRequest,
+  DeletePaymentMethodRequest,
   GetBalanceRequest,
   GetNetworkBalanceRequest,
   GetNetworkBalanceResponse,
@@ -33,10 +35,9 @@ import { Withdrawal } from './entity/withdrawal.entity';
 import { HelperService } from './services/helper.service';
 import { Transaction } from './entity/transaction.entity';
 import * as dayjs from 'dayjs';
-
 import { Bank } from './entity/bank.entity';
 import { IdentityService } from './identity/identity.service';
-import { ArchivedTransaction } from './entity/archivetransaction.entity';
+
 var customParseFormat = require('dayjs/plugin/customParseFormat');
 
 dayjs.extend(customParseFormat);
@@ -58,9 +59,6 @@ export class AppService {
     private identityService: IdentityService,
     // @InjectQueue('deposit')
     // private depositQueue: Queue,
-
-    @InjectRepository(Transaction)
-    private archivedTransactionsRepository: Repository<ArchivedTransaction>,
   ) {}
 
   async createWallet(data: CreateWalletRequest): Promise<WalletResponse> {
@@ -149,25 +147,143 @@ export class AppService {
   async getPaymentMethods(data: GetPaymentMethodRequest) {
     try {
       const { clientId, status } = data;
-      console.log(status);
-      const where: any = { client_id: clientId };
-      if (status) where.status = status;
 
-      let results = [];
-      console.log(where);
+      const where: any = { client_id: clientId };
+      if (status !== undefined) where.status = status;
+
       const pMethods = await this.pMethodRepository.find({ where });
 
-      if (status) {
-        results = pMethods.map((p) => ({
-          provider: p.provider,
-          title: p.display_name,
-        }));
-      } else {
-        results = pMethods;
+      // Always map to consistent shape
+      let results = pMethods.map((p) => ({
+        id: p.id,
+        clientId: p.client_id,
+        title: p.display_name,
+        provider: p.provider,
+        baseUrl: p.base_url?.trim() || null,
+        secretKey: p.secret_key || null,
+        publicKey: p.public_key || null,
+        merchantId: p.merchant_id || null,
+        logoPath: p.logo_path || null,
+        status: p.status,
+        forDisbursement: p.for_disbursement,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }));
+
+      console.log(results);
+      // Optional: Filter by status after mapping, if needed
+      if (status !== undefined) {
+        results = results.filter((r) => r.status === status);
       }
+
       return handleResponse(results, 'Payment methods retrieved successfully');
     } catch (e) {
       return handleError(e.message, {}, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async updatePaymentMethod(updateData: PaymentMethodRequest) {
+    try {
+      const {
+        id,
+        clientId,
+        title,
+        provider,
+        secretKey,
+        publicKey,
+        merchantId,
+        baseUrl,
+        status,
+        forDisbursement,
+      } = updateData;
+
+      const paymentMethod = await this.pMethodRepository.findOne({
+        where: { id, client_id: clientId },
+      });
+
+      if (!paymentMethod) {
+        return {
+          success: false,
+          status: HttpStatus.NOT_FOUND,
+          message: 'Payment method not found',
+        };
+      }
+
+      if (title !== undefined) paymentMethod.display_name = title;
+      if (provider !== undefined) paymentMethod.provider = provider;
+      if (secretKey !== undefined) paymentMethod.secret_key = secretKey;
+      if (publicKey !== undefined) paymentMethod.public_key = publicKey;
+      if (merchantId !== undefined) paymentMethod.merchant_id = merchantId;
+      if (baseUrl !== undefined) paymentMethod.base_url = baseUrl;
+      if (status !== undefined) paymentMethod.status = status;
+      if (forDisbursement !== undefined)
+        paymentMethod.for_disbursement = forDisbursement;
+
+      const updated = await this.pMethodRepository.save(paymentMethod);
+
+      const result = await this.pMethodRepository.findOne({
+        where: { id: updated.id, client_id: updated.client_id },
+
+        select: [
+          'id',
+          'client_id',
+          'display_name',
+          'provider',
+          'secret_key',
+          'public_key',
+          'merchant_id',
+          'base_url',
+          'status',
+          'for_disbursement',
+        ],
+      });
+
+      return {
+        success: true,
+        status: 200,
+        message: 'Payment method updated successfully',
+        data: [result],
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'An error occurred while updating the payment method',
+        error: e.message,
+        data: [],
+      };
+    }
+  }
+
+  async deletePaymentMethod(payload: DeletePaymentMethodRequest) {
+    try {
+      const { id, clientId } = payload;
+      const paymentMethod = await this.pMethodRepository.findOne({
+        where: { id: id, client_id: clientId },
+      });
+
+      if (!paymentMethod) {
+        return {
+          success: false,
+          status: HttpStatus.NOT_FOUND,
+          message: 'Payment method not found',
+        };
+      }
+
+      await this.pMethodRepository.remove(paymentMethod);
+
+      return {
+        success: true,
+        status: HttpStatus.OK,
+        message: 'Payment method deleted successfully',
+      };
+    } catch (e) {
+      return {
+        success: false,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error deleting payment method',
+        error: e.message,
+      };
     }
   }
 
@@ -218,7 +334,7 @@ export class AppService {
   }
 
   async creditUser(data: CreditUserRequest): Promise<WalletResponse> {
-    // console.log('credit data', data);
+    console.log('credit data', data);
     try {
       const wallet = await this.walletRepository.findOne({
         where: { user_id: data.userId },
@@ -543,10 +659,8 @@ export class AppService {
     }
   }
 
-  async listDeposits(data): Promise<any> {
-    // console.log('fetch deposits', data)
+   async listDeposits(data): Promise<PaginationResponse> {
     try {
-      // console.log(data);
       const {
         clientId,
         startDate,
@@ -555,52 +669,87 @@ export class AppService {
         status,
         username,
         transactionId,
-        page,
+        bank,
+        page = 1,
       } = data;
+  
       const limit = 100;
       const skip = (page - 1) * limit;
-
+  
+      // Convert to proper Date objects
+      const start = new Date(startDate);
+      start.setUTCHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setUTCHours(23, 59, 59, 999);
+  
       let query = this.transactionRepository
         .createQueryBuilder('transaction')
-        .where('client_id = :clientId', { clientId })
-        .andWhere('user_id != 0')
-        .andWhere('subject = :type', { type: 'Deposit' })
-        .andWhere('created_at >= :startDate', { startDate })
-        .andWhere('created_at <= :endDate', { endDate });
-
-      if (paymentMethod !== '')
-        query = query.andWhere('channel = :paymentMethod', { paymentMethod });
-
-      if (username !== '')
-        query = query.andWhere('username = :username', { username });
-
-      // if (status !== '')
-      //   query = query.andWhere("status = :status", {status});
-
-      if (transactionId !== '')
-        query = query.andWhere('transaction_no = :transactionId', {
-          transactionId,
-        });
-
-      // console.log(skip, limit)
-
-      const result = await query
-        .orderBy('created_at', 'DESC')
+        .where('transaction.client_id = :clientId', { clientId })
+        .andWhere('transaction.user_id != 0')
+        .andWhere('transaction.subject = :type', { type: 'Deposit' })
+        .andWhere('transaction.created_at BETWEEN :start AND :end', { start, end });
+  
+      // Optional filters
+      if (paymentMethod)
+        query = query.andWhere('transaction.channel = :paymentMethod', { paymentMethod });
+  
+      if (username)
+        query = query.andWhere('transaction.username = :username', { username });
+  
+      if (transactionId)
+        query = query.andWhere('transaction.transaction_no = :transactionId', { transactionId });
+  
+      if (typeof status === 'number')
+        query = query.andWhere('transaction.status = :status', { status });
+  
+      if (bank)
+        query = query.andWhere('transaction.channel = :bank', { bank });
+  
+      // Total amount
+      const totalAmountResult = await query
+        .clone()
+        .select('SUM(transaction.amount)', 'total')
+        .getRawOne();
+      const totalAmount = Number(totalAmountResult?.total || 0);
+  
+      // Paginated result
+      const [results, count] = await query
+        .orderBy('transaction.created_at', 'DESC')
         .take(limit)
         .skip(skip)
-        .getMany();
-
-      const total = await query.getCount();
-
-      const results = result.map((item) => ({
+        .getManyAndCount();
+  
+      // Format data
+      const formattedData = results.map((item) => ({
         ...item,
         created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss'),
       }));
-
-      return paginateResponse([results, total], page, limit);
+  
+      const lastPage = Math.ceil(count / limit);
+      const response: PaginationResponse = {
+        message: 'Deposits fetched successfully',
+        count,
+        currentPage: page,
+        nextPage: page < lastPage ? page + 1 : null,
+        prevPage: page > 1 ? page - 1 : null,
+        lastPage,
+        totalAmount,
+        data: formattedData,
+      };
+  
+      return response;
     } catch (e) {
-      console.log(e.message);
-      return paginateResponse([[], 0], 1, 100, 'failed');
+      console.error('Error in listDeposits:', e.message);
+      return {
+        message: e.message || 'Something went wrong',
+        count: 0,
+        currentPage: 1,
+        nextPage: null,
+        prevPage: null,
+        lastPage: 1,
+        totalAmount: 0,
+        data: [],
+      };
     }
   }
 
@@ -622,81 +771,69 @@ export class AppService {
     endDate,
     page = 1,
     limit = 50,
-    useArchive = false,
   }): Promise<UserTransactionResponse> {
+    // console.log(startDate, endDate, userId, clientId)
     try {
-      const repo = useArchive
-        ? this.archivedTransactionsRepository
-        : this.transactionRepository;
-
-      if (useArchive && !repo) {
-        return {
-          success: true,
-          message: 'Archive not available',
-          data: [],
-          meta: {
-            page,
-            perPage: limit,
-            total: 0,
-            lastPage: 0,
-            nextPage: null,
-            prevPage: null,
-          },
-        };
-      }
-
-      const query = repo
+      let results = [];
+      let query = this.transactionRepository
         .createQueryBuilder('transaction')
         .where('transaction.client_id = :clientId', { clientId })
         .andWhere('transaction.user_id = :userId', { userId });
 
-      if (startDate) {
-        query.andWhere('DATE(transaction.created_at) >= :startDate', {
-          startDate,
-        });
+      if (startDate && startDate != '')
+        query.andWhere('DATE(created_at) >= :startDate', { startDate });
+
+      if (endDate && endDate != '')
+        query.andWhere('DATE(created_at) <= :endDate', { endDate });
+
+      const total = await query.clone().getCount();
+
+      let offset = 0;
+
+      if (page > 1) {
+        offset = (page - 1) * limit;
+        // offset = offset + 1;
       }
-      if (endDate) {
-        query.andWhere('DATE(transaction.created_at) <= :endDate', { endDate });
-      }
 
-      const [transactions, total] = await Promise.all([
-        query
-          .orderBy('transaction.created_at', 'DESC')
-          .limit(limit)
-          .offset((page - 1) * limit)
-          .getRawMany(),
-        query.getCount(),
-      ]);
+      console.log(`offset ${offset}`, `page ${page}`, `limit ${limit}`);
 
-      const formatted = transactions.map((t) => ({
-        id: t.transaction_id,
-        referenceNo: t.transaction_transaction_no,
-        amount: t.transaction_amount,
-        balance: t.transaction_balance,
-        subject: t.transaction_subject,
-        type: t.transaction_tranasaction_type, // keep this if DB column really is misspelled
-        description: t.transaction_description,
-        transactionDate: t.transaction_created_at,
-        channel: t.transaction_channel,
-        status: t.transaction_status,
-        wallet: t.transaction_wallet,
-      }));
+      const transactions = await query
+        .orderBy('transaction.created_at', 'DESC')
+        .limit(limit)
+        .offset(offset)
+        .getRawMany();
 
-      return {
-        success: true,
-        message: 'Successful',
-        data: formatted,
-        meta: {
-          page,
-          perPage: limit,
-          total,
-          lastPage: Math.ceil(total / limit),
-          nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
-          prevPage: page > 1 ? page - 1 : null,
-        },
+      const pager = paginateResponse([transactions, total], page, limit);
+
+      const meta: MetaData = {
+        page,
+        perPage: limit,
+        total,
+        lastPage: pager.lastPage,
+        nextPage: pager.nextPage,
+        prevPage: pager.prevPage,
       };
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
+
+      if (transactions.length > 0) {
+        for (const transaction of transactions) {
+          results.push({
+            id: transaction.transaction_id,
+            referenceNo: transaction.transaction_transaction_no,
+            amount: transaction.transaction_amount,
+            balance: transaction.transaction_balance,
+            subject: transaction.transaction_subject,
+            type: transaction.transaction_tranasaction_type,
+            description: transaction.transaction_description,
+            transactionDate: transaction.transaction_created_at,
+            channel: transaction.transaction_channel,
+            status: transaction.transaction_status,
+            wallet: transaction.transaction_wallet,
+          });
+        }
+      }
+
+      return { success: true, message: 'Successful', data: results, meta };
+    } catch (e) {
       return {
         success: false,
         message: 'Unable to fetch transactions',

@@ -1,9 +1,10 @@
+/* eslint-disable prettier/prettier */
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
+import { BONUS_PACKAGE_NAME, protobufPackage } from 'src/proto/bonus.pb';
 import { BonusService } from './bonus.service';
-import { BONUS_PACKAGE_NAME } from 'src/proto/bonus.pb';
-import { protobufPackage } from 'src/proto/wallet.pb';
+
 
 @Module({
   imports: [
@@ -14,7 +15,9 @@ import { protobufPackage } from 'src/proto/wallet.pb';
         options: {
           url: process.env.BONUS_SERVICE_URI,
           package: BONUS_PACKAGE_NAME,
-          protoPath: join('node_modules/sbe-service-proto/proto/bonus.proto'),
+          protoPath: join(
+            'node_modules/sbe-service-proto/proto/bonus.proto',
+          ),
         },
       },
     ]),
