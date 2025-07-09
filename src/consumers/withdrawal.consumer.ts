@@ -234,34 +234,6 @@ export class WithdrawalConsumer extends WorkerHost {
 
       await this.saveUserBankAccount(data);
 
-      let username = data.username;
-      if (!username.startsWith('255')) {
-        username = '255' + username.replace(/^0+/, '');
-      }
-
-      const correspondent = await this.helperService.getCorrespondent(username);
-      const payoutPayload = {
-        payoutId: data.withdrawalCode,
-        amount: data.amount.toString(),
-        currency: 'TZS',
-        country: 'TZA',
-        correspondent: correspondent,
-        recipient: {
-          address: { value: username },
-          type: 'MSISDN',
-        },
-        statementDescription: 'Online Payouts',
-        customerTimestamp: new Date(),
-        metadata: [
-          {
-            fieldName: 'customerId',
-            fieldValue: username,
-            isPII: true,
-          },
-        ],
-        clientId: data.clientId,
-      };
-
       await this.helperService.saveTransaction({
         clientId: data.clientId,
         transactionNo: withdrawal.withdrawal_code,
@@ -300,7 +272,6 @@ export class WithdrawalConsumer extends WorkerHost {
             withdrawalId: withdrawal.id,
             comment: 'automated withdrawal',
             updatedBy: 'System',
-            result: payoutPayload,
           });
           console.log('transfer response', resp);
         }

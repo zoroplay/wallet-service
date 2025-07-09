@@ -624,9 +624,9 @@ export class PaymentService {
     action,
     comment,
     updatedBy,
-    result = undefined,
   }): Promise<any> {
     try {
+      console.log('I GOT HERE');
       const wRequest = await this.withdrawalRepository.findOne({
         where: { id: withdrawalId },
       });
@@ -674,12 +674,10 @@ export class PaymentService {
                   resp = this.korapayService.disburseFunds(wRequest, clientId);
                   break;
                 case 'pawapay':
-                  if (!result) {
-                    console.log(
-                      'Missing payout payload for pawapay disbursement',
-                    );
-                  }
-                  resp = await this.pawapayService.createPayout(result);
+                  resp = await this.pawapayService.createPayout(
+                    wRequest,
+                    clientId,
+                  );
 
                 default:
                   break;
@@ -947,7 +945,7 @@ export class PaymentService {
             return this.fidelityService.handleCallback(param);
           case 'smileandpay':
             return this.smileAndPayService.verifyTransaction(param);
-            case 'fidelity_transfer':
+          case 'fidelity_transfer':
             return this.fidelityService.handleVerifyPay(param);
           default:
             return {
@@ -1041,7 +1039,7 @@ export class PaymentService {
           }
           break;
 
-           case 'korapay':
+        case 'korapay':
           resp = await this.korapayService.resolveAccountNumberKorapay(
             param.clientId,
             param.accountNumber,
@@ -1437,7 +1435,9 @@ export class PaymentService {
                 isPII: true,
               },
             ],
-          });
+          },
+           4
+        );
 
           if (!res.success) return res;
           subject = 'payouts';
