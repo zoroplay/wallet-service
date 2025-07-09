@@ -493,20 +493,52 @@ export class PawapayService {
     }
   }
 
-  async createPayout(data) {
+  async createPayout(data, clientId) {
+    console.log(clientId);
     try {
       const settings = await this.pawapaySettings(data.clientId);
 
-      console.log('BODY:::', data);
-      console.log(settings.base_url);
+      let username = data.username;
+      if (!username.startsWith('255')) {
+        username = '255' + username.replace(/^0+/, '');
+      }
 
-      const res = await axios.post(`${settings.base_url}/payouts`, data, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.secret_key}`,
+      const correspondent = await this.helperService.getCorrespondent(username);
+      console.log(correspondent);
+
+      const payoutPayload = {
+        payoutId: data.withdrawal_code,
+        amount: data.amount.toString(),
+        currency: 'TZS',
+        country: 'TZA',
+        correspondent: correspondent,
+        recipient: {
+          address: { value: username },
+          type: 'MSISDN',
         },
-      });
-      console.log(res.data);
+        statementDescription: 'Online Payouts',
+        customerTimestamp: new Date(),
+        metadata: [
+          {
+            fieldName: 'customerId',
+            fieldValue: username,
+            isPII: true,
+          },
+        ],
+      };
+
+      const res = await axios.post(
+        `${settings.base_url}/payouts`,
+        payoutPayload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${settings.secret_key}`,
+          },
+        },
+      );
+      console.log('THE RESP', res.data);
+      console.log('THE Status', res.data.status);
       if (res.data.status === 'ACCEPTED') {
         return {
           success: true,
@@ -515,7 +547,7 @@ export class PawapayService {
         };
       }
     } catch (e) {
-      console.log('FROM', e.data);
+      console.log('FROM', e);
       return {
         success: false,
         message: e.message,

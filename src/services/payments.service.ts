@@ -594,7 +594,6 @@ export class PaymentService {
     action,
     comment,
     updatedBy,
-    result = undefined,
   }): Promise<any> {
     try {
       const wRequest = await this.withdrawalRepository.findOne({
@@ -644,12 +643,10 @@ export class PaymentService {
                   resp = this.korapayService.disburseFunds(wRequest, clientId);
                   break;
                 case 'pawapay':
-                  if (!result) {
-                    console.log(
-                      'Missing payout payload for pawapay disbursement',
-                    );
-                  }
-                  resp = await this.pawapayService.createPayout(result);
+                  resp = await this.pawapayService.createPayout(
+                    wRequest,
+                    clientId,
+                  );
 
                 default:
                   break;
@@ -1384,28 +1381,31 @@ export class PaymentService {
           if (!username.startsWith('255')) {
             username = '255' + username.replace(/^0+/, '');
           }
-          res = await this.pawapayService.createPayout({
-            payoutId: actionId,
-            amount: param.amount.toString(),
-            currency: 'TZS',
-            country: 'TZA',
-            correspondent: param.operator,
-            recipient: {
-              address: {
-                value: username,
+          res = await this.pawapayService.createPayout(
+            {
+              payoutId: actionId,
+              amount: param.amount.toString(),
+              currency: 'TZS',
+              country: 'TZA',
+              correspondent: param.operator,
+              recipient: {
+                address: {
+                  value: username,
+                },
+                type: 'MSISDN',
               },
-              type: 'MSISDN',
+              statementDescription: 'Online Payouts',
+              customerTimestamp: new Date(),
+              metadata: [
+                {
+                  fieldName: 'customerId',
+                  fieldValue: username,
+                  isPII: true,
+                },
+              ],
             },
-            statementDescription: 'Online Payouts',
-            customerTimestamp: new Date(),
-            metadata: [
-              {
-                fieldName: 'customerId',
-                fieldValue: username,
-                isPII: true,
-              },
-            ],
-          });
+            param.clientId,
+          );
 
           if (!res.success) return res;
           subject = 'payouts';
