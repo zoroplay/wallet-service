@@ -347,8 +347,9 @@ export class FidelityService {
 transaction_reference=${data.transactionRef}`;
 
       const response = await axios.get(url, { headers });
+      console.log('RESPONSE', response);
 
-      console.log(response.data.data.merchant_transaction_reference);
+      console.log(response.data.data.transaction_status);
       console.log(response.data.success);
 
       if (
@@ -460,6 +461,148 @@ transaction_reference=${data.transactionRef}`;
         success: false,
         message: 'Error occurred during processing',
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      };
+    }
+  }
+
+  async fidelityWebhook(data) {
+    console.log(data);
+    console.log(data.transactionReference);
+    console.log(data.clientId);
+    console.log(data.success);
+    console.log(data.transactionStatus);
+    console.log('FIX');
+    const ref = data.rawBody.data.merchant_transaction_reference;
+
+    try {
+      const setting = await this.fidelitySettings(data.clientId);
+
+      if (!setting) {
+        return {
+          success: false,
+          message: 'Fidelity has not been configured for client',
+        };
+      }
+
+      console.log('1');
+
+      if (
+        data.success === true &&
+        data.success === true &&
+        data.transactionStatus === 'Completed'
+      ) {
+        const transaction = await this.transactionRepository.findOne({
+          where: {
+            client_id: data.clientId,
+            transaction_no: data.transactionReference,
+            tranasaction_type: 'credit',
+          },
+        });
+        console.log('2');
+        console.log('TRX', transaction);
+
+        if (!transaction) {
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction not found',
+            response: JSON.stringify(data),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: data.transactionReference,
+            paymentMethod: 'Fidelity Transfer',
+          });
+          return {
+            statusCode: HttpStatus.NOT_FOUND,
+            success: false,
+            message: 'Transaction not found',
+          };
+        }
+
+        console.log('3');
+
+        if (transaction.status === 1) {
+          console.log('ℹ️ Transaction already marked successful.');
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Transaction already processed',
+            response: JSON.stringify(data),
+            status: 1,
+            type: 'Webhook',
+            transaction_id: data.transactionReference,
+            paymentMethod: 'Fidelity Transfer',
+          });
+          return {
+            statusCode: HttpStatus.OK,
+            success: true,
+            message: 'Transaction already successful',
+          };
+        }
+
+        const wallet = await this.walletRepository.findOne({
+          where: { user_id: transaction.user_id },
+        });
+
+        if (!wallet) {
+          console.error(
+            '❌ Wallet not found for user_id:',
+            transaction.user_id,
+          );
+          await this.callbacklogRepository.save({
+            client_id: data.clientId,
+            request: 'Wallet not found',
+            response: JSON.stringify(data),
+            status: 0,
+            type: 'Webhook',
+            transaction_id: ref,
+            paymentMethod: 'Fidelity Transfer',
+          });
+          return {
+            statusCode: HttpStatus.NOT_FOUND,
+            success: false,
+            message: 'Wallet not found for this user',
+          };
+        }
+
+        console.log('WALLET', wallet);
+
+        const balance =
+          parseFloat(wallet.available_balance.toString()) +
+          parseFloat(transaction.amount.toString());
+
+        await this.helperService.updateWallet(balance, transaction.user_id);
+
+        await this.transactionRepository.update(
+          { transaction_no: transaction.transaction_no },
+          { status: 1, balance },
+        );
+        console.log('FINALLY');
+
+        await this.callbacklogRepository.save({
+          client_id: data.clientId,
+          request: 'Completed',
+          response: JSON.stringify(data.rawBody),
+          status: 1,
+          type: 'Webhook',
+          transaction_id: data.transactionReference,
+          paymentMethod: 'Fidelity Transfer',
+        });
+        return {
+          statusCode: HttpStatus.OK,
+          success: true,
+          message: 'Transaction successfully verified and processed',
+        };
+      }
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Transaction not completed or invalid status',
+      };
+    } catch (error) {
+      console.error('❌ Fidelity webhook processing error:', error.message);
+      return {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        success: false,
+        message: 'Error occurred during processing',
       };
     }
   }
