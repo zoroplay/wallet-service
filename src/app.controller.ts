@@ -331,7 +331,7 @@ export class AppController {
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'FidelityWebhook')
   fidelityWebhook(param: FidelityWebhookRequest) {
-    return this.fidelityService.handleWebhook(param);
+    return this.fidelityService.fidelityWebhook(param);
   }
 
   @GrpcMethod(WALLET_SERVICE_NAME, 'ProvidusWebhook')
