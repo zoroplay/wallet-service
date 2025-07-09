@@ -192,9 +192,11 @@ export class FidelityService {
           message: 'Fidelity has not been configured for client',
         };
       }
-      const encodedKey = Buffer.Buffer.from(setting.public_key).toString(
-        'base64',
-      );
+      // const encodedKey = Buffer.Buffer.from(setting.public_key).toString(
+      //   'base64',
+      // );
+      const key = 'PZ78-PKLIVE-CF0FFF46-CBAE-4F6B-B5C3-8B0E520E67FB';
+      const encodedKey = Buffer.Buffer.from(key).toString('base64');
       const headers = {
         Authorization: `Bearer ${encodedKey}`,
         'Content-Type': 'application/json',
