@@ -37,6 +37,77 @@ export class TigoService {
     });
   }
 
+  // async initiatePayment(data, client_id) {
+  //   // ✅ Get Tigo settings only once
+  //   const paymentSettings = await this.tigoSettings(client_id);
+  //   if (!paymentSettings)
+  //     return {
+  //       success: false,
+  //       message: 'Tigo has not been configured for client',
+  //     };
+
+  //   // ✅ Choose URLs based on client_id
+  //   const isTestClient = client_id === 4;
+
+  //   const TIGO_TOKEN = isTestClient
+  //     ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-GetToken'
+  //     : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMGetTokenPush';
+
+  //   console.log('TOKEN:', TIGO_TOKEN);
+
+  //   const PAY_URL = isTestClient
+  //     ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-PushBillPay'
+  //     : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMPushBillPay';
+
+  //   console.log('PAY_URL:', PAY_URL);
+
+  //   try {
+  //     const requestBody = new URLSearchParams();
+  //     requestBody.append('username', paymentSettings.public_key);
+  //     requestBody.append('password', paymentSettings.secret_key);
+  //     requestBody.append('grant_type', 'password');
+  //     const token = await axios.post(TIGO_TOKEN, requestBody, {
+  //       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  //     });
+  //     console.log(token);
+
+  //     if (!token) {
+  //       console.error('❌ Failed to retrieve access token');
+  //       return {
+  //         success: false,
+  //         message: 'Authentication failed',
+  //       };
+  //     }
+
+  //     const payload = {
+  //       ...data,
+  //       BillerMSISDN: paymentSettings.merchant_id,
+  //     };
+
+  //     const response = await axios.post(PAY_URL, payload, {
+  //       headers: {
+  //         Authorization: `Bearer ${token.data.access_token}`, // ✅ Missing authorization header added
+  //         Username: paymentSettings.public_key,
+  //         Password: paymentSettings.secret_key,
+  //         'Content-Type': 'application/json',
+  //       },
+  //     });
+
+  //     console.log('✅ Payment successful:', response.data);
+  //     return response.data;
+  //   } catch (error: any) {
+  //     console.error(
+  //       '❌ Error during Tigo payment initiation:',
+  //       error.response?.data || error.message,
+  //     );
+  //     return {
+  //       success: false,
+  //       message: 'Payment request failed',
+  //       error: error.response?.data || error.message,
+  //     };
+  //   }
+  // }
+
   async initiatePayment(data, client_id) {
     // ✅ Get Tigo settings only once
     const paymentSettings = await this.tigoSettings(client_id);
@@ -47,24 +118,22 @@ export class TigoService {
       };
 
     // ✅ Choose URLs based on client_id
-    const isTestClient = client_id === 4;
 
-    const TIGO_TOKEN = isTestClient
-      ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-GetToken'
-      : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMGetTokenPush';
+    const TIGO_TOKEN =
+      'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMGetTokenPush';
 
     console.log('TOKEN:', TIGO_TOKEN);
 
-    const PAY_URL = isTestClient
-      ? 'https://accessgwtest.tigo.co.tz:8443/Kamili2DM-PushBillPay'
-      : 'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMPushBillPay';
+    const PAY_URL =
+      'https://tmk-accessgw.tigo.co.tz:8443/Kamili22DMPushBillPay';
 
     console.log('PAY_URL:', PAY_URL);
+    const key = '4YDgBWz';
 
     try {
       const requestBody = new URLSearchParams();
       requestBody.append('username', paymentSettings.public_key);
-      requestBody.append('password', paymentSettings.secret_key);
+      requestBody.append('password', key);
       requestBody.append('grant_type', 'password');
       const token = await axios.post(TIGO_TOKEN, requestBody, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
