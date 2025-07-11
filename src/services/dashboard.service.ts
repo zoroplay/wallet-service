@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ArchivedTransaction } from 'src/entity/archivetransaction.entity';
 import { Transaction } from 'src/entity/transaction.entity';
 import { Wallet } from 'src/entity/wallet.entity';
 import { IdentityService } from 'src/identity/identity.service';
@@ -12,6 +13,9 @@ export class DashboardService {
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
 
+    @InjectRepository(Transaction)
+    private archivedTransactionsRepository: Repository<ArchivedTransaction>,
+
     @InjectRepository(Wallet)
     private readonly walletRepository: Repository<Wallet>,
 
@@ -20,7 +24,12 @@ export class DashboardService {
 
   async financialPerformance(clientId: number) {
     try {
-      const [depositSum, withdrawalSum] = await Promise.all([
+      const [
+        depositSum,
+        withdrawalSum,
+        archivedDepositSum,
+        archivedWithdrawalSum,
+      ] = await Promise.all([
         this.transactionRepository
           .createQueryBuilder('t')
           .select('SUM(t.amount)', 'sum')
@@ -28,7 +37,6 @@ export class DashboardService {
           .andWhere('t.tranasaction_type = :type', { type: 'credit' }) // 'credit' = deposit
           .andWhere('t.subject = :subject', { subject: 'Deposit' })
           .andWhere('t.status = 1')
-          // .andWhere('t.created_at BETWEEN :start AND :end', { start, end })
           .getRawOne(),
 
         this.transactionRepository
@@ -38,12 +46,33 @@ export class DashboardService {
           .andWhere('t.tranasaction_type = :type', { type: 'debit' }) // 'debit' = withdrawal
           .andWhere('t.subject = :subject', { subject: 'Withdrawal' })
           .andWhere('t.status = 1')
-          // .andWhere('t.created_at BETWEEN :start AND :end', { start, end })
+          .getRawOne(),
+
+        this.archivedTransactionsRepository
+          .createQueryBuilder('t')
+          .select('SUM(t.amount)', 'sum')
+          .where('t.client_id = :clientId', { clientId })
+          .andWhere('t.tranasaction_type = :type', { type: 'credit' })
+          .andWhere('t.subject = :subject', { subject: 'Deposit' })
+          .andWhere('t.status = 1')
+          .getRawOne(),
+
+        this.archivedTransactionsRepository
+          .createQueryBuilder('t')
+          .select('SUM(t.amount)', 'sum')
+          .where('t.client_id = :clientId', { clientId })
+          .andWhere('t.tranasaction_type = :type', { type: 'debit' })
+          .andWhere('t.subject = :subject', { subject: 'Withdrawal' })
+          .andWhere('t.status = 1')
           .getRawOne(),
       ]);
 
-      const totalDeposit = parseFloat(depositSum?.sum || '0');
-      const totalWithdrawal = parseFloat(withdrawalSum?.sum || '0');
+      const totalDeposit =
+        parseFloat(depositSum?.sum || '0') +
+        parseFloat(archivedDepositSum?.sum || '0');
+      const totalWithdrawal =
+        parseFloat(withdrawalSum?.sum || '0') +
+        parseFloat(archivedWithdrawalSum?.sum || '0');
 
       return {
         success: true,
@@ -272,7 +301,15 @@ export class DashboardService {
 
       const summary = await Promise.all(
         products.map(async (product) => {
-          const [stake, winnings, bonusPlayed, bonusGiven] = await Promise.all([
+          const [
+            stake,
+            winnings,
+            bonusPlayed,
+            archivedStake,
+            archivedWinnings,
+            archivedBonusPlayed,
+            bonusGiven,
+          ] = await Promise.all([
             this.transactionRepository
               .createQueryBuilder('tx')
               .select('SUM(tx.amount)', 'total')
@@ -303,6 +340,36 @@ export class DashboardService {
               .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
               .getRawOne(),
 
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.stakeSubject,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne(),
+
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne(),
+
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne(),
+
             this.walletRepository
               .createQueryBuilder('wallet')
               .select(`SUM(wallet.${product.walletField})`, 'total')
@@ -310,9 +377,15 @@ export class DashboardService {
               .getRawOne(),
           ]);
 
-          const totalStake = parseFloat(stake?.total || '0');
-          const totalWinnings = parseFloat(winnings?.total || '0');
-          const totalBonusPlayed = parseFloat(bonusPlayed?.total || '0');
+          const totalStake =
+            parseFloat(stake?.total || '0') +
+            parseFloat(archivedStake?.total || '0');
+          const totalWinnings =
+            parseFloat(winnings?.total || '0') +
+            parseFloat(archivedWinnings?.total || '0');
+          const totalBonusPlayed =
+            parseFloat(bonusPlayed?.total || '0') +
+            parseFloat(archivedBonusPlayed?.total || '0');
           const totalBonusGiven = parseFloat(bonusGiven?.total || '0');
 
           const ggr = totalStake - totalWinnings;
@@ -437,66 +510,116 @@ export class DashboardService {
       const summary = await Promise.all(
         products.map(async (product) => {
           // Run transaction queries in parallel
-          const [{ totalStake }, { totalWinnings }, { totalBonusPlayed }] =
-            await Promise.all([
-              // Total Stake
-              this.transactionRepository
-                .createQueryBuilder('tx')
-                .select('SUM(tx.amount)', 'total')
-                .where('tx.client_id = :clientId', { clientId })
-                .andWhere('tx.subject = :subject', {
-                  subject: product.stakeSubject,
-                })
-                .andWhere('tx.user_id IN (:...userIds)', {
-                  userIds: playerUserIds,
-                })
-                .andWhere('tx.created_at BETWEEN :start AND :end', {
-                  start,
-                  end,
-                })
-                .getRawOne()
-                .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
+          const [
+            { totalStake: stakeLive },
+            { totalWinnings: winningsLive },
+            { totalBonusPlayed: bonusPlayedLive },
+            { totalStake: stakeArchived },
+            { totalWinnings: winningsArchived },
+            { totalBonusPlayed: bonusPlayedArchived },
+          ] = await Promise.all([
+            // Live - Stake
+            this.transactionRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.stakeSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: playerUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
 
-              // Winnings
-              this.transactionRepository
-                .createQueryBuilder('tx')
-                .select('SUM(tx.amount)', 'total')
-                .where('tx.client_id = :clientId', { clientId })
-                .andWhere('tx.subject = :subject', {
-                  subject: product.winningSubject,
-                })
-                .andWhere('tx.user_id IN (:...userIds)', {
-                  userIds: playerUserIds,
-                })
-                .andWhere('tx.created_at BETWEEN :start AND :end', {
-                  start,
-                  end,
-                })
-                .getRawOne()
-                .then((res) => ({
-                  totalWinnings: parseFloat(res?.total || '0'),
-                })),
+            // Live - Winnings
+            this.transactionRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: playerUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalWinnings: parseFloat(res?.total || '0'),
+              })),
 
-              // Bonus Played
-              this.transactionRepository
-                .createQueryBuilder('tx')
-                .select('SUM(tx.amount)', 'total')
-                .where('tx.client_id = :clientId', { clientId })
-                .andWhere('tx.subject = :subject', {
-                  subject: product.winningSubject,
-                })
-                .andWhere('tx.user_id IN (:...userIds)', {
-                  userIds: playerUserIds,
-                })
-                .andWhere('tx.created_at BETWEEN :start AND :end', {
-                  start,
-                  end,
-                })
-                .getRawOne()
-                .then((res) => ({
-                  totalBonusPlayed: parseFloat(res?.total || '0'),
-                })),
-            ]);
+            // Live - Bonus Played
+            this.transactionRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: playerUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalBonusPlayed: parseFloat(res?.total || '0'),
+              })),
+
+            // Archived - Stake
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.stakeSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: playerUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
+
+            // Archived - Winnings
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: playerUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalWinnings: parseFloat(res?.total || '0'),
+              })),
+
+            // Archived - Bonus Played
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: playerUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalBonusPlayed: parseFloat(res?.total || '0'),
+              })),
+          ]);
+
+          const totalStake = stakeLive + stakeArchived;
+          const totalWinnings = winningsLive + winningsArchived;
+          const totalBonusPlayed = bonusPlayedLive + bonusPlayedArchived;
 
           // Get bonus given from pre-fetched wallet data
           let totalBonusGiven = 0;
@@ -630,66 +753,116 @@ export class DashboardService {
       // Process each product in parallel
       const summary = await Promise.all(
         products.map(async (product) => {
-          const [{ totalStake }, { totalWinnings }, { totalBonusPlayed }] =
-            await Promise.all([
-              // Total Stake
-              this.transactionRepository
-                .createQueryBuilder('tx')
-                .select('SUM(tx.amount)', 'total')
-                .where('tx.client_id = :clientId', { clientId })
-                .andWhere('tx.subject = :subject', {
-                  subject: product.stakeSubject,
-                })
-                .andWhere('tx.user_id IN (:...userIds)', {
-                  userIds: retailUserIds,
-                })
-                .andWhere('tx.created_at BETWEEN :start AND :end', {
-                  start,
-                  end,
-                })
-                .getRawOne()
-                .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
+          const [
+            { totalStake: liveStake },
+            { totalWinnings: liveWinnings },
+            { totalBonusPlayed: liveBonus },
+            { totalStake: archivedStake },
+            { totalWinnings: archivedWinnings },
+            { totalBonusPlayed: archivedBonus },
+          ] = await Promise.all([
+            // Live stake
+            this.transactionRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.stakeSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: retailUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
 
-              // Winnings
-              this.transactionRepository
-                .createQueryBuilder('tx')
-                .select('SUM(tx.amount)', 'total')
-                .where('tx.client_id = :clientId', { clientId })
-                .andWhere('tx.subject = :subject', {
-                  subject: product.winningSubject,
-                })
-                .andWhere('tx.user_id IN (:...userIds)', {
-                  userIds: retailUserIds,
-                })
-                .andWhere('tx.created_at BETWEEN :start AND :end', {
-                  start,
-                  end,
-                })
-                .getRawOne()
-                .then((res) => ({
-                  totalWinnings: parseFloat(res?.total || '0'),
-                })),
+            // Live winnings
+            this.transactionRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: retailUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalWinnings: parseFloat(res?.total || '0'),
+              })),
 
-              // Bonus Played
-              this.transactionRepository
-                .createQueryBuilder('tx')
-                .select('SUM(tx.amount)', 'total')
-                .where('tx.client_id = :clientId', { clientId })
-                .andWhere('tx.subject = :subject', {
-                  subject: product.winningSubject,
-                })
-                .andWhere('tx.user_id IN (:...userIds)', {
-                  userIds: retailUserIds,
-                })
-                .andWhere('tx.created_at BETWEEN :start AND :end', {
-                  start,
-                  end,
-                })
-                .getRawOne()
-                .then((res) => ({
-                  totalBonusPlayed: parseFloat(res?.total || '0'),
-                })),
-            ]);
+            // Live bonus played
+            this.transactionRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: retailUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalBonusPlayed: parseFloat(res?.total || '0'),
+              })),
+
+            // Archived stake
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.stakeSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: retailUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
+
+            // Archived winnings
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: retailUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalWinnings: parseFloat(res?.total || '0'),
+              })),
+
+            // Archived bonus played
+            this.archivedTransactionsRepository
+              .createQueryBuilder('tx')
+              .select('SUM(tx.amount)', 'total')
+              .where('tx.client_id = :clientId', { clientId })
+              .andWhere('tx.subject = :subject', {
+                subject: product.winningSubject,
+              })
+              .andWhere('tx.user_id IN (:...userIds)', {
+                userIds: retailUserIds,
+              })
+              .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+              .getRawOne()
+              .then((res) => ({
+                totalBonusPlayed: parseFloat(res?.total || '0'),
+              })),
+          ]);
+
+          const totalStake = liveStake + archivedStake;
+          const totalWinnings = liveWinnings + archivedWinnings;
+          const totalBonusPlayed = liveBonus + archivedBonus;
 
           // Get bonus given from pre-fetched wallet data
           const totalBonusGiven = parseFloat(
@@ -758,7 +931,16 @@ export class DashboardService {
       walletField: 'sport_bonus_balance',
     };
 
-    const [stake, winnings, bonusPlayed, bonusGiven] = await Promise.all([
+    const [
+      { totalStake: liveStake },
+      { totalWinnings: liveWinnings },
+      { totalBonusPlayed: liveBonus },
+      { totalStake: archivedStake },
+      { totalWinnings: archivedWinnings },
+      { totalBonusPlayed: archivedBonus },
+      bonusGiven,
+    ] = await Promise.all([
+      // Live Stake
       this.transactionRepository
         .createQueryBuilder('tx')
         .select('SUM(tx.amount)', 'total')
@@ -767,8 +949,10 @@ export class DashboardService {
           subject: sportProduct.stakeSubject,
         })
         .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
-        .getRawOne(),
+        .getRawOne()
+        .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
 
+      // Live Winnings
       this.transactionRepository
         .createQueryBuilder('tx')
         .select('SUM(tx.amount)', 'total')
@@ -777,8 +961,10 @@ export class DashboardService {
           subject: sportProduct.winningSubject,
         })
         .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
-        .getRawOne(),
+        .getRawOne()
+        .then((res) => ({ totalWinnings: parseFloat(res?.total || '0') })),
 
+      // Live Bonus Played
       this.transactionRepository
         .createQueryBuilder('tx')
         .select('SUM(tx.amount)', 'total')
@@ -787,8 +973,46 @@ export class DashboardService {
           subject: sportProduct.winningSubject,
         })
         .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
-        .getRawOne(),
+        .getRawOne()
+        .then((res) => ({ totalBonusPlayed: parseFloat(res?.total || '0') })),
 
+      // Archived Stake
+      this.archivedTransactionsRepository
+        .createQueryBuilder('tx')
+        .select('SUM(tx.amount)', 'total')
+        .where('tx.client_id = :clientId', { clientId })
+        .andWhere('tx.subject = :subject', {
+          subject: sportProduct.stakeSubject,
+        })
+        .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+        .getRawOne()
+        .then((res) => ({ totalStake: parseFloat(res?.total || '0') })),
+
+      // Archived Winnings
+      this.archivedTransactionsRepository
+        .createQueryBuilder('tx')
+        .select('SUM(tx.amount)', 'total')
+        .where('tx.client_id = :clientId', { clientId })
+        .andWhere('tx.subject = :subject', {
+          subject: sportProduct.winningSubject,
+        })
+        .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+        .getRawOne()
+        .then((res) => ({ totalWinnings: parseFloat(res?.total || '0') })),
+
+      // Archived Bonus Played
+      this.archivedTransactionsRepository
+        .createQueryBuilder('tx')
+        .select('SUM(tx.amount)', 'total')
+        .where('tx.client_id = :clientId', { clientId })
+        .andWhere('tx.subject = :subject', {
+          subject: sportProduct.winningSubject,
+        })
+        .andWhere('tx.created_at BETWEEN :start AND :end', { start, end })
+        .getRawOne()
+        .then((res) => ({ totalBonusPlayed: parseFloat(res?.total || '0') })),
+
+      // Bonus Given (wallet)
       this.walletRepository
         .createQueryBuilder('wallet')
         .select(`SUM(wallet.${sportProduct.walletField})`, 'total')
@@ -796,9 +1020,9 @@ export class DashboardService {
         .getRawOne(),
     ]);
 
-    const totalStake = parseFloat(stake?.total || '0');
-    const totalWinnings = parseFloat(winnings?.total || '0');
-    const totalBonusPlayed = parseFloat(bonusPlayed?.total || '0');
+    const totalStake = liveStake + archivedStake;
+    const totalWinnings = liveWinnings + archivedWinnings;
+    const totalBonusPlayed = liveBonus + archivedBonus;
     const totalBonusGiven = parseFloat(bonusGiven?.total || '0');
 
     const ggr = totalStake - totalWinnings;
@@ -851,6 +1075,8 @@ export class DashboardService {
     const monthlyMap = new Map<string, number[]>();
 
     for (const product of products) {
+      const monthlyTotals = Array(12).fill(0); // ✅ Moved inside loop
+
       const result = await this.transactionRepository
         .createQueryBuilder('tx')
         .select(['MONTH(tx.created_at) as month', 'SUM(tx.amount) as total'])
@@ -860,14 +1086,26 @@ export class DashboardService {
         .groupBy('MONTH(tx.created_at)')
         .getRawMany();
 
+      const archivedResult = await this.archivedTransactionsRepository
+        .createQueryBuilder('tx')
+        .select(['MONTH(tx.created_at) as month', 'SUM(tx.amount) as total'])
+        .where('tx.client_id = :clientId', { clientId })
+        .andWhere('tx.subject = :subject', { subject: product.subject })
+        .andWhere('YEAR(tx.created_at) = :year', { year })
+        .groupBy('MONTH(tx.created_at)')
+        .getRawMany();
+
       result.forEach((row) => {
-        const monthIndex = parseInt(row.month, 10) - 1; // 0-based index (Jan = 0)
-        if (!monthlyMap.has(product.key)) {
-          monthlyMap.set(product.key, Array(12).fill(0));
-        }
-        const existingArray = monthlyMap.get(product.key)!;
-        existingArray[monthIndex] = parseFloat(row.total);
+        const monthIndex = parseInt(row.month, 10) - 1;
+        monthlyTotals[monthIndex] += parseFloat(row.total);
       });
+
+      archivedResult.forEach((row) => {
+        const monthIndex = parseInt(row.month, 10) - 1;
+        monthlyTotals[monthIndex] += parseFloat(row.total);
+      });
+
+      monthlyMap.set(product.key, monthlyTotals);
     }
 
     const data: ProductStatistics[] = [];
@@ -875,22 +1113,20 @@ export class DashboardService {
     for (const product of products) {
       const monthlyTurnover = monthlyMap.get(product.key) || Array(12).fill(0);
 
-      // Create monthly data with month labels
       const monthlyData = monthlyTurnover.map((turnover, index) => ({
         month: monthNames[index],
-        turnover: turnover,
+        turnover,
       }));
 
       data.push({
         product: product.key,
-        monthlyData: monthlyData,
+        monthlyData,
       });
     }
 
     return {
       year,
       data,
-      // months: monthNames,
     };
   }
 }
